@@ -42,11 +42,31 @@ async function handleListEvents(args) {
     
     // Format results
     const eventList = response.value.map((event, index) => {
-      const startDate = new Date(event.start.dateTime).toLocaleString(event.start.timeZone);
-      const endDate = new Date(event.end.dateTime).toLocaleString(event.end.timeZone);
       const location = event.location.displayName || 'No location';
-      
-      return `${index + 1}. ${event.subject} - Location: ${location}\nStart: ${startDate}\nEnd: ${endDate}\nSubject: ${event.subject}\nSummary: ${event.bodyPreview}\nID: ${event.id}\n`;
+
+      // For all-day events or events on different days, show full date-time
+      let timeDisplay;
+      const startDate = new Date(event.start.dateTime);
+      const endDate = new Date(event.end.dateTime);
+
+      if (event.isAllDay || startDate.toDateString() !== endDate.toDateString()) {
+        // Different days or all-day event
+        timeDisplay = config.dateFormatter.formatDateRange(event.start.dateTime, event.end.dateTime, 'medium');
+      } else {
+        // Same day, show date once and time range
+        const dateStr = config.dateFormatter.formatDate(event.start.dateTime, 'date', 'medium');
+        const startTime = config.dateFormatter.formatDate(event.start.dateTime, 'time', 'short');
+        const endTime = config.dateFormatter.formatDate(event.end.dateTime, 'time', 'short');
+        timeDisplay = `${dateStr} ${startTime} - ${endTime}`;
+      }
+
+      // Add timezone information for clarity during DST periods
+      const userTimezone = config.dateFormatter.getUserTimezone();
+      const timezoneNote = userTimezone.name.includes('Europe/London') && new Date().getTimezoneOffset() !== 0
+        ? ` (${userTimezone.displayName})`
+        : '';
+
+      return `${index + 1}. ${event.subject}\nLocation: ${location}\nTime: ${timeDisplay}${timezoneNote}\nSummary: ${event.bodyPreview}\nID: ${event.id}\n`;
     }).join("\n");
     
     return {

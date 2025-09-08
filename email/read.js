@@ -51,7 +51,7 @@ async function handleReadEmail(args) {
       const to = email.toRecipients ? email.toRecipients.map(r => `${r.emailAddress.name} (${r.emailAddress.address})`).join(", ") : 'None';
       const cc = email.ccRecipients && email.ccRecipients.length > 0 ? email.ccRecipients.map(r => `${r.emailAddress.name} (${r.emailAddress.address})`).join(", ") : 'None';
       const bcc = email.bccRecipients && email.bccRecipients.length > 0 ? email.bccRecipients.map(r => `${r.emailAddress.name} (${r.emailAddress.address})`).join(", ") : 'None';
-      const date = new Date(email.receivedDateTime).toLocaleString();
+      const date = config.dateFormatter.formatDate(email.receivedDateTime, 'datetime', 'medium');
       
       // Extract body content
       let body = '';

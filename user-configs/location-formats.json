@@ -1,0 +1,212 @@
+{
+  "uk": {
+    "name": "United Kingdom",
+    "timezone": "Europe/London",
+    "locale": "en-GB",
+    "formats": {
+      "date": {
+        "short": { "year": "numeric", "month": "2-digit", "day": "2-digit" },
+        "medium": { "weekday": "short", "year": "numeric", "month": "short", "day": "numeric" },
+        "long": { "weekday": "long", "year": "numeric", "month": "long", "day": "numeric" }
+      },
+      "time": {
+        "short": { "hour": "2-digit", "minute": "2-digit" },
+        "long": { "hour": "2-digit", "minute": "2-digit", "second": "2-digit" }
+      },
+      "datetime": {
+        "short": { "year": "numeric", "month": "2-digit", "day": "2-digit", "hour": "2-digit", "minute": "2-digit" },
+        "medium": { "weekday": "short", "year": "numeric", "month": "short", "day": "numeric", "hour": "2-digit", "minute": "2-digit" },
+        "long": { "weekday": "long", "year": "numeric", "month": "long", "day": "numeric", "hour": "2-digit", "minute": "2-digit", "second": "2-digit" }
+      }
+    }
+  },
+  "us": {
+    "name": "United States",
+    "timezone": "America/New_York",
+    "locale": "en-US",
+    "formats": {
+      "date": {
+        "short": { "year": "numeric", "month": "2-digit", "day": "2-digit" },
+        "medium": { "weekday": "short", "month": "short", "day": "numeric", "year": "numeric" },
+        "long": { "weekday": "long", "month": "long", "day": "numeric", "year": "numeric" }
+      },
+      "time": {
+        "short": { "hour": "numeric", "minute": "2-digit", "hour12": true },
+        "long": { "hour": "numeric", "minute": "2-digit", "second": "2-digit", "hour12": true }
+      },
+      "datetime": {
+        "short": { "month": "2-digit", "day": "2-digit", "year": "numeric", "hour": "numeric", "minute": "2-digit", "hour12": true },
+        "medium": { "weekday": "short", "month": "short", "day": "numeric", "year": "numeric", "hour": "numeric", "minute": "2-digit", "hour12": true },
+        "long": { "weekday": "long", "month": "long", "day": "numeric", "year": "numeric", "hour": "numeric", "minute": "2-digit", "second": "2-digit", "hour12": true }
+      }
+    }
+  },
+  "us-central": {
+    "name": "United States (Central)",
+    "timezone": "America/Chicago",
+    "locale": "en-US",
+    "formats": {
+      "date": {
+        "short": { "year": "numeric", "month": "2-digit", "day": "2-digit" },
+        "medium": { "weekday": "short", "month": "short", "day": "numeric", "year": "numeric" },
+        "long": { "weekday": "long", "month": "long", "day": "numeric", "year": "numeric" }
+      },
+      "time": {
+        "short": { "hour": "numeric", "minute": "2-digit", "hour12": true },
+        "long": { "hour": "numeric", "minute": "2-digit", "second": "2-digit", "hour12": true }
+      },
+      "datetime": {
+        "short": { "month": "2-digit", "day": "2-digit", "year": "numeric", "hour": "numeric", "minute": "2-digit", "hour12": true },
+        "medium": { "weekday": "short", "month": "short", "day": "numeric", "year": "numeric", "hour": "numeric", "minute": "2-digit", "hour12": true },
+        "long": { "weekday": "long", "month": "long", "day": "numeric", "year": "numeric", "hour": "numeric", "minute": "2-digit", "second": "2-digit", "hour12": true }
+      }
+    }
+  },
+  "us-pacific": {
+    "name": "United States (Pacific)",
+    "timezone": "America/Los_Angeles",
+    "locale": "en-US",
+    "formats": {
+      "date": {
+        "short": { "year": "numeric", "month": "2-digit", "day": "2-digit" },
+        "medium": { "weekday": "short", "month": "short", "day": "numeric", "year": "numeric" },
+        "long": { "weekday": "long", "month": "long", "day": "numeric", "year": "numeric" }
+      },
+      "time": {
+        "short": { "hour": "numeric", "minute": "2-digit", "hour12": true },
+        "long": { "hour": "numeric", "minute": "2-digit", "second": "2-digit", "hour12": true }
+      },
+      "datetime": {
+        "short": { "month": "2-digit", "day": "2-digit", "year": "numeric", "hour": "numeric", "minute": "2-digit", "hour12": true },
+        "medium": { "weekday": "short", "month": "short", "day": "numeric", "year": "numeric", "hour": "numeric", "minute": "2-digit", "hour12": true },
+        "long": { "weekday": "long", "month": "long", "day": "numeric", "year": "numeric", "hour": "numeric", "minute": "2-digit", "second": "2-digit", "hour12": true }
+      }
+    }
+  },
+  "germany": {
+    "name": "Germany",
+    "timezone": "Europe/Berlin",
+    "locale": "de-DE",
+    "formats": {
+      "date": {
+        "short": { "year": "numeric", "month": "2-digit", "day": "2-digit" },
+        "medium": { "weekday": "short", "day": "2-digit", "month": "2-digit", "year": "numeric" },
+        "long": { "weekday": "long", "day": "2-digit", "month": "long", "year": "numeric" }
+      },
+      "time": {
+        "short": { "hour": "2-digit", "minute": "2-digit" },
+        "long": { "hour": "2-digit", "minute": "2-digit", "second": "2-digit" }
+      },
+      "datetime": {
+        "short": { "day": "2-digit", "month": "2-digit", "year": "numeric", "hour": "2-digit", "minute": "2-digit" },
+        "medium": { "weekday": "short", "day": "2-digit", "month": "2-digit", "year": "numeric", "hour": "2-digit", "minute": "2-digit" },
+        "long": { "weekday": "long", "day": "2-digit", "month": "long", "year": "numeric", "hour": "2-digit", "minute": "2-digit", "second": "2-digit" }
+      }
+    }
+  },
+  "france": {
+    "name": "France",
+    "timezone": "Europe/Paris",
+    "locale": "fr-FR",
+    "formats": {
+      "date": {
+        "short": { "year": "numeric", "month": "2-digit", "day": "2-digit" },
+        "medium": { "weekday": "short", "day": "numeric", "month": "short", "year": "numeric" },
+        "long": { "weekday": "long", "day": "numeric", "month": "long", "year": "numeric" }
+      },
+      "time": {
+        "short": { "hour": "2-digit", "minute": "2-digit" },
+        "long": { "hour": "2-digit", "minute": "2-digit", "second": "2-digit" }
+      },
+      "datetime": {
+        "short": { "day": "2-digit", "month": "2-digit", "year": "numeric", "hour": "2-digit", "minute": "2-digit" },
+        "medium": { "weekday": "short", "day": "numeric", "month": "short", "year": "numeric", "hour": "2-digit", "minute": "2-digit" },
+        "long": { "weekday": "long", "day": "numeric", "month": "long", "year": "numeric", "hour": "2-digit", "minute": "2-digit", "second": "2-digit" }
+      }
+    }
+  },
+  "japan": {
+    "name": "Japan",
+    "timezone": "Asia/Tokyo",
+    "locale": "ja-JP",
+    "formats": {
+      "date": {
+        "short": { "year": "numeric", "month": "2-digit", "day": "2-digit" },
+        "medium": { "year": "numeric", "month": "short", "day": "numeric", "weekday": "short" },
+        "long": { "year": "numeric", "month": "long", "day": "numeric", "weekday": "long" }
+      },
+      "time": {
+        "short": { "hour": "2-digit", "minute": "2-digit" },
+        "long": { "hour": "2-digit", "minute": "2-digit", "second": "2-digit" }
+      },
+      "datetime": {
+        "short": { "year": "numeric", "month": "2-digit", "day": "2-digit", "hour": "2-digit", "minute": "2-digit" },
+        "medium": { "year": "numeric", "month": "short", "day": "numeric", "weekday": "short", "hour": "2-digit", "minute": "2-digit" },
+        "long": { "year": "numeric", "month": "long", "day": "numeric", "weekday": "long", "hour": "2-digit", "minute": "2-digit", "second": "2-digit" }
+      }
+    }
+  },
+  "australia": {
+    "name": "Australia",
+    "timezone": "Australia/Sydney",
+    "locale": "en-AU",
+    "formats": {
+      "date": {
+        "short": { "year": "numeric", "month": "2-digit", "day": "2-digit" },
+        "medium": { "weekday": "short", "day": "numeric", "month": "short", "year": "numeric" },
+        "long": { "weekday": "long", "day": "numeric", "month": "long", "year": "numeric" }
+      },
+      "time": {
+        "short": { "hour": "2-digit", "minute": "2-digit" },
+        "long": { "hour": "2-digit", "minute": "2-digit", "second": "2-digit" }
+      },
+      "datetime": {
+        "short": { "day": "2-digit", "month": "2-digit", "year": "numeric", "hour": "2-digit", "minute": "2-digit" },
+        "medium": { "weekday": "short", "day": "numeric", "month": "short", "year": "numeric", "hour": "2-digit", "minute": "2-digit" },
+        "long": { "weekday": "long", "day": "numeric", "month": "long", "year": "numeric", "hour": "2-digit", "minute": "2-digit", "second": "2-digit" }
+      }
+    }
+  },
+  "canada": {
+    "name": "Canada",
+    "timezone": "America/Toronto",
+    "locale": "en-CA",
+    "formats": {
+      "date": {
+        "short": { "year": "numeric", "month": "2-digit", "day": "2-digit" },
+        "medium": { "weekday": "short", "year": "numeric", "month": "short", "day": "numeric" },
+        "long": { "weekday": "long", "year": "numeric", "month": "long", "day": "numeric" }
+      },
+      "time": {
+        "short": { "hour": "numeric", "minute": "2-digit", "hour12": true },
+        "long": { "hour": "numeric", "minute": "2-digit", "second": "2-digit", "hour12": true }
+      },
+      "datetime": {
+        "short": { "year": "numeric", "month": "2-digit", "day": "2-digit", "hour": "numeric", "minute": "2-digit", "hour12": true },
+        "medium": { "weekday": "short", "year": "numeric", "month": "short", "day": "numeric", "hour": "numeric", "minute": "2-digit", "hour12": true },
+        "long": { "weekday": "long", "year": "numeric", "month": "long", "day": "numeric", "hour": "numeric", "minute": "2-digit", "second": "2-digit", "hour12": true }
+      }
+    }
+  },
+  "india": {
+    "name": "India",
+    "timezone": "Asia/Kolkata",
+    "locale": "en-IN",
+    "formats": {
+      "date": {
+        "short": { "year": "numeric", "month": "2-digit", "day": "2-digit" },
+        "medium": { "weekday": "short", "day": "numeric", "month": "short", "year": "numeric" },
+        "long": { "weekday": "long", "day": "numeric", "month": "long", "year": "numeric" }
+      },
+      "time": {
+        "short": { "hour": "2-digit", "minute": "2-digit" },
+        "long": { "hour": "2-digit", "minute": "2-digit", "second": "2-digit" }
+      },
+      "datetime": {
+        "short": { "day": "2-digit", "month": "2-digit", "year": "numeric", "hour": "2-digit", "minute": "2-digit" },
+        "medium": { "weekday": "short", "day": "numeric", "month": "short", "year": "numeric", "hour": "2-digit", "minute": "2-digit" },
+        "long": { "weekday": "long", "day": "numeric", "month": "long", "year": "numeric", "hour": "2-digit", "minute": "2-digit", "second": "2-digit" }
+      }
+    }
+  }
+}

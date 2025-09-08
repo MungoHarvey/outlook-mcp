@@ -1,10 +1,11 @@
 const handleCreateEvent = require('../../calendar/create');
-const { DEFAULT_TIMEZONE } = require('../../config');
+const config = require('../../config');
 const { callGraphAPI } = require('../../utils/graph-api');
 const { ensureAuthenticated } = require('../../auth');
 
 jest.mock('../../utils/graph-api');
 jest.mock('../../auth');
+jest.mock('../../config');
 
 describe('handleCreateEvent', () => {
   beforeEach(() => {

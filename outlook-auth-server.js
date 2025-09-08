@@ -9,18 +9,19 @@ const path = require('path');
 // Load environment variables from .env file
 require('dotenv').config();
 
-// Log to console
-console.log('Starting Outlook Authentication Server');
+// Log to stderr (not stdout - MCP servers use stdout for JSON-RPC only)
+console.error('Starting Outlook Authentication Server');
 
 // Authentication configuration
 const AUTH_CONFIG = {
-  clientId: process.env.MS_CLIENT_ID || '', // Set your client ID as an environment variable
-  clientSecret: process.env.MS_CLIENT_SECRET || '', // Set your client secret as an environment variable
-  redirectUri: 'http://localhost:3333/auth/callback',
+  clientId: process.env.OUTLOOK_CLIENT_ID,
+  clientSecret: process.env.OUTLOOK_CLIENT_SECRET,
+  redirectUri: process.env.OUTLOOK_REDIRECT_URI || 'http://localhost:3333/auth/callback',
   scopes: [
     'offline_access',
     'User.Read',
     'Mail.Read',
+    'Mail.ReadWrite',
     'Mail.Send',
     'Calendars.Read',
     'Calendars.ReadWrite',
@@ -34,7 +35,7 @@ const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
   
-  console.log(`Request received: ${pathname}`);
+  console.error(`Request received: ${pathname}`);
   
   if (pathname === '/auth/callback') {
     const query = parsedUrl.query;
@@ -66,12 +67,12 @@ const server = http.createServer((req, res) => {
     }
     
     if (query.code) {
-      console.log('Authorization code received, exchanging for tokens...');
+      console.error('Authorization code received, exchanging for tokens...');
       
       // Exchange code for tokens
       exchangeCodeForTokens(query.code)
         .then((tokens) => {
-          console.log('Token exchange successful');
+          console.error('Token exchange successful');
           res.writeHead(200, { 'Content-Type': 'text/html' });
           res.end(`
             <html>
@@ -142,7 +143,7 @@ const server = http.createServer((req, res) => {
     }
   } else if (pathname === '/auth') {
     // Handle the /auth route - redirect to Microsoft's OAuth authorization endpoint
-    console.log('Auth request received, redirecting to Microsoft login...');
+    console.error('Auth request received, redirecting to Microsoft login...');
     
     // Verify credentials are set
     if (!AUTH_CONFIG.clientId || !AUTH_CONFIG.clientSecret) {
@@ -163,8 +164,8 @@ const server = http.createServer((req, res) => {
             <div class="error-box">
               <p>Microsoft Graph API credentials are not set. Please set the following environment variables:</p>
               <ul>
-                <li><code>MS_CLIENT_ID</code></li>
-                <li><code>MS_CLIENT_SECRET</code></li>
+                <li><code>OUTLOOK_CLIENT_ID</code></li>
+                <li><code>OUTLOOK_CLIENT_SECRET</code></li>
               </ul>
             </div>
           </body>
@@ -188,7 +189,7 @@ const server = http.createServer((req, res) => {
     };
     
     const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${querystring.stringify(authParams)}`;
-    console.log(`Redirecting to: ${authUrl}`);
+    console.error(`Redirecting to: ${authUrl}`);
     
     // Redirect to Microsoft's login page
     res.writeHead(302, { 'Location': authUrl });
@@ -212,7 +213,7 @@ const server = http.createServer((req, res) => {
           <div class="info-box">
             <p>This server is running to handle Microsoft Graph API authentication callbacks.</p>
             <p>Don't navigate here directly. Instead, use the <code>authenticate</code> tool in Claude to start the authentication process.</p>
-            <p>Make sure you've set the <code>MS_CLIENT_ID</code> and <code>MS_CLIENT_SECRET</code> environment variables.</p>
+            <p>Make sure you've set the <code>OUTLOOK_CLIENT_ID</code> and <code>OUTLOOK_CLIENT_SECRET</code> environment variables.</p>
           </div>
           <p>Server is running at http://localhost:3333</p>
         </body>
@@ -266,7 +267,7 @@ function exchangeCodeForTokens(code) {
             
             // Save tokens to file
             fs.writeFileSync(AUTH_CONFIG.tokenStorePath, JSON.stringify(tokenResponse, null, 2), 'utf8');
-            console.log(`Tokens saved to ${AUTH_CONFIG.tokenStorePath}`);
+            console.error(`Tokens saved to ${AUTH_CONFIG.tokenStorePath}`);
             
             resolve(tokenResponse);
           } catch (error) {
@@ -290,23 +291,23 @@ function exchangeCodeForTokens(code) {
 // Start server
 const PORT = 3333;
 server.listen(PORT, () => {
-  console.log(`Authentication server running at http://localhost:${PORT}`);
-  console.log(`Waiting for authentication callback at ${AUTH_CONFIG.redirectUri}`);
-  console.log(`Token will be stored at: ${AUTH_CONFIG.tokenStorePath}`);
-  
+  console.error(`Authentication server running at http://localhost:${PORT}`);
+  console.error(`Waiting for authentication callback at ${AUTH_CONFIG.redirectUri}`);
+  console.error(`Token will be stored at: ${AUTH_CONFIG.tokenStorePath}`);
+
   if (!AUTH_CONFIG.clientId || !AUTH_CONFIG.clientSecret) {
-    console.log('\n⚠️  WARNING: Microsoft Graph API credentials are not set.');
-    console.log('   Please set the MS_CLIENT_ID and MS_CLIENT_SECRET environment variables.');
+    console.error('\n⚠️  WARNING: Microsoft Graph API credentials are not set.');
+    console.error('   Please set the OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET environment variables.');
   }
 });
 
 // Handle termination
 process.on('SIGINT', () => {
-  console.log('Authentication server shutting down');
+  console.error('Authentication server shutting down');
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.log('Authentication server shutting down');
+  console.error('Authentication server shutting down');
   process.exit(0);
 });

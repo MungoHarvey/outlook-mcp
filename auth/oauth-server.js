@@ -4,6 +4,7 @@ const https = require('https');
 const fs = require('fs');
 const crypto = require('crypto'); // Added for generating random string
 const TokenStorage = require('./token-storage'); // Assuming TokenStorage is in the same directory
+const config = require('../config'); // Import config for date formatting
 
 // HTML templates
 function escapeHtml(unsafe) {
@@ -159,7 +160,7 @@ function setupOAuthRoutes(app, tokenStorage, authConfig, envPrefix = 'MS_') {
       const token = await tokenStorage.getValidAccessToken();
       if (token) {
         const expiryDate = new Date(tokenStorage.getExpiryTime());
-        res.send(templates.tokenStatus(`Access token is valid. Expires at: ${expiryDate.toLocaleString()}`));
+        res.send(templates.tokenStatus(`Access token is valid. Expires at: ${config.dateFormatter.formatDate(expiryDate, 'datetime', 'medium')}`));
       } else {
         res.send(templates.tokenStatus('No valid access token found. Please authenticate.'));
       }

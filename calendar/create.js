@@ -3,7 +3,7 @@
  */
 const { callGraphAPI } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
-const { DEFAULT_TIMEZONE } = require('../config');
+const config = require('../config');
 
 /**
  * Create event handler
@@ -29,11 +29,14 @@ async function handleCreateEvent(args) {
     // Build API endpoint
     const endpoint = `me/events`;
 
+    // Get user's configured timezone
+    const userTimezone = config.dateFormatter.getUserTimezone().name;
+
     // Request body
     const bodyContent = {
       subject,
-      start: { dateTime: start.dateTime || start, timeZone: start.timeZone || DEFAULT_TIMEZONE },
-      end: { dateTime: end.dateTime || end, timeZone: end.timeZone || DEFAULT_TIMEZONE },
+      start: { dateTime: start.dateTime || start, timeZone: start.timeZone || userTimezone },
+      end: { dateTime: end.dateTime || end, timeZone: end.timeZone || userTimezone },
       attendees: attendees?.map(email => ({ emailAddress: { address: email }, type: "required" })),
       body: { contentType: "HTML", content: body || "" }
     };

@@ -7,9 +7,11 @@ const os = require('os');
 // Ensure we have a home directory path even if process.env.HOME is undefined
 const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir() || '/tmp';
 
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
 module.exports = {
   // Server information
-  SERVER_NAME: "outlook-assistant",
+  SERVER_NAME: "outlook",
   SERVER_VERSION: "1.0.0",
   
   // Test mode setting
@@ -17,9 +19,10 @@ module.exports = {
   
   // Authentication configuration
   AUTH_CONFIG: {
-    clientId: process.env.OUTLOOK_CLIENT_ID || '',
-    clientSecret: process.env.OUTLOOK_CLIENT_SECRET || '',
-    redirectUri: 'http://localhost:3333/auth/callback',
+    clientId: process.env.OUTLOOK_CLIENT_ID,
+    clientSecret: process.env.OUTLOOK_CLIENT_SECRET,
+    tenantId: process.env.OUTLOOK_TENANT_ID,
+    redirectUri: process.env.OUTLOOK_REDIRECT_URI || 'http://localhost:3333/auth/callback',
     scopes: ['Mail.Read', 'Mail.ReadWrite', 'Mail.Send', 'User.Read', 'Calendars.Read', 'Calendars.ReadWrite'],
     tokenStorePath: path.join(homeDir, '.outlook-mcp-tokens.json'),
     authServerUrl: 'http://localhost:3333'
@@ -29,19 +32,16 @@ module.exports = {
   GRAPH_API_ENDPOINT: 'https://graph.microsoft.com/v1.0/',
   
   // Calendar constants
-  CALENDAR_SELECT_FIELDS: 'id,subject,start,end,location,bodyPreview,isAllDay,recurrence,attendees',
+  CALENDAR_SELECT_FIELDS: 'id,subject,bodyPreview,start,end,location,organizer,attendees,isAllDay,isCancelled',
 
   // Email constants
   EMAIL_SELECT_FIELDS: 'id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,importance,isRead',
   EMAIL_DETAIL_FIELDS: 'id,subject,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,bodyPreview,body,hasAttachments,importance,isRead,internetMessageHeaders',
   
-  // Calendar constants
-  CALENDAR_SELECT_FIELDS: 'id,subject,bodyPreview,start,end,location,organizer,attendees,isAllDay,isCancelled',
-  
   // Pagination
   DEFAULT_PAGE_SIZE: 25,
   MAX_RESULT_COUNT: 50,
 
-  // Timezone
-  DEFAULT_TIMEZONE: "Central European Standard Time",
+  // Date formatting utilities
+  dateFormatter: require('./utils/date-formatter'),
 };
