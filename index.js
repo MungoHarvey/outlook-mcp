@@ -24,6 +24,7 @@ console.error(`STARTING ${config.SERVER_NAME.toUpperCase()} MCP SERVER`);
 // Import module tools
 const { authTools } = require('./auth');
 const { calendarTools } = require('./calendar');
+const { categoryTools } = require('./category');
 const { emailTools } = require('./email');
 const { folderTools } = require('./folder');
 const { rulesTools } = require('./rules');
@@ -78,6 +79,7 @@ if (shouldStartAuthServer) {
 const TOOLS = [
   ...authTools,
   ...calendarTools,
+  ...categoryTools,
   ...emailTools,
   ...folderTools,
   ...rulesTools

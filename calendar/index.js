@@ -6,6 +6,7 @@ const handleDeclineEvent = require('./decline');
 const handleCreateEvent = require('./create');
 const handleCancelEvent = require('./cancel');
 const handleDeleteEvent = require('./delete');
+const handleUpdateEvent = require('./update');
 
 // Calendar tool definitions
 const calendarTools = [
@@ -54,28 +55,144 @@ const calendarTools = [
           description: "The subject of the event"
         },
         start: {
-          type: "string",
-          description: "The start time of the event in ISO 8601 format"
+          description: "Start date/time (ISO string or {dateTime,timeZone})"
         },
         end: {
-          type: "string",
-          description: "The end time of the event in ISO 8601 format"
+          description: "End date/time (ISO string or {dateTime,timeZone})"
         },
         attendees: {
           type: "array",
-          items: {
-            type: "string"
-          },
-          description: "List of attendee email addresses"
+          description: "List of attendee email addresses or attendee objects"
         },
         body: {
           type: "string",
           description: "Optional body content for the event"
+        },
+        showAs: {
+          type: "string",
+          description: "Availability status (free, workingElsewhere, tentative, busy, outOfOffice, unknown)"
+        },
+        categories: {
+          type: "array",
+          description: "Array of categories to assign"
+        },
+        location: {
+          description: "Optional location (string or object with displayName)"
+        },
+        importance: {
+          type: "string",
+          description: "Importance level (low, normal, high)"
+        },
+        isAllDay: {
+          type: "boolean",
+          description: "Whether the event lasts all day"
+        },
+        isReminderOn: {
+          type: "boolean",
+          description: "Whether to enable reminders (default true)"
+        },
+        reminderMinutesBeforeStart: {
+          type: "number",
+          description: "Minutes before event start to trigger reminder (default 15)"
+        },
+        responseRequested: {
+          type: "boolean",
+          description: "Whether attendee responses are requested"
+        },
+        allowNewTimeProposals: {
+          type: "boolean",
+          description: "Whether attendees can propose new times"
+        },
+        hideAttendees: {
+          type: "boolean",
+          description: "Whether to hide attendee list"
+        },
+        isOnlineMeeting: {
+          type: "boolean",
+          description: "Whether to mark as an online meeting"
         }
       },
-      required: ["subject", "start", "end"]
+      required: ["subject", "start", "end"],
+      additionalProperties: true
     },
     handler: handleCreateEvent
+  },
+  {
+    name: "update-event",
+    description: "Updates fields on an existing calendar event",
+    inputSchema: {
+      type: "object",
+      properties: {
+        eventId: {
+          type: "string",
+          description: "The ID of the event to update"
+        },
+        subject: {
+          type: "string",
+          description: "Updated subject for the event"
+        },
+        start: {
+          description: "Updated start date/time (ISO string or {dateTime,timeZone})"
+        },
+        end: {
+          description: "Updated end date/time (ISO string or {dateTime,timeZone})"
+        },
+        attendees: {
+          type: "array",
+          description: "Updated attendee list"
+        },
+        showAs: {
+          type: "string",
+          description: "Updated availability status (free, workingElsewhere, tentative, busy, outOfOffice, unknown)"
+        },
+        categories: {
+          type: "array",
+          description: "Updated categories array"
+        },
+        body: {
+          type: "string",
+          description: "Updated event body"
+        },
+        importance: {
+          type: "string",
+          description: "Updated event importance (low, normal, high)"
+        },
+        reminderMinutesBeforeStart: {
+          type: "number",
+          description: "Updated reminder offset in minutes"
+        },
+        location: {
+          description: "Updated location (string or object with displayName)"
+        },
+        isAllDay: {
+          type: "boolean",
+          description: "Set whether the event lasts all day"
+        },
+        responseRequested: {
+          type: "boolean",
+          description: "Set whether attendee responses are requested"
+        },
+        allowNewTimeProposals: {
+          type: "boolean",
+          description: "Allow attendees to propose new times"
+        },
+        hideAttendees: {
+          type: "boolean",
+          description: "Hide attendee list from recipients"
+        },
+        isOnlineMeeting: {
+          type: "boolean",
+          description: "Toggle online meeting flag"
+        },
+        isReminderOn: {
+          type: "boolean",
+          description: "Enable or disable reminders"
+        }
+      },
+      required: ["eventId"],
+      additionalProperties: true
+    },
+    handler: handleUpdateEvent
   },
   {
     name: "cancel-event",
@@ -119,5 +236,6 @@ module.exports = {
   handleDeclineEvent,
   handleCreateEvent,
   handleCancelEvent,
-  handleDeleteEvent
+  handleDeleteEvent,
+  handleUpdateEvent
 };

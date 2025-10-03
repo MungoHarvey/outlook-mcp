@@ -42,7 +42,11 @@ async function handleListEvents(args) {
     
     // Format results
     const eventList = response.value.map((event, index) => {
-      const location = event.location.displayName || 'No location';
+      const location = event.location?.displayName || 'No location';
+      const showAs = event.showAs || 'unknown';
+      const categories = Array.isArray(event.categories) && event.categories.length > 0
+        ? event.categories.join(', ')
+        : 'None';
 
       // For all-day events or events on different days, show full date-time
       let timeDisplay;
@@ -66,7 +70,7 @@ async function handleListEvents(args) {
         ? ` (${userTimezone.displayName})`
         : '';
 
-      return `${index + 1}. ${event.subject}\nLocation: ${location}\nTime: ${timeDisplay}${timezoneNote}\nSummary: ${event.bodyPreview}\nID: ${event.id}\n`;
+      return `${index + 1}. ${event.subject}\nStatus: ${showAs}\nCategories: ${categories}\nLocation: ${location}\nTime: ${timeDisplay}${timezoneNote}\nSummary: ${event.bodyPreview}\nID: ${event.id}\n`;
     }).join("\n");
     
     return {
