@@ -5,13 +5,20 @@ const { ensureAuthenticated } = require('../../auth');
 
 jest.mock('../../utils/graph-api');
 jest.mock('../../auth');
-jest.mock('../../config');
+jest.mock('../../config', () => ({
+  dateFormatter: {
+    getUserTimezone: jest.fn()
+  }
+}));
+
+const DEFAULT_TIMEZONE = 'UTC';
 
 describe('handleCreateEvent', () => {
   beforeEach(() => {
     // Reset mocks before each test
     callGraphAPI.mockClear();
     ensureAuthenticated.mockClear();
+    config.dateFormatter.getUserTimezone.mockReturnValue({ name: DEFAULT_TIMEZONE });
   });
 
   test('should use default timezone when no timezone is provided', async () => {
@@ -153,6 +160,72 @@ describe('handleCreateEvent', () => {
 
     const result = await handleCreateEvent(args);
     expect(result.content[0].text).toBe("Error creating event: Graph API Error");
+  });
+
+  test('should handle sensitivity and recurrence', async () => {
+    ensureAuthenticated.mockResolvedValue('dummy_access_token');
+    callGraphAPI.mockResolvedValue({ id: 'test_event_id' });
+
+    const args = {
+      subject: 'Recurring Private Event',
+      start: '2024-03-10T10:00:00',
+      end: '2024-03-10T11:00:00',
+      sensitivity: 'private',
+      recurrence: {
+        pattern: { type: 'daily', interval: 1 },
+        range: { type: 'noEnd', startDate: '2024-03-10' }
+      }
+    };
+
+    await handleCreateEvent(args);
+
+    expect(callGraphAPI).toHaveBeenCalledTimes(1);
+    const body = callGraphAPI.mock.calls[0][3];
+    expect(body.sensitivity).toBe('private');
+    expect(body.recurrence).toEqual(args.recurrence);
+  });
+
+  test('should handle complex attendees', async () => {
+    ensureAuthenticated.mockResolvedValue('dummy_access_token');
+    callGraphAPI.mockResolvedValue({ id: 'test_event_id' });
+
+    const args = {
+      subject: 'Meeting with Optional Attendee',
+      start: '2024-03-10T10:00:00',
+      end: '2024-03-10T11:00:00',
+      attendees: [
+        'required@example.com',
+        { email: 'optional@example.com', type: 'optional' }
+      ]
+    };
+
+    await handleCreateEvent(args);
+
+    expect(callGraphAPI).toHaveBeenCalledTimes(1);
+    const body = callGraphAPI.mock.calls[0][3];
+    expect(body.attendees).toHaveLength(2);
+    expect(body.attendees[0]).toEqual({ emailAddress: { address: 'required@example.com' }, type: 'required' });
+    expect(body.attendees[1]).toEqual({ emailAddress: { address: 'optional@example.com' }, type: 'optional' });
+  });
+
+  test('should handle online meeting provider', async () => {
+    ensureAuthenticated.mockResolvedValue('dummy_access_token');
+    callGraphAPI.mockResolvedValue({ id: 'test_event_id' });
+
+    const args = {
+      subject: 'Teams Meeting',
+      start: '2024-03-10T10:00:00',
+      end: '2024-03-10T11:00:00',
+      isOnlineMeeting: true,
+      onlineMeetingProvider: 'teamsForBusiness'
+    };
+
+    await handleCreateEvent(args);
+
+    expect(callGraphAPI).toHaveBeenCalledTimes(1);
+    const body = callGraphAPI.mock.calls[0][3];
+    expect(body.isOnlineMeeting).toBe(true);
+    expect(body.onlineMeetingProvider).toBe('teamsForBusiness');
   });
 
 });

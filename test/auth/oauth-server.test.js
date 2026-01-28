@@ -4,6 +4,10 @@ const { setupOAuthRoutes, createAuthConfig } = require('../../auth/oauth-server'
 const TokenStorage = require('../../auth/token-storage');
 
 jest.mock('../../auth/token-storage'); // Mock TokenStorage class
+jest.mock('../../utils/date-formatter', () => ({
+  formatDate: jest.fn((date) => `Formatted: ${new Date(date).toISOString()}`),
+  getUserTimezone: jest.fn(() => ({ name: 'UTC' }))
+}));
 
 const mockAuthConfig = {
   clientId: 'test-client-id',
@@ -153,7 +157,8 @@ describe('OAuth Server Routes', () => {
       expect(response.status).toBe(200);
       expect(response.text).toContain('Token Status');
       expect(response.text).toContain('Access token is valid.');
-      expect(response.text).toContain(`Expires at: ${new Date(mockExpiry).toLocaleString()}`);
+      // Expect the formatted string from our mock
+      expect(response.text).toContain(`Expires at: Formatted: ${new Date(mockExpiry).toISOString()}`);
     });
 
     it('should return "no valid token" status if token is not found', async () => {

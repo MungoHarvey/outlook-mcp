@@ -120,6 +120,19 @@ const emailTools = [
         saveToSentItems: {
           type: "boolean",
           description: "Whether to save the email to sent items"
+        },
+        attachments: {
+          type: "array",
+          description: "Optional list of attachments",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "The name of the attachment" },
+              contentType: { type: "string", description: "The MIME type of the attachment" },
+              contentBytes: { type: "string", description: "The base64-encoded content of the attachment" }
+            },
+            required: ["name", "contentType", "contentBytes"]
+          }
         }
       },
       required: ["to", "subject", "body"]

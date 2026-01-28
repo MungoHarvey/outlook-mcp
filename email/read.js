@@ -45,6 +45,21 @@ async function handleReadEmail(args) {
           ]
         };
       }
+
+      // Get attachments if they exist
+      let attachmentsInfo = '';
+      if (email.hasAttachments) {
+        try {
+          const attachmentsResponse = await callGraphAPI(accessToken, 'GET', `${endpoint}/attachments`, null, { '$select': 'id,name,contentType,size,isInline' });
+          const attachments = attachmentsResponse.value || [];
+          if (attachments.length > 0) {
+            attachmentsInfo = '\nAttachments:\n' + attachments.map(a => `- ${a.name} (${a.contentType}, ${a.size} bytes)${a.isInline ? ' [Inline]' : ''} [ID: ${a.id}]`).join('\n');
+          }
+        } catch (attachError) {
+          console.error(`Error fetching attachments: ${attachError.message}`);
+          attachmentsInfo = '\n(Error fetching attachment details)';
+        }
+      }
       
       // Format sender, recipients, etc.
       const sender = email.from ? `${email.from.emailAddress.name} (${email.from.emailAddress.address})` : 'Unknown';
@@ -70,7 +85,7 @@ To: ${to}
 ${cc !== 'None' ? `CC: ${cc}\n` : ''}${bcc !== 'None' ? `BCC: ${bcc}\n` : ''}Subject: ${email.subject}
 Date: ${date}
 Importance: ${email.importance || 'normal'}
-Has Attachments: ${email.hasAttachments ? 'Yes' : 'No'}
+Has Attachments: ${email.hasAttachments ? 'Yes' : 'No'}${attachmentsInfo}
 
 ${body}`;
       

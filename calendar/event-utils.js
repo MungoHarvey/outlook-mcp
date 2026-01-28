@@ -105,14 +105,21 @@ function normalizeAttendees(attendees) {
       if (trimmed.length > 0) {
         normalized.push({ emailAddress: { address: trimmed }, type: 'required' });
       }
-    } else if (attendee && typeof attendee === 'object' && attendee.emailAddress?.address) {
-      normalized.push({
-        emailAddress: { address: attendee.emailAddress.address },
-        type: attendee.type || 'required'
-      });
+    } else if (attendee && typeof attendee === 'object') {
+      const email = attendee.email || (attendee.emailAddress && attendee.emailAddress.address);
+      if (email) {
+        normalized.push({
+          emailAddress: { address: email },
+          type: attendee.type || (attendee.type === undefined ? 'required' : attendee.type)
+        });
+      } else {
+        return {
+          error: "Attendees must be email strings or objects with an 'email' or 'emailAddress.address' value."
+        };
+      }
     } else {
       return {
-        error: "Attendees must be email strings or objects with an 'emailAddress.address' value."
+        error: "Attendees must be email strings or attendee objects."
       };
     }
   }
@@ -127,5 +134,7 @@ module.exports = {
   normalizeDateTimeInput,
   normalizeAttendees
 };
+
+
 
 

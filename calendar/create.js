@@ -27,13 +27,16 @@ async function handleCreateEvent(args) {
     categories,
     location,
     importance,
+    sensitivity,
+    recurrence,
     isAllDay,
     isReminderOn,
     reminderMinutesBeforeStart,
     responseRequested,
     allowNewTimeProposals,
     hideAttendees,
-    isOnlineMeeting
+    isOnlineMeeting,
+    onlineMeetingProvider
   } = args;
 
   if (!subject || !start || !end) {
@@ -158,13 +161,16 @@ async function handleCreateEvent(args) {
       categories: normalizedCategories.value,
       location: resolvedLocation,
       importance: resolvedImportance,
+      sensitivity: sensitivity,
+      recurrence: recurrence,
       reminderMinutesBeforeStart: resolvedReminder,
       isReminderOn: isReminderOn !== undefined ? Boolean(isReminderOn) : undefined,
       isAllDay: isAllDay !== undefined ? Boolean(isAllDay) : undefined,
       responseRequested: responseRequested !== undefined ? Boolean(responseRequested) : undefined,
       allowNewTimeProposals: allowNewTimeProposals !== undefined ? Boolean(allowNewTimeProposals) : undefined,
       hideAttendees: hideAttendees !== undefined ? Boolean(hideAttendees) : undefined,
-      isOnlineMeeting: isOnlineMeeting !== undefined ? Boolean(isOnlineMeeting) : undefined
+      isOnlineMeeting: isOnlineMeeting !== undefined ? Boolean(isOnlineMeeting) : undefined,
+      onlineMeetingProvider: onlineMeetingProvider
     };
 
     if (!bodyContent.attendees || bodyContent.attendees.length === 0) {

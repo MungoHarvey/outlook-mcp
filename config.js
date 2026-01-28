@@ -44,4 +44,7 @@ module.exports = {
 
   // Date formatting utilities
   dateFormatter: require('./utils/date-formatter'),
+
+  // Feature flags / temporary workarounds
+  DISABLE_CREATE_EVENT: process.env.DISABLE_CREATE_EVENT === 'true',
 };

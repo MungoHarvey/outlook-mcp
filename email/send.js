@@ -11,7 +11,7 @@ const { ensureAuthenticated } = require('../auth');
  * @returns {object} - MCP response
  */
 async function handleSendEmail(args) {
-  const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true } = args;
+  const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true, attachments } = args;
   
   // Validate required parameters
   if (!to) {
@@ -72,6 +72,14 @@ async function handleSendEmail(args) {
         }
       };
     }) : [];
+
+    // Format attachments if provided
+    const formattedAttachments = attachments ? attachments.map(a => ({
+      '@odata.type': '#microsoft.graph.fileAttachment',
+      name: a.name,
+      contentType: a.contentType,
+      contentBytes: a.contentBytes // Expected to be base64
+    })) : undefined;
     
     // Prepare email object
     const emailObject = {
@@ -84,6 +92,7 @@ async function handleSendEmail(args) {
         toRecipients,
         ccRecipients: ccRecipients.length > 0 ? ccRecipients : undefined,
         bccRecipients: bccRecipients.length > 0 ? bccRecipients : undefined,
+        attachments: formattedAttachments,
         importance
       },
       saveToSentItems

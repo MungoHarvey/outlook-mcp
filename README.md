@@ -103,6 +103,21 @@ To configure the server, edit the `config.js` file to change:
 3. Authenticate with Microsoft using the `authenticate` tool
 4. Use the email tools to manage your Outlook account
 
+## Calendar: Create Event Parameters (OpenAI/LangChain compatible)
+
+- subject: string (required)
+- start: ISO string (format: date-time) or object { dateTime: string, timeZone?: string } (required)
+- end: ISO string (format: date-time) or object { dateTime: string, timeZone?: string } (required)
+- attendees: array of email strings (optional)
+- body: string (optional)
+- showAs: string (free, workingElsewhere, tentative, busy, outOfOffice, unknown)
+- categories: array of strings (optional)
+- location: string or object with { displayName: string }
+
+JSON Schema compatibility: arrays declare `items`, and `date-time` formats are used. Runtime input validation is enforced via AJV and errors are returned as MCP text content.
+
+Feature flag: set `DISABLE_CREATE_EVENT=true` to hide the `create-event` tool at startup.
+
 ## Running Standalone
 
 You can test the server using:

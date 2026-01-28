@@ -28,6 +28,8 @@ const { categoryTools } = require('./category');
 const { emailTools } = require('./email');
 const { folderTools } = require('./folder');
 const { rulesTools } = require('./rules');
+const { healthTools } = require('./health');
+const { contactsTools } = require('./contacts');
 
 // Log startup information
 console.error(`STARTING ${config.SERVER_NAME.toUpperCase()} MCP SERVER`);
@@ -82,7 +84,9 @@ const TOOLS = [
   ...categoryTools,
   ...emailTools,
   ...folderTools,
-  ...rulesTools
+  ...rulesTools,
+  ...healthTools,
+  ...contactsTools
   // Future modules: contactsTools, etc.
 ];
 

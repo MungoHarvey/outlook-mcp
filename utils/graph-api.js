@@ -65,7 +65,11 @@ async function callGraphAPI(accessToken, method, path, data = null, queryParams 
     const url = `${config.GRAPH_API_ENDPOINT}${encodedPath}${queryString}`;
     console.error(`Full URL: ${url}`);
     
-    return new Promise((resolve, reject) => {
+    const maxAttempts = 3;
+    const baseDelayMs = 300;
+    const jitter = () => Math.floor(Math.random() * 150);
+
+    const attempt = (attemptNum, resolve, reject) => {
       const options = {
         method: method,
         headers: {
@@ -93,6 +97,14 @@ async function callGraphAPI(accessToken, method, path, data = null, queryParams 
           } else if (res.statusCode === 401) {
             // Token expired or invalid
             reject(new Error('UNAUTHORIZED'));
+          } else if (res.statusCode === 429 || (res.statusCode >= 500 && res.statusCode < 600)) {
+            if (attemptNum < maxAttempts) {
+              const delay = baseDelayMs * Math.pow(2, attemptNum - 1) + jitter();
+              console.error(`Transient error ${res.statusCode}. Retrying in ${delay}ms (attempt ${attemptNum}/${maxAttempts})`);
+              setTimeout(() => attempt(attemptNum + 1, resolve, reject), delay);
+            } else {
+              reject(new Error(`API call failed after retries with status ${res.statusCode}: ${responseData}`));
+            }
           } else {
             reject(new Error(`API call failed with status ${res.statusCode}: ${responseData}`));
           }
@@ -100,7 +112,13 @@ async function callGraphAPI(accessToken, method, path, data = null, queryParams 
       });
       
       req.on('error', (error) => {
-        reject(new Error(`Network error during API call: ${error.message}`));
+        if (attemptNum < maxAttempts) {
+          const delay = baseDelayMs * Math.pow(2, attemptNum - 1) + jitter();
+          console.error(`Network error: ${error.message}. Retrying in ${delay}ms (attempt ${attemptNum}/${maxAttempts})`);
+          setTimeout(() => attempt(attemptNum + 1, resolve, reject), delay);
+        } else {
+          reject(new Error(`Network error during API call: ${error.message}`));
+        }
       });
       
       if (data && (method === 'POST' || method === 'PATCH' || method === 'PUT')) {
@@ -108,7 +126,9 @@ async function callGraphAPI(accessToken, method, path, data = null, queryParams 
       }
       
       req.end();
-    });
+    };
+
+    return new Promise((resolve, reject) => attempt(1, resolve, reject));
   } catch (error) {
     console.error('Error calling Graph API:', error);
     throw error;

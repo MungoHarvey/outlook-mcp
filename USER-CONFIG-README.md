@@ -143,6 +143,20 @@ The `location-formats.json` file contains detailed formatting options using `Int
 - **Wrong Time**: Verify your location setting and timezone offset
 - **Changes not applied**: Restart the server after making changes
 
+### 10. Calendar create-event parameters
+
+When invoking the calendar create-event tool, use:
+
+- subject (string, required)
+- start (ISO string with format date-time, or { dateTime, timeZone }, required)
+- end (ISO string with format date-time, or { dateTime, timeZone }, required)
+- attendees (array of email strings), optional
+- body (string), optional
+- categories (array of strings), optional
+- location (string or object with displayName), optional
+
+Schemas follow JSON Schema draft-07 for compatibility with OpenAI/LangChain. Arrays include `items`, and `date-time` formats are used where applicable. Set `DISABLE_CREATE_EVENT=true` to temporarily disable the tool at startup.
+
 ### 9. Adding New Locations
 
 To add a new location to `location-formats.json`:

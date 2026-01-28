@@ -68,8 +68,8 @@ function setupOAuthRoutes(app, tokenStorage, authConfig, envPrefix = 'MS_') {
     authConfig = createAuthConfig(envPrefix);
   }
 
-  if (!(tokenStorage instanceof TokenStorage)) {
-    console.error("Error: tokenStorage is not an instance of TokenStorage. OAuth routes will not function correctly.");
+  if (!tokenStorage || typeof tokenStorage.exchangeCodeForTokens !== 'function' || typeof tokenStorage.getValidAccessToken !== 'function') {
+    console.error("Error: tokenStorage does not appear to be a valid TokenStorage instance. OAuth routes might not function correctly.");
     // Optionally, you could throw an error here or disable the routes
     // throw new Error("Invalid tokenStorage provided to setupOAuthRoutes");
   }

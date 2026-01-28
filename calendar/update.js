@@ -146,6 +146,18 @@ async function handleUpdateEvent(args) {
     updates.importance = importance;
   }
 
+  if (args.sensitivity !== undefined) {
+    updates.sensitivity = args.sensitivity;
+  }
+
+  if (args.recurrence !== undefined) {
+    updates.recurrence = args.recurrence;
+  }
+
+  if (args.onlineMeetingProvider !== undefined) {
+    updates.onlineMeetingProvider = args.onlineMeetingProvider;
+  }
+
   if (args.reminderMinutesBeforeStart !== undefined) {
     const reminder = Number(args.reminderMinutesBeforeStart);
     if (!Number.isInteger(reminder) || reminder < 0) {
