@@ -4,6 +4,7 @@
 const https = require('https');
 const config = require('../config');
 const mockData = require('./mock-data');
+const tokenStorage = require('../auth/token-storage-instance');
 
 /**
  * Makes a request to the Microsoft Graph API
@@ -16,7 +17,7 @@ const mockData = require('./mock-data');
  */
 async function callGraphAPI(accessToken, method, path, data = null, queryParams = {}) {
   // For test tokens, we'll simulate the API call
-  if (config.USE_TEST_MODE && accessToken.startsWith('test_access_token_')) {
+  if (config.USE_TEST_MODE && accessToken && accessToken.startsWith('test_access_token_')) {
     console.error(`TEST MODE: Simulating ${method} ${path} API call`);
     return mockData.simulateGraphAPIResponse(method, path, data, queryParams);
   }
@@ -69,11 +70,12 @@ async function callGraphAPI(accessToken, method, path, data = null, queryParams 
     const baseDelayMs = 300;
     const jitter = () => Math.floor(Math.random() * 150);
 
-    const attempt = (attemptNum, resolve, reject) => {
+    const attempt = (attemptNum, resolve, reject, tokenOverride = null, hasRetried401 = false) => {
+      const tokenToUse = tokenOverride || accessToken;
       const options = {
         method: method,
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${tokenToUse}`,
           'Content-Type': 'application/json'
         }
       };
@@ -85,7 +87,7 @@ async function callGraphAPI(accessToken, method, path, data = null, queryParams 
           responseData += chunk;
         });
         
-        res.on('end', () => {
+        res.on('end', async () => {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             try {
               responseData = responseData ? responseData : '{}';
@@ -95,13 +97,22 @@ async function callGraphAPI(accessToken, method, path, data = null, queryParams 
               reject(new Error(`Error parsing API response: ${error.message}`));
             }
           } else if (res.statusCode === 401) {
-            // Token expired or invalid
-            reject(new Error('UNAUTHORIZED'));
+            if (hasRetried401) {
+              reject(new Error("Authentication expired. Please run the 'authenticate' tool to re-authenticate."));
+              return;
+            }
+
+            try {
+              const refreshedToken = await tokenStorage.refreshAccessToken();
+              attempt(attemptNum, resolve, reject, refreshedToken, true);
+            } catch (refreshError) {
+              reject(new Error("Authentication expired. Please run the 'authenticate' tool to re-authenticate."));
+            }
           } else if (res.statusCode === 429 || (res.statusCode >= 500 && res.statusCode < 600)) {
             if (attemptNum < maxAttempts) {
               const delay = baseDelayMs * Math.pow(2, attemptNum - 1) + jitter();
               console.error(`Transient error ${res.statusCode}. Retrying in ${delay}ms (attempt ${attemptNum}/${maxAttempts})`);
-              setTimeout(() => attempt(attemptNum + 1, resolve, reject), delay);
+              setTimeout(() => attempt(attemptNum + 1, resolve, reject, tokenOverride, hasRetried401), delay);
             } else {
               reject(new Error(`API call failed after retries with status ${res.statusCode}: ${responseData}`));
             }
@@ -115,7 +126,7 @@ async function callGraphAPI(accessToken, method, path, data = null, queryParams 
         if (attemptNum < maxAttempts) {
           const delay = baseDelayMs * Math.pow(2, attemptNum - 1) + jitter();
           console.error(`Network error: ${error.message}. Retrying in ${delay}ms (attempt ${attemptNum}/${maxAttempts})`);
-          setTimeout(() => attempt(attemptNum + 1, resolve, reject), delay);
+          setTimeout(() => attempt(attemptNum + 1, resolve, reject, tokenOverride, hasRetried401), delay);
         } else {
           reject(new Error(`Network error during API call: ${error.message}`));
         }

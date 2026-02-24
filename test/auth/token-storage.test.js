@@ -50,6 +50,32 @@ describe('TokenStorage', () => {
       expect(consoleWarnSpy).toHaveBeenCalledWith("TokenStorage: MS_CLIENT_ID or MS_CLIENT_SECRET is not configured. Token operations might fail.");
       consoleWarnSpy.mockRestore();
     });
+
+    it('should use tenant-specific token endpoint when MS_TENANT_ID is set', () => {
+      const originalTenantId = process.env.MS_TENANT_ID;
+      process.env.MS_TENANT_ID = 'tenant-123';
+      const tenantTokenStorage = new TokenStorage({
+        clientId: 'client',
+        clientSecret: 'secret',
+        redirectUri: 'http://localhost/callback',
+        scopes: ['offline_access']
+      });
+      expect(tenantTokenStorage.config.tokenEndpoint)
+        .toBe('https://login.microsoftonline.com/tenant-123/oauth2/v2.0/token');
+      process.env.MS_TENANT_ID = originalTenantId;
+    });
+
+    it('should ensure offline_access is included in scopes', () => {
+      const originalScopes = process.env.MS_SCOPES;
+      process.env.MS_SCOPES = 'User.Read';
+      const scopedTokenStorage = new TokenStorage({
+        clientId: 'client',
+        clientSecret: 'secret',
+        redirectUri: 'http://localhost/callback'
+      });
+      expect(scopedTokenStorage.config.scopes).toContain('offline_access');
+      process.env.MS_SCOPES = originalScopes;
+    });
   });
 
   describe('_loadTokensFromFile', () => {
@@ -407,7 +433,7 @@ describe('TokenStorage', () => {
         };
         mockHttpsRequest.callback(mockRes);
 
-        await expect(refreshPromise).rejects.toThrow(errorResponse.error_description);
+        await expect(refreshPromise).rejects.toThrow("Refresh token expired or invalid. Please run the 'authenticate' tool to re-authenticate.");
         expect(tokenStorage._refreshPromise).toBeNull();
     });
 

@@ -135,6 +135,14 @@ This will use the MCP Inspector to directly connect to the server and let you te
 3. Complete the authentication in your browser
 4. Tokens are stored in `~/.outlook-mcp-tokens.json`
 
+### Institutional/Organizational Accounts
+
+If you're using a Microsoft 365 account from an organization or university:
+
+1. Find your Tenant ID in the Azure Portal: Azure Active Directory > Overview > Tenant ID
+2. Add `MS_TENANT_ID=your-tenant-id` to your `.env` file
+3. This helps token refresh work correctly with your organization's Azure AD tenant
+
 ## Troubleshooting
 
 - **Authentication Issues**: Check the token file and authentication server logs

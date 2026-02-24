@@ -3,6 +3,7 @@
  */
 const config = require('../config');
 const tokenManager = require('./token-manager');
+const tokenStorage = require('./token-storage-instance');
 
 /**
  * About tool handler
@@ -55,24 +56,57 @@ async function handleAuthenticate(args) {
  */
 async function handleCheckAuthStatus() {
   console.error('[CHECK-AUTH-STATUS] Starting authentication status check');
-  
-  const tokens = tokenManager.loadTokenCache();
-  
+
+  const tokens = await tokenStorage.getTokens();
+
   console.error(`[CHECK-AUTH-STATUS] Tokens loaded: ${tokens ? 'YES' : 'NO'}`);
-  
+
   if (!tokens || !tokens.access_token) {
     console.error('[CHECK-AUTH-STATUS] No valid access token found');
     return {
       content: [{ type: "text", text: "Not authenticated" }]
     };
   }
-  
+
+  const now = Date.now();
+  const expiresAt = tokens.expires_at || 0;
+  const msRemaining = expiresAt - now;
+  const isExpired = msRemaining <= 0;
+  const isExpiringSoon = !isExpired && msRemaining <= (10 * 60 * 1000);
+  const hasRefreshToken = Boolean(tokens.refresh_token);
+
+  let silentRefreshStatus = null;
+  if (isExpiringSoon && hasRefreshToken) {
+    try {
+      await tokenStorage.refreshAccessToken();
+      silentRefreshStatus = 'Success';
+    } catch (error) {
+      silentRefreshStatus = `Failed (${error.message})`;
+    }
+  }
+
+  const totalMinutes = Math.max(0, Math.floor(msRemaining / 60000));
+  const hoursRemaining = Math.floor(totalMinutes / 60);
+  const minutesRemaining = totalMinutes % 60;
+  const expiresInText = isExpired
+    ? 'Expired'
+    : `${hoursRemaining} hours ${minutesRemaining} minutes`;
+
   console.error('[CHECK-AUTH-STATUS] Access token present');
   console.error(`[CHECK-AUTH-STATUS] Token expires at: ${tokens.expires_at}`);
-  console.error(`[CHECK-AUTH-STATUS] Current time: ${Date.now()}`);
-  
+  console.error(`[CHECK-AUTH-STATUS] Current time: ${now}`);
+
+  let statusText = `Authentication Status: Authenticated\n` +
+    `Access Token: ${isExpired ? 'Expired' : (isExpiringSoon ? 'Expiring Soon' : 'Valid')}\n` +
+    `Expires in: ${expiresInText}\n` +
+    `Refresh Token: ${hasRefreshToken ? 'Present' : 'Missing'}`;
+
+  if (silentRefreshStatus) {
+    statusText += `\nSilent refresh: ${silentRefreshStatus}`;
+  }
+
   return {
-    content: [{ type: "text", text: "Authenticated and ready" }]
+    content: [{ type: "text", text: statusText }]
   };
 }
 

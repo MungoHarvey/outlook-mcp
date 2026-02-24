@@ -2,6 +2,7 @@
  * Authentication module for Outlook MCP server
  */
 const tokenManager = require('./token-manager');
+const tokenStorage = require('./token-storage-instance');
 const { authTools } = require('./tools');
 
 /**
@@ -16,8 +17,8 @@ async function ensureAuthenticated(forceNew = false) {
     throw new Error('Authentication required');
   }
   
-  // Check for existing token
-  const accessToken = tokenManager.getAccessToken();
+  // Check for existing token (refresh if needed)
+  const accessToken = await tokenStorage.getValidAccessToken();
   if (!accessToken) {
     throw new Error('Authentication required');
   }
@@ -27,6 +28,7 @@ async function ensureAuthenticated(forceNew = false) {
 
 module.exports = {
   tokenManager,
+  tokenStorage,
   authTools,
   ensureAuthenticated
 };

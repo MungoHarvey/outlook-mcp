@@ -5,13 +5,19 @@ const querystring = require('querystring');
 
 class TokenStorage {
   constructor(config) {
+    const tenantId = process.env.MS_TENANT_ID || 'common';
+    const defaultScopes = (process.env.MS_SCOPES || 'offline_access User.Read Mail.Read').split(' ');
+    if (!defaultScopes.includes('offline_access')) {
+      defaultScopes.unshift('offline_access');
+    }
+
     this.config = {
       tokenStorePath: path.join(process.env.HOME || process.env.USERPROFILE, '.outlook-mcp-tokens.json'),
       clientId: process.env.MS_CLIENT_ID,
       clientSecret: process.env.MS_CLIENT_SECRET,
       redirectUri: process.env.MS_REDIRECT_URI || 'http://localhost:3333/auth/callback',
-      scopes: (process.env.MS_SCOPES || 'offline_access User.Read Mail.Read').split(' '),
-      tokenEndpoint: process.env.MS_TOKEN_ENDPOINT || 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+      scopes: defaultScopes,
+      tokenEndpoint: process.env.MS_TOKEN_ENDPOINT || `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
       refreshTokenBuffer: 5 * 60 * 1000, // 5 minutes buffer for token refresh
       ...config // Allow overriding default config
     };
@@ -166,6 +172,11 @@ class TokenStorage {
                         }
                     } else {
                         console.error('Error refreshing token:', responseBody);
+                        const errorCode = responseBody && responseBody.error;
+                        if (errorCode === 'invalid_grant' || errorCode === 'interaction_required') {
+                            reject(new Error("Refresh token expired or invalid. Please run the 'authenticate' tool to re-authenticate."));
+                            return;
+                        }
                         reject(new Error(responseBody.error_description || `Token refresh failed with status ${res.statusCode}`));
                     }
                 } catch (e) { // Catch any error during parsing or saving
