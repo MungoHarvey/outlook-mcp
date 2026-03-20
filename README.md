@@ -8,6 +8,8 @@ Instead of an MCP server, this project uses **Claude Code skills** — markdown 
 
 ## Quick Start
 
+### Option A — Install from source
+
 1. **Install:**
    ```bash
    # macOS / Linux / WSL
@@ -24,6 +26,42 @@ Instead of an MCP server, this project uses **Claude Code skills** — markdown 
    This opens a browser for OAuth 2.0 + PKCE login. Your client secret is prompted once and stored securely in the OS keychain.
 
 3. **Use naturally:**
+
+### Option B — Install from a zip package
+
+If you have a pre-built zip (e.g. downloaded from a release or shared by a colleague):
+
+1. **Unzip to your home directory:**
+   ```bash
+   # macOS / Linux / WSL
+   unzip outlook-skills-YYYYMMDD.zip -d ~/
+
+   # Windows (PowerShell)
+   Expand-Archive -Path outlook-skills-YYYYMMDD.zip -DestinationPath $env:USERPROFILE
+   ```
+
+2. **Authenticate:**
+   ```bash
+   bash ~/.skills/outlook-mcp/outlook-skills/auth.sh
+   ```
+
+3. **Use naturally:**
+
+### Creating a zip package
+
+To build a shareable zip from source:
+
+```bash
+# macOS / Linux / WSL
+bash setup/package.sh
+
+# Windows (PowerShell)
+.\setup\package.ps1
+```
+
+This produces `outlook-skills-YYYYMMDD.zip` in the project root, ready to share or drop onto another machine. The zip includes all skill files with paths pre-configured and the full Python auth system — the recipient only needs to unzip and run `auth.sh`.
+
+---
    ```
    Check my inbox
    Send an email to alice@example.com about the Q1 report
@@ -128,6 +166,8 @@ scripts/
 setup/
   install.sh                             # macOS / Linux / WSL installer
   install.ps1                            # Windows PowerShell installer
+  package.sh                             # builds distributable zip (macOS / Linux / WSL)
+  package.ps1                            # builds distributable zip (Windows PowerShell)
 
 CLAUDE.md                                # Project context for Claude Code
 ```
