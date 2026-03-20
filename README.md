@@ -1,159 +1,177 @@
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/ryaker-outlook-mcp-badge.png)](https://mseep.ai/app/ryaker-outlook-mcp)
+# Outlook Skills for Claude Code
 
-# Modular Outlook MCP Server
+Claude Code skills for interacting with Microsoft Outlook — email, calendar, contacts, folders, rules, and categories — via the Microsoft Graph API.
 
-This is a modular implementation of the Outlook MCP (Model Context Protocol) server that connects Claude with Microsoft Outlook through the Microsoft Graph API.
-Certified by MCPHub https://mcphub.com/mcp-servers/ryaker/outlook-mcp
+## How It Works
 
-## Directory Structure
+Instead of an MCP server, this project uses **Claude Code skills** — markdown files that teach Claude the Microsoft Graph API patterns. All API calls go through `scripts/graph_call.py`, a secure Python proxy that injects Bearer tokens internally. Tokens are encrypted at rest with AES-256 Fernet and stored in the OS keychain (Windows Credential Manager / macOS Keychain) — never exposed to Claude or written to disk in plain text.
+
+## Quick Start
+
+1. **Install:**
+   ```bash
+   # macOS / Linux / WSL
+   bash setup/install.sh
+
+   # Windows (PowerShell)
+   powershell -ExecutionPolicy Bypass -File setup\install.ps1
+   ```
+
+2. **Authenticate:**
+   ```bash
+   bash ~/.skills/outlook-mcp/outlook-skills/auth.sh
+   ```
+   This opens a browser for OAuth 2.0 + PKCE login. Your client secret is prompted once and stored securely in the OS keychain.
+
+3. **Use naturally:**
+   ```
+   Check my inbox
+   Send an email to alice@example.com about the Q1 report
+   What meetings do I have this week?
+   Schedule a Teams meeting with Bob for tomorrow at 2pm
+   Find Bob's phone number in my contacts
+   ```
+
+   Or use slash commands directly:
+   ```
+   /outlook-email-list
+   /outlook-email-send
+   /outlook-calendar-list
+   /outlook-calendar-create
+   /outlook-contacts-list
+   /outlook-folders
+   /outlook-rules
+   ```
+
+## Available Skills
+
+| Domain | Command | Capabilities |
+|---|---|---|
+| **Auth** | `/outlook-auth` | Authenticate, check status, refresh tokens |
+| **Email — List** | `/outlook-email-list` | List, search, filter emails by folder |
+| **Email — Read** | `/outlook-email-read` | Read email body, view attachments |
+| **Email — Send** | `/outlook-email-send` | Compose and send with CC/BCC/attachments |
+| **Email — Reply** | `/outlook-email-reply` | Reply, reply-all, forward |
+| **Email — Move** | `/outlook-email-move` | Move emails between folders |
+| **Email — Delete** | `/outlook-email-delete` | Soft delete or permanent delete |
+| **Email — Organize** | `/outlook-email-organize` | Mark read/unread, categorize, flag |
+| **Calendar — List** | `/outlook-calendar-list` | View events by date range, today's schedule |
+| **Calendar — Create** | `/outlook-calendar-create` | Create events, Teams meetings, recurring, all-day |
+| **Calendar — Update** | `/outlook-calendar-update` | Reschedule, change details, modify attendees |
+| **Calendar — Respond** | `/outlook-calendar-respond` | Accept, decline, tentatively accept, cancel |
+| **Contacts — List** | `/outlook-contacts-list` | List, search, filter contacts |
+| **Contacts — Manage** | `/outlook-contacts-manage` | Create and update contacts |
+| **Folders** | `/outlook-folders` | List, create folders; move emails |
+| **Rules** | `/outlook-rules` | List, create inbox rules; modify priority |
+| **Categories** | (auto) | List available Outlook categories |
+
+## Azure App Registration
+
+1. Open [Azure Portal](https://portal.azure.com/) > App registrations > New registration
+2. Name: "Outlook Skills" (or any name)
+3. Account type: "Accounts in any organizational directory and personal Microsoft accounts"
+4. Redirect URI: Web — `http://localhost:8400/callback`
+5. Click Register
+
+### Required Permissions
+
+Go to API permissions > Add a permission > Microsoft Graph > Delegated:
+- `offline_access`
+- `User.Read`
+- `Mail.Read`
+- `Mail.ReadWrite`
+- `Mail.Send`
+- `Calendars.Read`
+- `Calendars.ReadWrite`
+- `Contacts.Read`
+
+### Configuration File
+
+Create `~/.skills/config.json`:
+```json
+{
+  "tenant_id": "common",
+  "client_id": "your-application-client-id"
+}
+```
+
+Use `tenant_id: "common"` for personal Microsoft accounts, or your Azure tenant ID for organisational accounts. The client secret is prompted during `auth.sh` and stored in the OS keychain — it is never written to disk.
+
+## Project Structure
 
 ```
-/modular/
-├── index.js                 # Main entry point
-├── config.js                # Configuration settings
-├── auth/                    # Authentication modules
-│   ├── index.js             # Authentication exports
-│   ├── token-manager.js     # Token storage and refresh
-│   └── tools.js             # Auth-related tools
-├── calendar/                # Calendar functionality
-│   ├── index.js             # Calendar exports
-│   ├── list.js              # List events
-│   ├── create.js            # Create event
-│   ├── delete.js            # Delete event
-│   ├── cancel.js            # Cancel
-│   ├── accept.js            # Accept event
-│   ├── tentative.js         # Tentatively accept event
-│   ├── decline.js           # Decline event
-├── email/                   # Email functionality
-│   ├── index.js             # Email exports
-│   ├── list.js              # List emails
-│   ├── search.js            # Search emails
-│   ├── read.js              # Read email
-│   └── send.js              # Send email
-└── utils/                   # Utility functions
-    ├── graph-api.js         # Microsoft Graph API helper
-    ├── odata-helpers.js     # OData query building
-    └── mock-data.js         # Test mode data
+.claude/skills/                          # 18 granular skill folders
+  outlook-base/SKILL.md                  # Shared: proxy patterns, errors
+  outlook-auth/SKILL.md                  # Authentication flow
+  outlook-email-{list,read,send,reply,   # 7 email operation skills
+    move,delete,organize}/SKILL.md
+  outlook-calendar-{list,create,         # 4 calendar operation skills
+    update,respond}/SKILL.md
+  outlook-contacts-{list,manage}/SKILL.md # 2 contact operation skills
+  outlook-folders/SKILL.md               # Folder management
+  outlook-rules/SKILL.md                 # Inbox rules
+  outlook-categories/SKILL.md            # Categories
+  outlook-references/                    # Shared YAML references
+    timezones.yaml                       # IANA timezone values
+    colors.yaml                          # Category color presets
+    errors.yaml                          # HTTP error codes
+    graph-api-patterns.yaml              # Pagination, throttling, best practices
+
+outlook-skills/                          # Python auth system
+  auth.sh                                # Entry point — sets up venv, runs auth_runner.py
+  auth_runner.py                         # OAuth 2.0 + PKCE flow
+  token_helper.py                        # Token decryption, refresh, session enforcement
+
+scripts/
+  graph_call.py                          # Secure Graph API proxy (injects Bearer token internally)
+
+setup/
+  install.sh                             # macOS / Linux / WSL installer
+  install.ps1                            # Windows PowerShell installer
+
+CLAUDE.md                                # Project context for Claude Code
 ```
 
-## Features
+Each skill folder contains a lean `SKILL.md` (~40-60 lines) plus adjacent `reference.md` and optional `params.yaml` for progressive loading.
 
-- **Authentication**: OAuth 2.0 authentication with Microsoft Graph API
-- **Email Management**: List, search, read, and send emails
-- **Modular Structure**: Clean separation of concerns for better maintainability
-- **OData Filter Handling**: Proper escaping and formatting of OData queries
-- **Test Mode**: Simulated responses for testing without real API calls
+## Authentication
 
-## Azure App Registration & Configuration
+Tokens are encrypted with AES-256 Fernet and stored at `~/.skills/tokens.enc`. The encryption key is kept separately in the OS keychain. Tokens are refreshed automatically when expired. Re-authentication is only needed after the 30-day session limit or if the refresh token is revoked.
 
-To use this MCP server you need to first register and configure an app in Azure Portal. The following steps will take you through the process of registering a new app, configuring its permissions, and generating a client secret.
+To check your authentication status:
+```bash
+bash ~/.skills/outlook-mcp/outlook-skills/auth.sh --status
+```
 
-### App Registration
+To force re-authentication:
+```bash
+bash ~/.skills/outlook-mcp/outlook-skills/auth.sh --reauth
+```
 
-1. Open [Azure Portal](https://portal.azure.com/) in your browser
-2. Sign in with a Microsoft Work or Personal account
-3. Search for or cilck on "App registrations"
-4. Click on "New registration"
-5. Enter a name for the app, for example "Outlook MCP Server"
-6. Select the "Accounts in any organizational directory and personal Microsoft accounts" option
-7. In the "Redirect URI" section, select "Web" from the dropdown and enter "http://localhost:3333/auth/callback" in the textbox
-8. Click on "Register"
-9. From the Overview section of the app settings page, copy the "Application (client) ID" and enter it as the MS_CLIENT_ID in the .env file as well as the OUTLOOK_CLIENT_ID in the claude-config-sample.json file
+## Safety
 
-### App Permissions
+- Destructive operations (send email, delete events, create rules) always require your confirmation before executing
+- Tokens are never displayed in output or passed through Claude
+- The client secret is stored exclusively in the OS keychain — never in files or environment variables
+- All Graph API calls are gated behind `graph_call.py`; Claude cannot bypass it to access tokens directly
 
-1. From the app settings page in Azure Portal select the "API permissions" option under the Manage section
-2. Click on "Add a permission"
-3. Click on "Microsoft Graph"
-4. Select "Delegated permissions"
-5. Search for the following permissions and slect the checkbox next to each one
-    - offline_access
-    - User.Read
-    - Mail.Read
-    - Mail.Send
-    - Calendars.Read
-    - Calendars.ReadWrite
-    - Contacts.Read
-6. Click on "Add permissions"
+## Institutional/Organisational Accounts
 
-### Client Secret
+For Microsoft 365 accounts from an organisation:
+1. Find your Tenant ID: Azure Portal > Azure Active Directory > Overview
+2. Set `"tenant_id": "your-tenant-id"` in `~/.skills/config.json`
 
-1. From the app settings page in Azure Portal select the "Certificates & secrets" option under the Manage section
-2. Switch to the "Client secrets" tab
-3. Click on "New client secret"
-4. Enter a description, for example "Client Secret"
-5. Select the longest possible expiration time
-6. Click on "Add"
-7. Copy the secret value and enter it as the MS_CLIENT_SECRET in the .env file as well as the OUTLOOK_CLIENT_SECRET in the claude-config-sample.json file
-
-## Configuration
-
-To configure the server, edit the `config.js` file to change:
-
-- Server name and version
-- Test mode settings
-- Authentication parameters
-- Email field selections
-- API endpoints
-
-## Usage with Claude Desktop
-
-1. Copy the sample configuration from `claude-config-sample.json` to your Claude Desktop configuration
-2. Restart Claude Desktop
-3. Authenticate with Microsoft using the `authenticate` tool
-4. Use the email tools to manage your Outlook account
-
-## Calendar: Create Event Parameters (OpenAI/LangChain compatible)
-
-- subject: string (required)
-- start: ISO string (format: date-time) or object { dateTime: string, timeZone?: string } (required)
-- end: ISO string (format: date-time) or object { dateTime: string, timeZone?: string } (required)
-- attendees: array of email strings (optional)
-- body: string (optional)
-- showAs: string (free, workingElsewhere, tentative, busy, outOfOffice, unknown)
-- categories: array of strings (optional)
-- location: string or object with { displayName: string }
-
-JSON Schema compatibility: arrays declare `items`, and `date-time` formats are used. Runtime input validation is enforced via AJV and errors are returned as MCP text content.
-
-Feature flag: set `DISABLE_CREATE_EVENT=true` to hide the `create-event` tool at startup.
-
-## Running Standalone
-
-You can test the server using:
+## Development
 
 ```bash
-./test-modular-server.sh
+npm install          # install test dependencies (js-yaml)
+npm test             # run all tests (273 tests; no auth required)
+npm run test:static  # validate skill file structure
+npm run test:unit    # unit tests
+npm run test:eval    # skill selection / curl pattern eval
+OUTLOOK_INTEGRATION_TEST=true npm run test:integration  # live API smoke tests (requires valid token)
 ```
 
-This will use the MCP Inspector to directly connect to the server and let you test the available tools.
+## License
 
-## Authentication Flow
-
-1. Start a local authentication server on port 3333 (using `outlook-auth-server.js`)
-2. Use the `authenticate` tool to get an authentication URL
-3. Complete the authentication in your browser
-4. Tokens are stored in `~/.outlook-mcp-tokens.json`
-
-### Institutional/Organizational Accounts
-
-If you're using a Microsoft 365 account from an organization or university:
-
-1. Find your Tenant ID in the Azure Portal: Azure Active Directory > Overview > Tenant ID
-2. Add `MS_TENANT_ID=your-tenant-id` to your `.env` file
-3. This helps token refresh work correctly with your organization's Azure AD tenant
-
-## Troubleshooting
-
-- **Authentication Issues**: Check the token file and authentication server logs
-- **OData Filter Errors**: Look for escape sequences in the server logs
-- **API Call Failures**: Check for detailed error messages in the response
-
-## Extending the Server
-
-To add more functionality:
-
-1. Create new module directories (e.g., `calendar/`)
-2. Implement tool handlers in separate files
-3. Export tool definitions from module index files
-4. Import and add tools to `TOOLS` array in `index.js`
+MIT
