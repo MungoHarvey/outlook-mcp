@@ -10,7 +10,13 @@ Instead of an MCP server, this project uses **Claude Code skills** — markdown 
 
 ### Option A — Install from source
 
-1. **Install:**
+1. **Clone the repository (skills branch):**
+   ```bash
+   git clone --branch outlook-skills https://github.com/MungoHarvey/outlook-mcp.git
+   cd outlook-mcp
+   ```
+
+2. **Install:**
    ```bash
    # macOS / Linux / WSL
    bash setup/install.sh
@@ -25,7 +31,7 @@ Instead of an MCP server, this project uses **Claude Code skills** — markdown 
    ```
    This opens a browser for OAuth 2.0 + PKCE login. Your client secret is prompted once and stored securely in the OS keychain.
 
-3. **Use naturally:**
+4. **Use naturally:**
 
 ### Option B — Install from a zip package
 
