@@ -35,9 +35,10 @@ test/
 ## Commands
 
 ```bash
-npm install          # install dependencies (js-yaml)
+npm install          # install dependencies (js-yaml, dotenv)
 npm test             # run all tests (static + unit + eval; integration skipped by default)
 npm run test:static  # validate skill file structure
+npm run test:security # security-specific static checks
 npm run test:unit    # test auth scripts
 npm run test:eval    # skill selection / curl pattern eval
 OUTLOOK_INTEGRATION_TEST=true npm run test:integration  # live API smoke tests (requires valid token)
@@ -46,9 +47,15 @@ OUTLOOK_INTEGRATION_TEST=true npm run test:integration  # live API smoke tests (
 ## Setup
 
 1. Run `bash setup/install.sh` (macOS/Linux/WSL) or `setup\install.ps1` (PowerShell)
-2. Create `~/.skills/config.json` with `tenant_id` and `client_id` from your Azure AD app registration
-3. Run `bash ~/.skills/outlook-mcp/outlook-skills/auth.sh` — prompts for client secret (stored in OS keychain), opens browser for OAuth login
+2. Create `~/.skills/config.json` with `tenant_id` and `client_id` from your Azure AD app registration (use `outlook-skills/config.example.json` as template)
+3. Run `bash ~/.skills/outlook-mcp/outlook-skills/auth.sh` — prompts for client secret (stored in OS keychain), opens browser for OAuth login; also creates `outlook-skills/.venv`
 4. Run `npm install` to install test dependencies
+
+Auth management commands:
+```bash
+bash ~/.skills/outlook-mcp/outlook-skills/auth.sh --status   # check token validity
+bash ~/.skills/outlook-mcp/outlook-skills/auth.sh --reauth   # force re-authentication
+```
 
 ## Skill File Conventions
 
@@ -72,6 +79,8 @@ Skills with complex parameter sets also have `params.yaml` (currently: `outlook-
 ## Key Conventions
 
 - All API calls use `python3 scripts/graph_call.py METHOD "/endpoint" [body] [--header "K:V"]`
+- Endpoints must start with `/me` or `/users/` — `graph_call.py` rejects anything else with a 400
+- `graph_call.py` bootstraps its Python dependencies from `outlook-skills/.venv` (created by `auth.sh`); if missing, it returns a 500 with instructions to run `auth.sh`
 - Tokens are encrypted at rest (AES-256) and stored in the OS keychain — never exposed to the LLM
 - Response format: `{"status": N, "data": {...}}` — parse the `.data` field for the API response body
 - **Destructive operations** (send email, delete, cancel event, create rules) always require explicit user confirmation before executing
