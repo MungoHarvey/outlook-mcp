@@ -1,0 +1,94 @@
+# Validates curl commands in each SKILL.md have correct structure
+# Test extracts curl commands and verifies method, endpoint, headers
+cases:
+  - skill: outlook-email-list
+    operations:
+      - method: GET
+        endpoint_pattern: "me/messages"
+        required_headers: ["Authorization: Bearer"]
+
+  - skill: outlook-email-read
+    operations:
+      - method: GET
+        endpoint_pattern: "me/messages/"
+        required_headers: ["Authorization: Bearer"]
+
+  - skill: outlook-email-send
+    operations:
+      - method: POST
+        endpoint_pattern: "me/sendMail"
+        required_headers: ["Authorization: Bearer", "Content-Type: application/json"]
+        has_body: true
+
+  - skill: outlook-email-reply
+    operations:
+      - method: POST
+        endpoint_pattern: "me/messages/"
+        required_headers: ["Authorization: Bearer"]
+
+  - skill: outlook-email-delete
+    operations:
+      - method: POST
+        endpoint_pattern: "me/messages/"
+      - method: DELETE
+        endpoint_pattern: "me/messages/"
+
+  - skill: outlook-email-move
+    operations:
+      - method: POST
+        endpoint_pattern: "me/messages/"
+        has_body: true
+
+  - skill: outlook-email-organize
+    operations:
+      - method: PATCH
+        endpoint_pattern: "me/messages/"
+
+  - skill: outlook-calendar-list
+    operations:
+      - method: GET
+        endpoint_pattern: "me/calendarView"
+        required_headers: ["Authorization: Bearer"]
+
+  - skill: outlook-calendar-create
+    operations:
+      - method: POST
+        endpoint_pattern: "me/events"
+        required_headers: ["Authorization: Bearer", "Content-Type: application/json"]
+        has_body: true
+
+  - skill: outlook-calendar-update
+    operations:
+      - method: PATCH
+        endpoint_pattern: "me/events/"
+
+  - skill: outlook-calendar-respond
+    operations:
+      - method: POST
+        endpoint_pattern: "me/events/"
+
+  - skill: outlook-contacts-list
+    operations:
+      - method: GET
+        endpoint_pattern: "me/contacts"
+
+  - skill: outlook-contacts-manage
+    operations:
+      - method: POST
+        endpoint_pattern: "me/contacts"
+      - method: PATCH
+        endpoint_pattern: "me/contacts/"
+
+  - skill: outlook-folders
+    operations:
+      - method: GET
+        endpoint_pattern: "me/mailFolders"
+      - method: POST
+        endpoint_pattern: "me/mailFolders"
+
+  - skill: outlook-rules
+    operations:
+      - method: GET
+        endpoint_pattern: "me/mailFolders/inbox/messageRules"
+      - method: POST
+        endpoint_pattern: "me/mailFolders/inbox/messageRules"

@@ -1,0 +1,22 @@
+# Validates that destructive skills contain SAFETY confirmation markers
+# and read-only skills do not
+
+# Skills that MUST have SAFETY confirmation markers
+destructive_skills:
+  - outlook-email-send
+  - outlook-email-delete
+  - outlook-email-reply
+  - outlook-email-move
+  - outlook-calendar-create
+  - outlook-calendar-update
+  - outlook-calendar-respond
+  - outlook-rules
+  - outlook-folders
+
+# Skills that should NOT require confirmation (read-only)
+safe_skills:
+  - outlook-email-list
+  - outlook-email-read
+  - outlook-calendar-list
+  - outlook-contacts-list
+  - outlook-categories

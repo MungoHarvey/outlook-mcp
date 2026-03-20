@@ -1,36 +1,34 @@
 {
-  "name": "outlook-mcp",
-  "version": "1.0.0",
-  "description": "MCP server for Claude to access Outlook data via Microsoft Graph API",
-  "main": "index.js",
+  "name": "outlook-skills",
+  "version": "2.0.0",
+  "description": "Claude Code skills for Outlook via Microsoft Graph API — email, calendar, contacts, folders, rules",
   "scripts": {
-    "start": "node index.js",
-    "auth-server": "node outlook-auth-server.js",
-    "test-mode": "USE_TEST_MODE=true node index.js",
-    "inspect": "npx @modelcontextprotocol/inspector node index.js",
-    "test": "jest"
+    "auth-server": "node scripts/outlook-auth-server.js",
+    "token-refresh": "node scripts/outlook-token-refresh.js",
+    "test": "node --test test/static/*.test.js test/unit/*.test.js test/eval/*.test.js test/integration/*.test.js",
+    "test:static": "node --test test/static/*.test.js",
+    "test:security": "node --test test/static/security.test.js",
+    "test:unit": "node --test test/unit/*.test.js",
+    "test:eval": "node --test test/eval/*.test.js",
+    "test:integration": "OUTLOOK_INTEGRATION_TEST=true node --test test/integration/*.test.js"
   },
   "keywords": [
     "claude",
+    "claude-code",
+    "skills",
     "outlook",
-    "mcp",
     "microsoft-graph",
-    "email"
+    "email",
+    "calendar",
+    "contacts"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@microsoft/microsoft-graph-client": "^3.0.7",
-    "@modelcontextprotocol/sdk": "^1.1.0",
-    "dotenv": "^16.6.1",
-    "ajv": "^8.12.0",
-    "ajv-formats": "^2.1.1"
+    "dotenv": "^16.6.1"
   },
   "devDependencies": {
-    "@microsoft/microsoft-graph-types": "^2.40.0",
-    "@modelcontextprotocol/inspector": "^0.16.5",
-    "jest": "^29.7.0",
-    "supertest": "^7.0.0"
+    "js-yaml": "^4.1.0"
   },
   "engines": {
     "node": ">=14.0.0"

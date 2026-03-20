@@ -1,0 +1,62 @@
+# Calendar Event Parameters
+
+showAs:
+  - free
+  - tentative
+  - busy              # default
+  - outOfOffice
+  - workingElsewhere
+  - unknown
+
+importance:
+  - low
+  - normal            # default
+  - high
+
+sensitivity:
+  - normal            # default
+  - personal
+  - private           # hidden details from non-attendees
+  - confidential
+
+attendeeType:
+  - required
+  - optional
+  - resource          # room or equipment
+
+onlineMeetingProvider:
+  - teamsForBusiness   # Microsoft Teams (most common)
+  - skypeForBusiness
+  - skypeForConsumer
+
+recurrencePatternType:
+  - daily              # every N days
+  - weekly             # specific days of week, every N weeks
+  - absoluteMonthly    # specific day of month (e.g., 15th)
+  - relativeMonthly    # relative day (e.g., 2nd Tuesday)
+  - absoluteYearly     # specific date each year
+  - relativeYearly     # relative day each year
+
+recurrenceRangeType:
+  - endDate            # requires startDate + endDate
+  - noEnd              # requires startDate only
+  - numbered           # requires startDate + numberOfOccurrences
+
+daysOfWeek:
+  - sunday
+  - monday
+  - tuesday
+  - wednesday
+  - thursday
+  - friday
+  - saturday
+
+reminderMinutesBeforeStart:
+  common_values:
+    - 0                # no reminder
+    - 5
+    - 10
+    - 15               # default
+    - 30
+    - 60
+    - 1440             # 1 day

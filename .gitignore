@@ -34,3 +34,7 @@ logs
 
 # Folders
 research/
+
+# Virtual environments and encrypted files
+outlook-skills/.venv/
+*.enc

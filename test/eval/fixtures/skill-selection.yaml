@@ -1,0 +1,66 @@
+# Maps user prompts to expected skill names and trigger keywords
+# Test validates that the skill's description field contains at least one trigger word
+cases:
+  - prompt: "Check my inbox"
+    expected_skill: outlook-email-list
+    trigger_words: [inbox, emails, unread, check mail, search email]
+
+  - prompt: "Send an email to john@example.com"
+    expected_skill: outlook-email-send
+    trigger_words: [send, compose, write, draft]
+
+  - prompt: "Read the email from Sarah"
+    expected_skill: outlook-email-read
+    trigger_words: [read, open, view, show]
+
+  - prompt: "Reply to the last email"
+    expected_skill: outlook-email-reply
+    trigger_words: [reply, reply all, forward, respond]
+
+  - prompt: "Move the email to Archive folder"
+    expected_skill: outlook-email-move
+    trigger_words: [move, file, sort]
+
+  - prompt: "Delete that message"
+    expected_skill: outlook-email-delete
+    trigger_words: [delete, trash, remove]
+
+  - prompt: "Mark it as read"
+    expected_skill: outlook-email-organize
+    trigger_words: [mark read, categorize, flag, organize]
+
+  - prompt: "What meetings do I have today?"
+    expected_skill: outlook-calendar-list
+    trigger_words: [calendar, schedule, meetings, events, availability]
+
+  - prompt: "Schedule a meeting with Bob tomorrow at 2pm"
+    expected_skill: outlook-calendar-create
+    trigger_words: [schedule, create, book, create event]
+
+  - prompt: "Reschedule the standup to 3pm"
+    expected_skill: outlook-calendar-update
+    trigger_words: [reschedule, change, update, modify]
+
+  - prompt: "Accept the meeting invitation"
+    expected_skill: outlook-calendar-respond
+    trigger_words: [accept, decline, cancel, respond]
+
+  - prompt: "Show my contacts"
+    expected_skill: outlook-contacts-list
+    trigger_words: [contacts, address book, find contact]
+
+  - prompt: "Add a new contact for Jane"
+    expected_skill: outlook-contacts-manage
+    trigger_words: [add contact, create, update contact]
+
+  - prompt: "Create a new mail folder called Projects"
+    expected_skill: outlook-folders
+    trigger_words: [folder, mail folder, create folder]
+
+  - prompt: "Set up a rule to auto-archive newsletters"
+    expected_skill: outlook-rules
+    trigger_words: [rule, inbox rule, automation, filter]
+
+  - prompt: "Connect to my Outlook account"
+    expected_skill: outlook-auth
+    trigger_words: [authenticate, sign in, connect, OAuth]

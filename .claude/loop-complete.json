@@ -1,0 +1,11 @@
+{
+  "loop_name": "ralph-loop-500",
+  "status": "completed",
+  "todos_done": 5,
+  "todos_failed": 0,
+  "handoff": {
+    "done": "Created security.test.js (5 forbidden token-leak patterns) and api-call-structure.test.js (graph_call.py validation for 16 skills); rephrased prohibition docs in outlook-base and outlook-auth to avoid false positives; added test:security npm script; all tests pass (security: 6/6, api-call-structure: 33/33, static: 204/204).",
+    "failed": "",
+    "needed": "Loop 501: annotate deprecated unit tests (outlook-auth-server.js, outlook-token-refresh.js), rewrite smoke.test.js integration test to use graph_call.py for live API validation."
+  }
+}

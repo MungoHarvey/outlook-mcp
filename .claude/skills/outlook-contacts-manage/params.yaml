@@ -1,0 +1,45 @@
+# Contact Fields Reference
+
+basic:
+  givenName: string         # First name
+  surname: string           # Last name
+  displayName: string       # Full display name (auto-generated if not set)
+  nickName: string          # Nickname
+
+email:
+  emailAddresses:           # Array of objects
+    - address: string       # Email address (required)
+      name: string          # Display name (optional)
+
+phone:
+  mobilePhone: string       # Single mobile number
+  businessPhones: string[]  # Array of business numbers
+  homePhones: string[]      # Array of home numbers
+
+work:
+  companyName: string       # Company name
+  jobTitle: string          # Job title
+  department: string        # Department
+  officeLocation: string    # Office location
+  profession: string        # Profession
+  manager: string           # Manager name
+  assistantName: string     # Assistant name
+
+address:                    # Same structure for businessAddress, homeAddress, otherAddress
+  street: string
+  city: string
+  state: string
+  postalCode: string
+  countryOrRegion: string
+
+personal:
+  birthday: string          # ISO date: YYYY-MM-DD
+  personalNotes: string     # Free-form notes
+  spouseName: string        # Spouse name
+  children: string[]        # Children names
+
+web:
+  businessHomePage: string  # Company website URL
+
+im:
+  imAddresses: string[]     # Instant messaging addresses

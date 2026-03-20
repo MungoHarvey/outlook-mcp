@@ -1,0 +1,8 @@
+{
+  "planning": {
+    "skills_dir": ".claude/skills",
+    "plans_dir": "plans",
+    "state_dir": ".claude/state",
+    "agents_dir": ".claude/agents"
+  }
+}

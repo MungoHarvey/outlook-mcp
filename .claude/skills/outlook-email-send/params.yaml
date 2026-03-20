@@ -1,0 +1,14 @@
+# Email Send Parameters
+
+importance:
+  - low
+  - normal    # default
+  - high
+
+contentType:
+  - text      # plain text body
+  - html      # HTML body (use when body contains markup)
+
+attachment_limits:
+  inline_max: "3MB"          # base64 in message JSON
+  upload_session_max: "150MB" # use upload session for larger files

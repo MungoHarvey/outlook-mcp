@@ -1,0 +1,11 @@
+{
+  "loop_name": "ralph-loop-301",
+  "status": "completed",
+  "todos_done": 8,
+  "todos_failed": 0,
+  "handoff": {
+    "done": "Migrated all 7 outlook-email-* SKILL.md files to graph_call.py; SAFETY blocks preserved in send/reply/delete/move; response parsing updated to use .data.",
+    "failed": "",
+    "needed": "Loop 302: migrate 4 calendar + 2 contacts skills; calendar-list needs --header Prefer timezone."
+  }
+}
