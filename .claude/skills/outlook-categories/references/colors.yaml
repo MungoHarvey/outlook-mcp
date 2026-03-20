@@ -1,0 +1,33 @@
+# Microsoft Graph Category Color Presets
+# Use preset name as the "color" value when creating/updating categories
+# Apply categories to events or emails: "categories": ["Category Name"]
+
+presets:
+  none: "No color"
+  preset0: Red
+  preset1: Orange
+  preset2: Brown
+  preset3: Yellow
+  preset4: Green
+  preset5: Teal
+  preset6: Olive
+  preset7: Blue
+  preset8: Purple
+  preset9: Cranberry
+  preset10: Steel
+  preset11: DarkSteel
+  preset12: Gray
+  preset13: DarkGray
+  preset14: Black
+  preset15: DarkRed
+  preset16: DarkOrange
+  preset17: DarkBrown
+  preset18: DarkYellow
+  preset19: DarkGreen
+  preset20: DarkTeal
+  preset21: DarkOlive
+  preset22: DarkBlue
+  preset23: DarkPurple
+  preset24: DarkCranberry
+
+note: "No custom hex/RGB values are supported. Only preset colors can be used."

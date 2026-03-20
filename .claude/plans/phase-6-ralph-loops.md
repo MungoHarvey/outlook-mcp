@@ -5,7 +5,7 @@ task_name: Create per-skill references/ subdirectories with YAML files
 max_iterations: 6
 on_max_iterations: escalate
 handoff_summary:
-  done: ""
+  done: "Created 16 per-skill references/ subdirectories with correct YAML files. All YAML files copied verbatim from outlook-references/. Verified count = 16. No references/ created for outlook-auth or outlook-folders."
   failed: ""
   needed: "Loop 601 should update all ../outlook-references/ path references in skill files, add params.yaml to calendar-update, and fix templates.md."
 todos:
@@ -14,35 +14,35 @@ todos:
     skill: "outlook-base"
     agent: "worker"
     outcome: ".claude/skills/outlook-base/references/ exists and contains errors.yaml, timezones.yaml, colors.yaml, graph-api-patterns.yaml"
-    status: pending
+    status: completed
     priority: high
   - id: "600-2"
     content: "Create references/ subdirs for 7 email skills and copy needed YAML files: outlook-email-list (errors.yaml, graph-api-patterns.yaml), outlook-email-read (errors.yaml, graph-api-patterns.yaml), outlook-email-send (errors.yaml, graph-api-patterns.yaml), outlook-email-reply (errors.yaml), outlook-email-move (errors.yaml, graph-api-patterns.yaml), outlook-email-delete (errors.yaml, graph-api-patterns.yaml), outlook-email-organize (colors.yaml, errors.yaml, graph-api-patterns.yaml)"
     skill: "NA"
     agent: "worker"
     outcome: "All 7 email skill folders have references/ subdirs with exactly the listed YAML files"
-    status: pending
+    status: completed
     priority: high
   - id: "600-3"
     content: "Create references/ subdirs for 4 calendar skills and copy needed YAML files: outlook-calendar-list (timezones.yaml, errors.yaml, graph-api-patterns.yaml), outlook-calendar-create (timezones.yaml, colors.yaml, errors.yaml), outlook-calendar-update (timezones.yaml, errors.yaml), outlook-calendar-respond (errors.yaml)"
     skill: "NA"
     agent: "worker"
     outcome: "All 4 calendar skill folders have references/ subdirs with exactly the listed YAML files"
-    status: pending
+    status: completed
     priority: high
   - id: "600-4"
     content: "Create references/ subdirs for remaining skills: outlook-contacts-list (errors.yaml), outlook-contacts-manage (errors.yaml), outlook-rules (errors.yaml), outlook-categories (colors.yaml). Note: outlook-auth and outlook-folders get NO references/ dir — they reference no YAML data files."
     skill: "NA"
     agent: "worker"
     outcome: "outlook-contacts-list, outlook-contacts-manage, outlook-rules, outlook-categories each have references/ subdirs with the listed files; outlook-auth and outlook-folders have no references/ dir"
-    status: pending
+    status: completed
     priority: high
   - id: "600-5"
     content: "Verify all references/ subdirs: for each skill that should have one, confirm the directory and files exist. Run: find .claude/skills -name 'references' -type d to list all created dirs. Confirm count = 16. Confirm no outlook-auth/references/ or outlook-folders/references/ exist."
     skill: "NA"
     agent: "worker"
     outcome: "find returns exactly 16 references/ directories; no references/ under outlook-auth or outlook-folders"
-    status: pending
+    status: completed
     priority: high
 prompt: |
   ## Context from prior loop

@@ -1,11 +1,12 @@
 {
-  "loop_name": "ralph-loop-502",
+  "loop_name": "ralph-loop-600",
   "status": "completed",
-  "todos_done": 7,
+  "todos_done": 5,
   "todos_failed": 0,
+  "todos_count": 5,
   "handoff": {
-    "done": "Phase 5 complete: CLAUDE.md updated, .gitignore updated, scripts deprecated, curl-structure.test.js removed, npm test passes, final security scan clean.",
+    "done": "Created 16 per-skill references/ subdirectories with correct YAML files. All YAML files copied verbatim from outlook-references/. Verified count = 16. No references/ created for outlook-auth or outlook-folders.",
     "failed": "",
-    "needed": "Programme complete. All phases 1-5 delivered."
+    "needed": "Loop 601 should update all ../outlook-references/ path references in skill files, add params.yaml to calendar-update, and fix templates.md."
   }
 }
