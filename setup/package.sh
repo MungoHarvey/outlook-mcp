@@ -1,14 +1,23 @@
 #!/usr/bin/env bash
 # =============================================================================
 # setup/package.sh
-# Creates a distributable zip of Outlook skills.
+# Creates a distributable zip of Outlook skills for import into Claude Desktop
+# or Claude Cowork.
 #
-# The zip is structured to unzip directly into ~/ — no installer needed:
-#   unzip outlook-skills-YYYYMMDD.zip -d ~/
-#   bash ~/.skills/outlook-mcp/outlook-skills/auth.sh
+# Zip structure:
+#   outlook-skills-YYYYMMDD/
+#     SKILLS.md               — overview and usage guide
+#     outlook-auth/           — skill folders at root level
+#     outlook-base/
+#     outlook-email-list/
+#     ... (all skill folders)
+#     outlook-references/     — shared YAML data
 #
-# Override default install paths via environment variables:
-#   INSTALL_DIR=/custom/path SKILLS_DIR=/custom/skills bash setup/package.sh
+# Usage:
+#   bash setup/package.sh
+#
+# Override default auth install path (used for path rewriting in skill files):
+#   INSTALL_DIR=/custom/path bash setup/package.sh
 # =============================================================================
 
 set -euo pipefail
@@ -16,66 +25,54 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Paths relative to ~ (used for zip structure and path rewriting)
-_INSTALL_REL="${INSTALL_DIR_REL:-.skills/outlook-mcp}"
-_SKILLS_REL="${SKILLS_DIR_REL:-.claude/skills}"
-
-# Absolute paths (for path rewriting inside skill .md files)
-ABS_INSTALL="$HOME/$_INSTALL_REL"
-ABS_SKILLS="$HOME/$_SKILLS_REL"
+# Default auth system location (where install.sh puts it)
+INSTALL_DIR="${INSTALL_DIR:-$HOME/.skills/outlook-mcp}"
 
 VERSION="$(date +%Y%m%d)"
-OUTPUT="$ROOT_DIR/outlook-skills-$VERSION.zip"
+PKG_NAME="outlook-skills-$VERSION"
+OUTPUT="$ROOT_DIR/$PKG_NAME.zip"
 TMP="$(mktemp -d)"
+PKG_DIR="$TMP/$PKG_NAME"
+
+mkdir -p "$PKG_DIR"
 
 # ── Sanitise install path for sed (escape \, &, | metacharacters) ─────────────
-_safe_dir="${ABS_INSTALL//\\/\\\\}"
+_safe_dir="${INSTALL_DIR//\\/\\\\}"
 _safe_dir="${_safe_dir//&/\\&}"
 _safe_dir="${_safe_dir//|/\\|}"
 
 echo "Packaging Outlook skills..."
-echo "  Skills path:  $ABS_SKILLS"
-echo "  Auth path:    $ABS_INSTALL"
+echo "  Output:    $OUTPUT"
+echo "  Auth path: $INSTALL_DIR"
 echo ""
 
-# ── Copy and rewrite skill files ──────────────────────────────────────────────
-mkdir -p "$TMP/$_SKILLS_REL"
+# ── SKILLS.md overview ────────────────────────────────────────────────────────
+cp "$SCRIPT_DIR/SKILLS.md" "$PKG_DIR/SKILLS.md"
 
+# ── Skill folders (flat — no .claude/skills/ nesting) ────────────────────────
 for dir in "$ROOT_DIR/.claude/skills"/outlook-*/; do
     name=$(basename "$dir")
-    dest="$TMP/$_SKILLS_REL/$name"
-    cp -r "$dir" "$dest/"
-    # Rewrite proxy and auth paths to absolute installed locations
+    dest="$PKG_DIR/$name"
+    cp -r "$dir" "$dest"
+    # Rewrite proxy and auth paths to default installed locations
     find "$dest" -name "*.md" -exec sed -i \
         -e "s|python3 scripts/graph_call.py|python3 $_safe_dir/scripts/graph_call.py|g" \
         -e "s|bash outlook-skills/auth.sh|bash $_safe_dir/outlook-skills/auth.sh|g" {} \;
 done
 
-cp -r "$ROOT_DIR/.claude/skills/outlook-references" "$TMP/$_SKILLS_REL/outlook-references"
-
-# ── Copy auth system and proxy ────────────────────────────────────────────────
-mkdir -p "$TMP/$_INSTALL_REL/outlook-skills"
-mkdir -p "$TMP/$_INSTALL_REL/scripts"
-
-# Copy auth files (exclude venv, pycache, and compiled files)
-rsync -a --exclude='.venv/' --exclude='__pycache__/' --exclude='*.pyc' \
-    "$ROOT_DIR/outlook-skills/" "$TMP/$_INSTALL_REL/outlook-skills/" 2>/dev/null || \
-cp -r "$ROOT_DIR/outlook-skills/." "$TMP/$_INSTALL_REL/outlook-skills/"
-# Remove pycache if rsync wasn't available
-rm -rf "$TMP/$_INSTALL_REL/outlook-skills/__pycache__" \
-       "$TMP/$_INSTALL_REL/outlook-skills/.venv" 2>/dev/null || true
-
-cp "$ROOT_DIR/scripts/graph_call.py" "$TMP/$_INSTALL_REL/scripts/graph_call.py"
+# ── outlook-references (copy contents, not the folder itself) ─────────────────
+mkdir -p "$PKG_DIR/outlook-references"
+cp -r "$ROOT_DIR/.claude/skills/outlook-references/." "$PKG_DIR/outlook-references/"
 
 # ── Create zip ────────────────────────────────────────────────────────────────
-(cd "$TMP" && zip -qr "$OUTPUT" .)
+(cd "$TMP" && zip -qr "$OUTPUT" "$PKG_NAME/")
 rm -rf "$TMP"
 
 echo "Created: $(basename "$OUTPUT")"
 echo ""
-echo "To install, run:"
-echo "  unzip $(basename "$OUTPUT") -d ~/"
-echo "  bash ~/.skills/outlook-mcp/outlook-skills/auth.sh"
+echo "Import into Claude Desktop or Claude Cowork via:"
+echo "  Settings → Skills → Import from zip"
 echo ""
-echo "Then in Claude Desktop or Claude Code, type:"
-echo "  /outlook-email-list"
+echo "Before importing, install the auth system if not already done:"
+echo "  bash setup/install.sh"
+echo "  bash $INSTALL_DIR/outlook-skills/auth.sh"

@@ -1,49 +1,57 @@
 # =============================================================================
 # setup/package.ps1
-# Creates a distributable zip of Outlook skills.
+# Creates a distributable zip of Outlook skills for import into Claude Desktop
+# or Claude Cowork.
 #
-# The zip is structured to unzip directly into ~/ — no installer needed:
-#   Expand-Archive -Path outlook-skills-YYYYMMDD.zip -DestinationPath $env:USERPROFILE
-#   bash $env:USERPROFILE\.skills\outlook-mcp\outlook-skills\auth.sh
+# Zip structure:
+#   outlook-skills-YYYYMMDD/
+#     SKILLS.md               — overview and usage guide
+#     outlook-auth/           — skill folders at root level
+#     outlook-base/
+#     outlook-email-list/
+#     ... (all skill folders)
+#     outlook-references/     — shared YAML data
 #
-# Override default install paths via parameters:
-#   .\setup\package.ps1 -InstallDirRel ".skills\my-install" -SkillsDirRel ".claude\skills"
+# Usage:
+#   .\setup\package.ps1
+#
+# Override default auth install path (used for path rewriting in skill files):
+#   .\setup\package.ps1 -InstallDir "D:\tools\outlook-mcp"
 # =============================================================================
 
 param(
-    [string]$InstallDirRel = ".skills\outlook-mcp",
-    [string]$SkillsDirRel  = ".claude\skills"
+    [string]$InstallDir = "$env:USERPROFILE\.skills\outlook-mcp"
 )
 
-$ScriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Path
-$RootDir    = Split-Path -Parent $ScriptDir
-$Version    = Get-Date -Format "yyyyMMdd"
-$Output     = Join-Path $RootDir "outlook-skills-$Version.zip"
-$Tmp        = Join-Path $env:TEMP "outlook-skills-pkg-$([System.Guid]::NewGuid().ToString('N'))"
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$RootDir   = Split-Path -Parent $ScriptDir
+$Version   = Get-Date -Format "yyyyMMdd"
+$PkgName   = "outlook-skills-$Version"
+$Output    = Join-Path $RootDir "$PkgName.zip"
+$Tmp       = Join-Path $env:TEMP "outlook-skills-pkg-$([System.Guid]::NewGuid().ToString('N'))"
+$PkgDir    = Join-Path $Tmp $PkgName
 
-# Absolute paths for path rewriting inside skill .md files
-$AbsInstall = Join-Path $env:USERPROFILE $InstallDirRel
-$AbsSkills  = Join-Path $env:USERPROFILE $SkillsDirRel
+New-Item -ItemType Directory -Force -Path $PkgDir | Out-Null
 
-# Forward-slash versions for use in .md file content (Python / bash paths)
-$ProxyPath = ($AbsInstall + "\scripts\graph_call.py") -replace '\\', '/'
-$AuthPath  = ($AbsInstall + "\outlook-skills\auth.sh") -replace '\\', '/'
+# Forward-slash versions of install paths for use inside .md file content
+$ProxyPath = ($InstallDir + "\scripts\graph_call.py") -replace '\\', '/'
+$AuthPath  = ($InstallDir + "\outlook-skills\auth.sh") -replace '\\', '/'
 
 Write-Host "Packaging Outlook skills..."
-Write-Host "  Skills path:  $AbsSkills"
-Write-Host "  Auth path:    $AbsInstall"
+Write-Host "  Output:    $Output"
+Write-Host "  Auth path: $InstallDir"
 Write-Host ""
 
-# ── Copy and rewrite skill files ──────────────────────────────────────────────
-$SkillsDest = Join-Path $Tmp $SkillsDirRel
-New-Item -ItemType Directory -Force -Path $SkillsDest | Out-Null
+# ── SKILLS.md overview ────────────────────────────────────────────────────────
+Copy-Item -Force "$ScriptDir\SKILLS.md" "$PkgDir\SKILLS.md"
 
+# ── Skill folders (flat — no .claude/skills/ nesting) ────────────────────────
 Get-ChildItem "$RootDir\.claude\skills" -Directory |
     Where-Object { $_.Name -like "outlook-*" } |
     ForEach-Object {
-        $dest = Join-Path $SkillsDest $_.Name
+        $dest = Join-Path $PkgDir $_.Name
         Copy-Item -Recurse -Force $_.FullName $dest
-        # Rewrite proxy and auth paths to absolute installed locations
+        # Rewrite proxy and auth paths to default installed locations
         Get-ChildItem $dest -Recurse -Filter "*.md" | ForEach-Object {
             (Get-Content $_.FullName).
                 Replace('python3 scripts/graph_call.py', "python3 $ProxyPath").
@@ -52,32 +60,20 @@ Get-ChildItem "$RootDir\.claude\skills" -Directory |
         }
     }
 
-Copy-Item -Recurse -Force "$RootDir\.claude\skills\outlook-references" `
-    "$SkillsDest\outlook-references"
-
-# ── Copy auth system and proxy ────────────────────────────────────────────────
-$AuthDest = Join-Path $Tmp $InstallDirRel
-New-Item -ItemType Directory -Force -Path "$AuthDest\outlook-skills", "$AuthDest\scripts" | Out-Null
-
-# Copy auth files, skipping venv and pycache
-Get-ChildItem "$RootDir\outlook-skills" |
-    Where-Object { $_.Name -notin @('.venv', '__pycache__') } |
-    ForEach-Object {
-        Copy-Item -Recurse -Force $_.FullName "$AuthDest\outlook-skills\"
-    }
-
-Copy-Item -Force "$RootDir\scripts\graph_call.py" "$AuthDest\scripts\graph_call.py"
+# ── outlook-references (copy contents, not the folder itself) ─────────────────
+$refDest = Join-Path $PkgDir "outlook-references"
+New-Item -ItemType Directory -Force -Path $refDest | Out-Null
+Copy-Item -Force "$RootDir\.claude\skills\outlook-references\*" $refDest
 
 # ── Create zip ────────────────────────────────────────────────────────────────
-Compress-Archive -Path "$Tmp\*" -DestinationPath $Output -Force
+Compress-Archive -Path "$PkgDir" -DestinationPath $Output -Force
 Remove-Item -Recurse -Force $Tmp
 
-$ZipName = Split-Path -Leaf $Output
-Write-Host "Created: $ZipName"
+Write-Host "Created: $(Split-Path -Leaf $Output)"
 Write-Host ""
-Write-Host "To install, run:"
-Write-Host "  Expand-Archive -Path '$ZipName' -DestinationPath `$env:USERPROFILE"
-Write-Host "  bash `$env:USERPROFILE\.skills\outlook-mcp\outlook-skills\auth.sh"
+Write-Host "Import into Claude Desktop or Claude Cowork via:"
+Write-Host "  Settings -> Skills -> Import from zip"
 Write-Host ""
-Write-Host "Then in Claude Desktop or Claude Code, type:"
-Write-Host "  /outlook-email-list"
+Write-Host "Before importing, install the auth system if not already done:"
+Write-Host "  .\setup\install.ps1"
+Write-Host "  bash $($InstallDir -replace '\\','/')/outlook-skills/auth.sh"

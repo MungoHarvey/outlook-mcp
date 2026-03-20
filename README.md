@@ -33,23 +33,26 @@ Instead of an MCP server, this project uses **Claude Code skills** — markdown 
 
 4. **Use naturally:**
 
-### Option B — Install from a zip package
+### Option B — Import a zip package into Claude Desktop / Claude Cowork
 
-If you have a pre-built zip (e.g. downloaded from a release or shared by a colleague):
+If you have a pre-built zip (downloaded from a release or shared by a colleague):
 
-1. **Unzip to your home directory:**
+1. **Install the auth system** (required once per machine):
    ```bash
    # macOS / Linux / WSL
-   unzip outlook-skills-YYYYMMDD.zip -d ~/
+   bash setup/install.sh
+   bash ~/.skills/outlook-mcp/outlook-skills/auth.sh
 
    # Windows (PowerShell)
-   Expand-Archive -Path outlook-skills-YYYYMMDD.zip -DestinationPath $env:USERPROFILE
+   .\setup\install.ps1
+   bash $env:USERPROFILE/.skills/outlook-mcp/outlook-skills/auth.sh
    ```
 
-2. **Authenticate:**
-   ```bash
-   bash ~/.skills/outlook-mcp/outlook-skills/auth.sh
+2. **Import the zip** via Claude Desktop or Claude Cowork:
    ```
+   Settings → Skills → Import from zip
+   ```
+   Select `outlook-skills-YYYYMMDD.zip`. The skills are immediately available.
 
 3. **Use naturally:**
 
@@ -65,7 +68,7 @@ bash setup/package.sh
 .\setup\package.ps1
 ```
 
-This produces `outlook-skills-YYYYMMDD.zip` in the project root, ready to share or drop onto another machine. The zip includes all skill files with paths pre-configured and the full Python auth system — the recipient only needs to unzip and run `auth.sh`.
+This produces `outlook-skills-YYYYMMDD.zip` in the project root. The zip contains all skill folders at the top level — the format Claude Desktop and Claude Cowork expect for skills import. It includes a `SKILLS.md` overview and has paths pre-configured for the default auth install location.
 
 ---
    ```
