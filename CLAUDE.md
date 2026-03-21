@@ -87,6 +87,7 @@ bash outlook-skills/auth.sh --reauth   # force re-authentication
 ```powershell
 .\outlook-skills\auth.ps1 -Status   # check token validity
 .\outlook-skills\auth.ps1 -Reauth   # force re-authentication
+.\outlook-skills\auth.ps1 -Revoke   # revoke and delete all tokens
 ```
 
 For Claude Desktop: `bash setup/package.sh` or `.\setup\package.ps1` produces `outlook-skills.zip` — import via Settings → Skills. Auth must be completed in the repo first.

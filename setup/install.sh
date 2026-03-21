@@ -28,7 +28,9 @@ for dir in "$ROOT_DIR/.claude/skills"/outlook-*/; do
 done
 
 # 3. Bootstrap venv (no-op if already done)
-bash "$INSTALL_DIR/outlook-skills/auth.sh" --status || true
+if ! bash "$INSTALL_DIR/outlook-skills/auth.sh" --status 2>/dev/null; then
+    echo "[warn]  auth.sh --status failed (auth may not be set up yet)"
+fi
 
 echo "Outlook skills installed"
 echo "  Skills: $SKILLS_DIR/outlook-*"

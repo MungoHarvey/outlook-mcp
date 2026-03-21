@@ -15,11 +15,14 @@ Examples:
 import sys
 import json
 import argparse
+import posixpath
+import urllib.parse
 import urllib.request
 import urllib.error
 import glob
 from pathlib import Path
 
+_AUTH_CMD = r".\outlook-skills\auth.ps1" if sys.platform == "win32" else "bash outlook-skills/auth.sh"
 
 # ── Bootstrap: add venv site-packages to sys.path ──────────────────────────────
 _script_dir = Path(__file__).parent
@@ -41,7 +44,7 @@ if not (_site_pkgs and _site_pkgs.exists()):
     print(json.dumps({
         "status": 500,
         "error": "venv_missing",
-        "message": "Run: bash outlook-skills/auth.sh to set up dependencies"
+        "message": f"Run: {_AUTH_CMD} to set up dependencies"
     }))
     sys.exit(1)
 
@@ -93,7 +96,9 @@ def make_request(method, endpoint, body, headers, _retried=False):
     get_token, AuthRequiredError = _ensure_token_helper()
 
     # ── Validate endpoint prefix (defence-in-depth — token scopes are the primary guard) ──
-    if not (endpoint.startswith("/me") or endpoint.startswith("/users/")):
+    _path_only = endpoint.split("?")[0]
+    _normalized = posixpath.normpath(urllib.parse.unquote(_path_only))
+    if not (_normalized.startswith("/me") or _normalized.startswith("/users/")):
         return {
             "status": 400,
             "error": "invalid_endpoint",
@@ -110,7 +115,7 @@ def make_request(method, endpoint, body, headers, _retried=False):
         return {
             "status": 401,
             "error": "auth_required",
-            "message": "Run: bash outlook-skills/auth.sh"
+            "message": f"Run: {_AUTH_CMD}"
         }
 
     # ── Build request ──────────────────────────────────────────────────────────
@@ -164,32 +169,20 @@ def make_request(method, endpoint, body, headers, _retried=False):
     except urllib.error.HTTPError as e:
         # ── Handle 401 with auto-retry ────────────────────────────────────────
         if e.code == 401 and not _retried:
-            # Try refreshing token and retry once
             try:
-                _tok = get_token()
-                # Rebuild request with new token
-                req_body = None
-                if body:
-                    req_body = body.encode("utf-8") if isinstance(body, str) else body
-                req = urllib.request.Request(url, data=req_body, method=method)
-                req.add_header("Authorization", f"Bearer {_tok}")
-                if method in ("POST", "PATCH"):
-                    req.add_header("Content-Type", "application/json")
-                for header_name, header_value in headers.items():
-                    req.add_header(header_name, header_value)
-                # Recursive call with _retried=True guard
+                get_token()
                 return make_request(method, endpoint, body, headers, _retried=True)
             except Exception:
                 return {
                     "status": 401,
                     "error": "auth_required",
-                    "message": "Run: bash outlook-skills/auth.sh"
+                    "message": f"Run: {_AUTH_CMD}"
                 }
         elif e.code == 401:
             return {
                 "status": 401,
                 "error": "auth_required",
-                "message": "Run: bash outlook-skills/auth.sh"
+                "message": f"Run: {_AUTH_CMD}"
             }
 
         # ── Parse other error responses ────────────────────────────────────────

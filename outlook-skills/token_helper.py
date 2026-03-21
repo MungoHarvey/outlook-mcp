@@ -39,10 +39,14 @@ except ImportError:
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 # Token file lives alongside this script in the cloned repo (gitignored).
-TOKEN_FILE       = Path(__file__).parent / "tokens.enc"
-KEYCHAIN_SERVICE = "azure-skills-auth"
-KEYCHAIN_USER    = "token-encryption-key"
-MAX_SESSION_AGE  = 30 * 24 * 60 * 60   # 30 days
+TOKEN_FILE      = Path(__file__).parent / "tokens.enc"
+MAX_SESSION_AGE = 30 * 24 * 60 * 60   # 30 days
+
+from constants import (
+    KEYCHAIN_SERVICE,
+    KEYCHAIN_USER_ENCRYPTION_KEY,
+    KEYCHAIN_USER_CLIENT_SECRET,
+)
 
 
 # ── Exceptions ────────────────────────────────────────────────────────────────
@@ -64,7 +68,7 @@ class TokenRefreshError(Exception):
 
 def _get_encryption_key() -> bytes:
     """Retrieve encryption key from OS keychain."""
-    key = keyring.get_password(KEYCHAIN_SERVICE, KEYCHAIN_USER)
+    key = keyring.get_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_ENCRYPTION_KEY)
     if not key:
         raise AuthRequiredError(
             "No encryption key found in keychain. "
@@ -115,8 +119,7 @@ def _refresh_access_token(tokens: dict) -> dict:
 
     # client_secret is stored in OS keychain — never in config.json
     try:
-        import keyring as _keyring
-        client_secret = _keyring.get_password(KEYCHAIN_SERVICE, "client-secret") or ""
+        client_secret = keyring.get_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_CLIENT_SECRET) or ""
     except Exception:
         client_secret = ""
     if not client_secret:

@@ -72,7 +72,7 @@ if ($useUv) {
     foreach ($cmd in @("python3", "python")) {
         try {
             $ver = & $cmd --version 2>&1
-            if ($ver -match "Python 3\.([89]|[1-9][0-9])\.") { $python = $cmd; break }
+            if ($ver -match "Python 3\.([89]|[1-9][0-9])") { $python = $cmd; break }
         } catch { }
     }
     if (-not $python) {

@@ -34,10 +34,10 @@ Get-ChildItem "$RootDir\.claude\skills" -Directory |
         $dest = Join-Path $SkillsDir $_.Name
         Copy-Item -Recurse -Force $_.FullName $dest
         Get-ChildItem $dest -Recurse -Filter "*.md" | ForEach-Object {
-            (Get-Content $_.FullName).
+            (Get-Content $_.FullName -Raw).
                 Replace('python3 scripts/graph_call.py', "python3 $proxy").
                 Replace('bash outlook-skills/auth.sh', "bash $auth") |
-            Set-Content $_.FullName
+            Set-Content $_.FullName -Encoding UTF8 -NoNewline
         }
     }
 

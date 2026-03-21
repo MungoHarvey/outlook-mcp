@@ -5,7 +5,7 @@ azure-auth/auth_runner.py
 Handles the full Azure OAuth 2.0 + PKCE flow:
   - Launches browser for user login and consent
   - Spins up a temporary local HTTP server to catch the callback
-  - Stores encrypted tokens in ~/.skills/tokens.enc
+  - Stores encrypted tokens in outlook-skills/tokens.enc
   - Stores the encryption key in the OS keychain (never on disk)
 
 Usage (via auth.sh — do not call directly):
@@ -36,8 +36,6 @@ from pathlib import Path
 try:
     import keyring
     from cryptography.fernet import Fernet
-    from cryptography.hazmat.primitives import hashes
-    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 except ImportError as e:
     print(f"[error] Missing dependency: {e}")
     print("        Run auth.sh to auto-install dependencies.")
@@ -47,13 +45,15 @@ except ImportError as e:
 # ── Constants ─────────────────────────────────────────────────────────────────
 # All paths are relative to this script's directory (the cloned repo's outlook-skills/).
 # Nothing is stored in ~/.skills/ or any Claude directory.
-_SCRIPT_DIR      = Path(__file__).parent
-CONFIG_FILE      = _SCRIPT_DIR / "config.json"
-TOKEN_FILE       = _SCRIPT_DIR / "tokens.enc"
-SALT_FILE        = _SCRIPT_DIR / "salt.bin"
+_SCRIPT_DIR = Path(__file__).parent
+CONFIG_FILE = _SCRIPT_DIR / "config.json"
+TOKEN_FILE  = _SCRIPT_DIR / "tokens.enc"
 
-KEYCHAIN_SERVICE = "azure-skills-auth"
-KEYCHAIN_USER    = "token-encryption-key"
+from constants import (
+    KEYCHAIN_SERVICE,
+    KEYCHAIN_USER_ENCRYPTION_KEY,
+    KEYCHAIN_USER_CLIENT_SECRET,
+)
 
 REDIRECT_PORT    = 8400
 REDIRECT_URI     = f"http://localhost:{REDIRECT_PORT}/callback"
@@ -70,15 +70,16 @@ SCOPE_CATALOGUE = {
     "calendar_write":   "Calendars.ReadWrite",
     "user_profile":     "User.Read",
     "contacts_read":    "Contacts.Read",
+    "contacts_write":   "Contacts.ReadWrite",
 }
 
 # Base scopes always included
 BASE_SCOPES = ["openid", "profile", "email", "offline_access"]
 
-# Default scope set for this skill (Outlook + Calendar)
+# Default scope set for this skill (Outlook + Calendar + Contacts)
 DEFAULT_PERMISSIONS = [
     "mail_read", "mail_write", "mail_send", "calendar_read", "calendar_write",
-    "user_profile", "contacts_read"
+    "user_profile", "contacts_read", "contacts_write"
 ]
 
 
@@ -89,27 +90,25 @@ def get_or_create_encryption_key() -> bytes:
     Retrieve encryption key from OS keychain, or generate and store a new one.
     The key is a 32-byte Fernet key, base64-encoded in the keychain.
     """
-    existing = keyring.get_password(KEYCHAIN_SERVICE, KEYCHAIN_USER)
+    existing = keyring.get_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_ENCRYPTION_KEY)
     if existing:
         return base64.urlsafe_b64decode(existing.encode())
 
     # First run — generate a new key
     key = Fernet.generate_key()
-    keyring.set_password(KEYCHAIN_SERVICE, KEYCHAIN_USER, key.decode())
+    keyring.set_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_ENCRYPTION_KEY, key.decode())
     return key
 
 
 def delete_encryption_key():
     """Remove key from keychain (used during revoke)."""
     try:
-        keyring.delete_password(KEYCHAIN_SERVICE, KEYCHAIN_USER)
+        keyring.delete_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_ENCRYPTION_KEY)
     except keyring.errors.PasswordDeleteError:
         pass  # Already gone
 
 
 # ── Client secret management ──────────────────────────────────────────────────
-
-KEYCHAIN_CLIENT_SECRET_USER = "client-secret"
 
 def get_or_retrieve_client_secret(config: dict) -> str:
     """
@@ -120,14 +119,14 @@ def get_or_retrieve_client_secret(config: dict) -> str:
     Stores the secret in keychain for future use.
     """
     # Try keychain first
-    existing = keyring.get_password(KEYCHAIN_SERVICE, KEYCHAIN_CLIENT_SECRET_USER)
+    existing = keyring.get_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_CLIENT_SECRET)
     if existing:
         return existing
 
     # One-time migration: if config.json still has client_secret, migrate it
     if config.get("client_secret"):
         secret = config["client_secret"]
-        keyring.set_password(KEYCHAIN_SERVICE, KEYCHAIN_CLIENT_SECRET_USER, secret)
+        keyring.set_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_CLIENT_SECRET, secret)
         print("  [migrated] client_secret moved from config.json to OS keychain.")
         print("  [info]     You can remove 'client_secret' from config.json")
         return secret
@@ -139,9 +138,8 @@ def get_or_retrieve_client_secret(config: dict) -> str:
     secret = getpass.getpass("  client_secret: ")
     if not secret.strip():
         print("[error] Client secret cannot be empty.")
-        import sys
         sys.exit(1)
-    keyring.set_password(KEYCHAIN_SERVICE, KEYCHAIN_CLIENT_SECRET_USER, secret.strip())
+    keyring.set_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_CLIENT_SECRET, secret.strip())
     print("  ✓ client_secret stored in OS keychain.")
     return secret.strip()
 
@@ -230,6 +228,12 @@ class CallbackHandler(http.server.BaseHTTPRequestHandler):
     result: dict = {}
 
     def do_GET(self):
+        # Ignore browser prefetches (favicon, etc.) — only handle the callback path
+        if not self.path.startswith("/callback"):
+            self.send_response(404)
+            self.end_headers()
+            return
+
         parsed = urllib.parse.urlparse(self.path)
         params = dict(urllib.parse.parse_qsl(parsed.query))
 
@@ -263,7 +267,9 @@ def wait_for_callback(state: str, timeout: int = 120) -> dict:
     CallbackHandler.result = {}
 
     def serve():
-        server.handle_request()  # Handle exactly one request then stop
+        # Loop until a /callback request sets result (ignores prefetches/favicons)
+        while not CallbackHandler.result:
+            server.handle_request()
 
     thread = threading.Thread(target=serve, daemon=True)
     thread.start()
@@ -411,7 +417,8 @@ def do_status():
     print(f"  Session age:   {days_used} days used, ~{days_left} days remaining")
     print(f"  Access token:  {'valid' if token_ok else 'expired (will auto-refresh)'}")
     print(f"  Scopes:        {', '.join(tokens.get('scopes', []))}")
-    print(f"  Token file:    {TOKEN_FILE}")
+    if os.environ.get("OUTLOOK_VERBOSE"):
+        print(f"  Token file:    {TOKEN_FILE}")
     print()
 
 
