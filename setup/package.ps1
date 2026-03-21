@@ -4,13 +4,12 @@
 # or Claude Cowork.
 #
 # Zip structure:
-#   outlook-skills-YYYYMMDD/
+#   outlook-skills/
 #     SKILLS.md               — overview and usage guide
 #     outlook-auth/           — skill folders at root level
 #     outlook-base/
 #     outlook-email-list/
 #     ... (all skill folders)
-#     outlook-references/     — shared YAML data
 #
 # Usage:
 #   .\setup\package.ps1
@@ -25,8 +24,7 @@ param(
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RootDir   = Split-Path -Parent $ScriptDir
-$Version   = Get-Date -Format "yyyyMMdd"
-$PkgName   = "outlook-skills-$Version"
+$PkgName   = "outlook-skills"
 $Output    = Join-Path $RootDir "$PkgName.zip"
 $Tmp       = Join-Path $env:TEMP "outlook-skills-pkg-$([System.Guid]::NewGuid().ToString('N'))"
 $PkgDir    = Join-Path $Tmp $PkgName
@@ -59,11 +57,6 @@ Get-ChildItem "$RootDir\.claude\skills" -Directory |
             Set-Content $_.FullName
         }
     }
-
-# ── outlook-references (copy contents, not the folder itself) ─────────────────
-$refDest = Join-Path $PkgDir "outlook-references"
-New-Item -ItemType Directory -Force -Path $refDest | Out-Null
-Copy-Item -Force "$RootDir\.claude\skills\outlook-references\*" $refDest
 
 # ── Create zip ────────────────────────────────────────────────────────────────
 Compress-Archive -Path "$PkgDir" -DestinationPath $Output -Force

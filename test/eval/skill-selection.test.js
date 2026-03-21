@@ -8,7 +8,9 @@ const SKILLS_DIR = path.join(__dirname, '..', '..', '.claude', 'skills');
 const FIXTURES_DIR = path.join(__dirname, 'fixtures');
 
 function parseFrontmatter(content) {
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  // Normalise line endings so the regex works on both LF and CRLF files
+  const normalised = content.replace(/\r\n/g, '\n');
+  const match = normalised.match(/^---\n([\s\S]*?)\n---/);
   if (!match) return null;
   return yaml.load(match[1]);
 }

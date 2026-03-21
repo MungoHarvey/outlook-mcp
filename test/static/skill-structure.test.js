@@ -7,7 +7,9 @@ const yaml = require('js-yaml');
 const SKILLS_DIR = path.join(__dirname, '..', '..', '.claude', 'skills');
 
 function parseFrontmatter(content) {
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  // Normalise line endings so the regex works on both LF and CRLF files
+  const normalised = content.replace(/\r\n/g, '\n');
+  const match = normalised.match(/^---\n([\s\S]*?)\n---/);
   if (!match) return null;
   return yaml.load(match[1]);
 }
@@ -66,21 +68,21 @@ describe('Skill structure', () => {
     });
   }
 
-  // Verify outlook-references has the expected YAML files
-  describe('outlook-references', () => {
+  // Verify per-skill reference YAML files exist in outlook-base/references/
+  describe('outlook-base references', () => {
     const expectedFiles = ['errors.yaml', 'colors.yaml', 'timezones.yaml', 'graph-api-patterns.yaml'];
 
     for (const file of expectedFiles) {
       it(`should contain ${file}`, () => {
-        const filePath = path.join(SKILLS_DIR, 'outlook-references', file);
-        assert.ok(fs.existsSync(filePath), `Missing ${file} in outlook-references`);
+        const filePath = path.join(SKILLS_DIR, 'outlook-base', 'references', file);
+        assert.ok(fs.existsSync(filePath), `Missing ${file} in outlook-base/references`);
       });
     }
   });
 
   // Verify only expected skills have params.yaml
   describe('params.yaml presence', () => {
-    const expectedWithParams = ['outlook-email-send', 'outlook-calendar-create', 'outlook-contacts-manage'];
+    const expectedWithParams = ['outlook-email-send', 'outlook-calendar-create', 'outlook-contacts-manage', 'outlook-calendar-update'];
 
     for (const dir of skillDirsWithSkillMd) {
       const paramsPath = path.join(SKILLS_DIR, dir, 'params.yaml');

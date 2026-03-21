@@ -91,14 +91,7 @@ outlook-email-list/
 
 Skills with complex parameters also include `params.yaml` (calendar create, email send, contacts manage).
 
-Shared data used across multiple skills lives in `outlook-references/`:
-
-| File | Contents |
-|---|---|
-| `timezones.yaml` | IANA timezone identifiers |
-| `colors.yaml` | Outlook category colour presets |
-| `errors.yaml` | Graph API error codes and recovery steps |
-| `graph-api-patterns.yaml` | Pagination, throttling, `$select`, `$filter` patterns |
+Each skill carries its own reference data in a `references/` subdirectory — only the files it actually uses.
 
 ---
 

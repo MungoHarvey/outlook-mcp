@@ -52,7 +52,7 @@ If you have a pre-built zip (downloaded from a release or shared by a colleague)
    ```
    Settings → Skills → Import from zip
    ```
-   Select `outlook-skills-YYYYMMDD.zip`. The skills are immediately available.
+   Select `outlook-skills.zip`. The skills are immediately available.
 
 3. **Use naturally:**
 
@@ -68,7 +68,7 @@ bash setup/package.sh
 .\setup\package.ps1
 ```
 
-This produces `outlook-skills-YYYYMMDD.zip` in the project root. The zip contains all skill folders at the top level — the format Claude Desktop and Claude Cowork expect for skills import. It includes a `SKILLS.md` overview and has paths pre-configured for the default auth install location.
+This produces `outlook-skills.zip` in the project root. The zip contains all skill folders at the top level — the format Claude Desktop and Claude Cowork expect for skills import. It includes a `SKILLS.md` overview and has paths pre-configured for the default auth install location. Each skill carries its own `references/` subdirectory with the YAML files it needs (timezones, colors, errors, graph-api-patterns).
 
 ---
    ```
@@ -158,12 +158,6 @@ Use `tenant_id: "common"` for personal Microsoft accounts, or your Azure tenant 
   outlook-folders/SKILL.md               # Folder management
   outlook-rules/SKILL.md                 # Inbox rules
   outlook-categories/SKILL.md            # Categories
-  outlook-references/                    # Shared YAML references
-    timezones.yaml                       # IANA timezone values
-    colors.yaml                          # Category color presets
-    errors.yaml                          # HTTP error codes
-    graph-api-patterns.yaml              # Pagination, throttling, best practices
-
 outlook-skills/                          # Python auth system
   auth.sh                                # Entry point — sets up venv, runs auth_runner.py
   auth_runner.py                         # OAuth 2.0 + PKCE flow

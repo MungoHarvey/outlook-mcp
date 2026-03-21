@@ -5,13 +5,12 @@
 # or Claude Cowork.
 #
 # Zip structure:
-#   outlook-skills-YYYYMMDD/
+#   outlook-skills/
 #     SKILLS.md               — overview and usage guide
 #     outlook-auth/           — skill folders at root level
 #     outlook-base/
 #     outlook-email-list/
 #     ... (all skill folders)
-#     outlook-references/     — shared YAML data
 #
 # Usage:
 #   bash setup/package.sh
@@ -28,8 +27,7 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 # Default auth system location (where install.sh puts it)
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.skills/outlook-mcp}"
 
-VERSION="$(date +%Y%m%d)"
-PKG_NAME="outlook-skills-$VERSION"
+PKG_NAME="outlook-skills"
 OUTPUT="$ROOT_DIR/$PKG_NAME.zip"
 TMP="$(mktemp -d)"
 PKG_DIR="$TMP/$PKG_NAME"
@@ -59,10 +57,6 @@ for dir in "$ROOT_DIR/.claude/skills"/outlook-*/; do
         -e "s|python3 scripts/graph_call.py|python3 $_safe_dir/scripts/graph_call.py|g" \
         -e "s|bash outlook-skills/auth.sh|bash $_safe_dir/outlook-skills/auth.sh|g" {} \;
 done
-
-# ── outlook-references (copy contents, not the folder itself) ─────────────────
-mkdir -p "$PKG_DIR/outlook-references"
-cp -r "$ROOT_DIR/.claude/skills/outlook-references/." "$PKG_DIR/outlook-references/"
 
 # ── Create zip ────────────────────────────────────────────────────────────────
 (cd "$TMP" && zip -qr "$OUTPUT" "$PKG_NAME/")

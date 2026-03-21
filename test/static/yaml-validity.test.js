@@ -37,12 +37,12 @@ describe('YAML validity', () => {
     });
   }
 
-  // Verify specific expected files exist
+  // Verify per-skill reference files exist (reference data lives in each skill's references/ subdir)
   const expectedReferenceFiles = [
-    'outlook-references/errors.yaml',
-    'outlook-references/colors.yaml',
-    'outlook-references/timezones.yaml',
-    'outlook-references/graph-api-patterns.yaml',
+    'outlook-base/references/errors.yaml',
+    'outlook-base/references/colors.yaml',
+    'outlook-base/references/timezones.yaml',
+    'outlook-base/references/graph-api-patterns.yaml',
   ];
 
   for (const file of expectedReferenceFiles) {

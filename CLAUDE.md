@@ -8,7 +8,7 @@ This project provides Claude Code skills for interacting with Microsoft Outlook 
 
 Instead of an MCP server, this project uses **skill files** that teach Claude how to call the Microsoft Graph API directly. Instead of curl commands with exposed tokens, all Microsoft Graph API calls go through `scripts/graph_call.py` — a secure Python proxy that handles token acquisition internally. Tokens are encrypted at rest using AES-256 Fernet and stored in the OS keychain (Windows Credential Manager / macOS Keychain).
 
-**Progressive loading**: Each `SKILL.md` is lean (~40-60 lines) with only the core operation. Adjacent `reference.md` files contain parsing templates, advanced patterns, and error handling. `params.yaml` files provide YAML-formatted parameter options (showAs, importance, recurrence, etc.). Shared YAML files in `outlook-references/` are cross-referenced by multiple skills.
+**Progressive loading**: Each `SKILL.md` is lean (~40-60 lines) with only the core operation. Adjacent `reference.md` files contain parsing templates, advanced patterns, and error handling. `params.yaml` files provide YAML-formatted parameter options (showAs, importance, recurrence, etc.). Each skill carries reference YAML files (timezones, colors, errors, graph-api-patterns) in its own `references/` subdirectory.
 
 ```
 .claude/skills/
@@ -18,7 +18,6 @@ Instead of an MCP server, this project uses **skill files** that teach Claude ho
   outlook-calendar-{list,create,update,respond}/
   outlook-contacts-{list,manage}/
   outlook-{folders,rules,categories}/
-  outlook-references/        — Shared YAML data (no SKILL.md): timezones, colors, errors, graph-api-patterns
 
 scripts/
   graph_call.py              — Secure Graph API proxy (handles auth internally)
@@ -59,7 +58,7 @@ bash ~/.skills/outlook-mcp/outlook-skills/auth.sh --reauth   # force re-authenti
 
 ## Skill File Conventions
 
-Every skill folder under `.claude/skills/` (except `outlook-references`) must contain:
+Every skill folder under `.claude/skills/` must contain:
 - `SKILL.md` — lean entrypoint with YAML frontmatter
 - `reference.md` — extended patterns, parsing templates, error handling
 
@@ -74,7 +73,7 @@ user_invocable: true            # omit (or false) only for outlook-base and outl
 
 Skills with complex parameter sets also have `params.yaml` (currently: `outlook-email-send`, `outlook-calendar-create`, `outlook-contacts-manage`).
 
-`outlook-references/` is a **data-only directory** — it has no `SKILL.md` and is cross-referenced by other skill files using relative paths.
+Skills that link to reference data (timezones, colors, errors, graph-api-patterns) carry those files in a local `references/` subdirectory inside the skill folder.
 
 ## Key Conventions
 

@@ -6,7 +6,13 @@
       "Bash(sed -i 's|\\\\.\\\\./outlook-references/|references/|g' /m/Coding/outlook-mcp/.claude/skills/outlook-base/reference.md)",
       "Bash(sed -i 's|\\\\.\\\\./outlook-references/timezones\\\\.yaml|references/timezones.yaml|g; s|\\\\.\\\\./outlook-references/colors\\\\.yaml|references/colors.yaml|g' /m/Coding/outlook-mcp/.claude/skills/outlook-calendar-create/SKILL.md)",
       "Bash(sed -i 's|\\\\.\\\\./outlook-calendar-create/params\\\\.yaml|params.yaml|g; s|\\\\.\\\\./outlook-references/timezones\\\\.yaml|references/timezones.yaml|g' /m/Coding/outlook-mcp/.claude/skills/outlook-calendar-update/SKILL.md)",
-      "Bash(sed -i 's|\\\\.\\\\./outlook-references/colors\\\\.yaml|references/colors.yaml|g' /m/Coding/outlook-mcp/.claude/skills/outlook-categories/SKILL.md)"
+      "Bash(sed -i 's|\\\\.\\\\./outlook-references/colors\\\\.yaml|references/colors.yaml|g' /m/Coding/outlook-mcp/.claude/skills/outlook-categories/SKILL.md)",
+      "Bash(npm run:*)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(npm install:*)",
+      "Bash(node:*)",
+      "Bash(npm test:*)",
+      "Bash(grep:*)"
     ]
   }
 }
