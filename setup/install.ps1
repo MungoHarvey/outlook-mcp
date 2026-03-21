@@ -29,11 +29,10 @@ Get-ChildItem "$RootDir\.claude\skills" -Directory | Where-Object { $_.Name -lik
         Set-Content $_.FullName
     }
 }
-Copy-Item -Recurse -Force "$RootDir\.claude\skills\outlook-references" "$SkillsDir\outlook-references"
 
 Write-Host "✓ Outlook skills installed"
 Write-Host "  Skills: $SkillsDir\outlook-*"
 Write-Host "  Auth:   $InstallDir\outlook-skills\"
 Write-Host "  Proxy:  $InstallDir\scripts\graph_call.py"
 Write-Host ""
-Write-Host "Next step: bash $InstallDir\outlook-skills\auth.sh"
+Write-Host "Next step: bash $($InstallDir -replace '\\','/')/outlook-skills/auth.sh"

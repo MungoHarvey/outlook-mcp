@@ -15,7 +15,7 @@ cp -r "$ROOT_DIR/outlook-skills/." "$INSTALL_DIR/outlook-skills/"
 # 3. Install graph_call.py proxy
 cp "$ROOT_DIR/scripts/graph_call.py" "$INSTALL_DIR/scripts/graph_call.py"
 
-# 4. Install skill folders (outlook-* + outlook-references)
+# 4. Install skill folders
 # Sanitize INSTALL_DIR for use in sed replacement strings (escape \, &, and | metacharacters)
 _safe_dir="${INSTALL_DIR//\\/\\\\}"
 _safe_dir="${_safe_dir//&/\\&}"
@@ -30,7 +30,6 @@ for dir in "$ROOT_DIR/.claude/skills"/outlook-*/; do
     -e "s|python3 scripts/graph_call.py|python3 $_safe_dir/scripts/graph_call.py|g" \
     -e "s|bash outlook-skills/auth.sh|bash $_safe_dir/outlook-skills/auth.sh|g" {} \;
 done
-cp -r "$ROOT_DIR/.claude/skills/outlook-references" "$SKILLS_DIR/outlook-references"
 
 # 5. Bootstrap venv
 bash "$INSTALL_DIR/outlook-skills/auth.sh" --status || true
