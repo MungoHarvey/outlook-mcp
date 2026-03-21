@@ -15,9 +15,9 @@ Copy-Item -Recurse -Force "$RootDir\outlook-skills\*" "$InstallDir\outlook-skill
 # 3. Install graph_call.py proxy
 Copy-Item -Force "$RootDir\scripts\graph_call.py" "$InstallDir\scripts\graph_call.py"
 
-# 4. Install skill folders
-$proxy = "$InstallDir\scripts\graph_call.py" -replace '\\', '/'
-$auth  = "$InstallDir\outlook-skills\auth.sh" -replace '\\', '/'
+# 4. Install skill folders — rewrite relative paths to installed locations
+$proxy = ($InstallDir + "\scripts\graph_call.py") -replace '\\', '/'
+$auth  = ($InstallDir + "\outlook-skills\auth.sh") -replace '\\', '/'
 
 Get-ChildItem "$RootDir\.claude\skills" -Directory | Where-Object { $_.Name -like "outlook-*" } | ForEach-Object {
     $dest = "$SkillsDir\$($_.Name)"
@@ -30,9 +30,12 @@ Get-ChildItem "$RootDir\.claude\skills" -Directory | Where-Object { $_.Name -lik
     }
 }
 
-Write-Host "✓ Outlook skills installed"
+# 5. Bootstrap venv
+bash ($InstallDir + "/outlook-skills/auth.sh") --status 2>$null
+
+Write-Host "Outlook skills installed"
 Write-Host "  Skills: $SkillsDir\outlook-*"
-Write-Host "  Auth:   $InstallDir\outlook-skills\"
+Write-Host "  Auth:   $InstallDir\outlook-skills"
 Write-Host "  Proxy:  $InstallDir\scripts\graph_call.py"
 Write-Host ""
 Write-Host "Next step: bash $auth"
