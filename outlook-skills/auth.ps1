@@ -3,6 +3,10 @@
 # PowerShell entry point for Azure OAuth authentication setup.
 # Parallel to auth.sh -- works on Windows without requiring bash or WSL.
 #
+# Config:  outlook-skills\config.json  (copy from config.example.json)
+# Venv:    outlook-skills\.venv        (created here, never in Claude dirs)
+# Tokens:  outlook-skills\tokens.enc  (gitignored, never in Claude dirs)
+#
 # Usage:
 #   .\outlook-skills\auth.ps1            # full auth flow
 #   .\outlook-skills\auth.ps1 -Status    # check token validity
@@ -20,79 +24,96 @@ $ScriptDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $VenvDir       = Join-Path $ScriptDir ".venv"
 $Runner        = Join-Path $ScriptDir "auth_runner.py"
 $Requirements  = Join-Path $ScriptDir "requirements.txt"
+$ConfigFile    = Join-Path $ScriptDir "config.json"
 $ConfigExample = Join-Path $ScriptDir "config.example.json"
-$SkillsDir     = Join-Path $env:USERPROFILE ".skills"
-$ConfigFile    = Join-Path $SkillsDir "config.json"
 
 Write-Host ""
 Write-Host "Azure Skills Authentication"
-Write-Host "  Configures secure token storage for Outlook and Calendar skills."
+Write-Host "  Config: $ConfigFile"
+Write-Host "  Venv:   $VenvDir"
 Write-Host ""
 
-# -- Check Python 3.8+ --------------------------------------------------------
-$python = $null
-foreach ($cmd in @("python3", "python")) {
-    try {
-        $ver = & $cmd --version 2>&1
-        if ($ver -match "Python 3\.([89]|[1-9][0-9])\.") {
-            $python = $cmd
-            break
-        }
-    } catch { }
-}
-if (-not $python) {
-    Write-Error "Python 3.8+ is required. Download from: https://www.python.org/downloads/"
-    exit 1
-}
-Write-Host "  [ok]   Python: $(& $python --version 2>&1)"
-
 # -- Bootstrap virtual environment --------------------------------------------
-if (-not (Test-Path $VenvDir)) {
-    Write-Host "  [info] Creating virtual environment..."
-    & $python -m venv $VenvDir
-    if ($LASTEXITCODE -ne 0) { Write-Error "Failed to create virtual environment"; exit 1 }
-    Write-Host "  [ok]   Virtual environment created"
-}
+$useUv = $null -ne (Get-Command uv -ErrorAction SilentlyContinue)
 
-$activateScript = Join-Path $VenvDir "Scripts\Activate.ps1"
-if (-not (Test-Path $activateScript)) {
-    Write-Error "Cannot activate venv -- missing: $activateScript"
-    exit 1
-}
-. $activateScript
+if ($useUv) {
+    Write-Host "  [info] Using uv"
 
-# Install/upgrade dependencies if needed
-$needsInstall = $false
-try {
-    $check = python -c "import keyring, cryptography" 2>&1
-    if ($LASTEXITCODE -ne 0) { $needsInstall = $true }
-} catch {
-    $needsInstall = $true
-}
+    if (-not (Test-Path $VenvDir)) {
+        Write-Host "  [info] Creating virtual environment..."
+        uv venv $VenvDir
+        if ($LASTEXITCODE -ne 0) { Write-Error "Failed to create virtual environment"; exit 1 }
+        Write-Host "  [ok]   Virtual environment created"
+    }
 
-if ($needsInstall) {
-    Write-Host "  [info] Installing dependencies (one-time, ~10 seconds)..."
-    pip install --quiet --upgrade pip
-    pip install --quiet -r $Requirements
-    if ($LASTEXITCODE -ne 0) { Write-Error "Dependency installation failed"; exit 1 }
-    Write-Host "  [ok]   Dependencies installed"
+    $activateScript = Join-Path $VenvDir "Scripts\Activate.ps1"
+    if (-not (Test-Path $activateScript)) {
+        Write-Error "Cannot activate venv -- missing: $activateScript"
+        exit 1
+    }
+    . $activateScript
+
+    $needsInstall = $false
+    try { python -c "import keyring, cryptography" 2>$null; if ($LASTEXITCODE -ne 0) { $needsInstall = $true } }
+    catch { $needsInstall = $true }
+
+    if ($needsInstall) {
+        Write-Host "  [info] Installing dependencies (one-time)..."
+        uv pip install --quiet -r $Requirements
+        if ($LASTEXITCODE -ne 0) { Write-Error "Dependency installation failed"; exit 1 }
+        Write-Host "  [ok]   Dependencies installed"
+    }
+} else {
+    # Fallback: plain pip + python
+    Write-Host "  [warn] uv not found -- falling back to pip"
+    Write-Host "         Install uv for faster setup: https://docs.astral.sh/uv/getting-started/installation/"
+
+    $python = $null
+    foreach ($cmd in @("python3", "python")) {
+        try {
+            $ver = & $cmd --version 2>&1
+            if ($ver -match "Python 3\.([89]|[1-9][0-9])\.") { $python = $cmd; break }
+        } catch { }
+    }
+    if (-not $python) {
+        Write-Error "Python 3.8+ required. Download from: https://www.python.org/downloads/"
+        exit 1
+    }
+
+    if (-not (Test-Path $VenvDir)) {
+        Write-Host "  [info] Creating virtual environment..."
+        & $python -m venv $VenvDir
+        if ($LASTEXITCODE -ne 0) { Write-Error "Failed to create virtual environment"; exit 1 }
+        Write-Host "  [ok]   Virtual environment created"
+    }
+
+    $activateScript = Join-Path $VenvDir "Scripts\Activate.ps1"
+    if (-not (Test-Path $activateScript)) { Write-Error "Cannot activate venv -- missing: $activateScript"; exit 1 }
+    . $activateScript
+
+    $needsInstall = $false
+    try { python -c "import keyring, cryptography" 2>$null; if ($LASTEXITCODE -ne 0) { $needsInstall = $true } }
+    catch { $needsInstall = $true }
+
+    if ($needsInstall) {
+        Write-Host "  [info] Installing dependencies (one-time)..."
+        pip install --quiet --upgrade pip
+        pip install --quiet -r $Requirements
+        if ($LASTEXITCODE -ne 0) { Write-Error "Dependency installation failed"; exit 1 }
+        Write-Host "  [ok]   Dependencies installed"
+    }
 }
 
 # -- Validate config.json -----------------------------------------------------
-New-Item -ItemType Directory -Force -Path $SkillsDir | Out-Null
-
 if (-not (Test-Path $ConfigFile)) {
     Write-Host ""
     Write-Warning "No config found at $ConfigFile"
     Write-Host ""
-    Write-Host "  Create it from the template:"
+    Write-Host "  Copy the template and fill in your Azure app details:"
     Write-Host "    Copy-Item '$ConfigExample' '$ConfigFile'"
     Write-Host "    notepad '$ConfigFile'"
     Write-Host ""
-    Write-Host "  Required fields:"
-    Write-Host "    tenant_id  -- from Azure portal > App registrations"
-    Write-Host "    client_id  -- from Azure portal > App registrations"
-    Write-Host ""
+    Write-Host "  Required fields: tenant_id, client_id"
     exit 1
 }
 
@@ -105,7 +126,7 @@ try {
 
 $missing = @("tenant_id", "client_id") | Where-Object { -not $cfg.$_ }
 if ($missing.Count -gt 0) {
-    Write-Error "config.json is missing required fields: $($missing -join ', ')"
+    Write-Error "config.json is missing: $($missing -join ', ')"
     Write-Host "  See $ConfigExample for reference"
     exit 1
 }

@@ -47,15 +47,17 @@ OUTLOOK_INTEGRATION_TEST=true npm run test:integration  # live API smoke tests (
 
 Auth and the API proxy live in the cloned repo — nothing is copied elsewhere. Two parallel workflows are supported.
 
+Auth data (config, venv, tokens) lives entirely within the cloned repo — nothing is written to Claude directories or system config folders. `uv` is used for the Python environment (falls back to pip if uv is not installed).
+
 ### macOS / Linux / WSL / Git Bash
 ```bash
-# 1. Create config from template and fill in tenant_id + client_id
-cp outlook-skills/config.example.json ~/.skills/config.json
+# 1. Create config in-repo (gitignored) and fill in tenant_id + client_id
+cp outlook-skills/config.example.json outlook-skills/config.json
 
-# 2. Authenticate (creates .venv, stores tokens in OS keychain)
+# 2. Authenticate — creates .venv via uv, stores tokens in outlook-skills/
 bash outlook-skills/auth.sh
 
-# 3. Install skills to Claude's skills directory
+# 3. Install skills to Claude's skills directory (paths rewritten to this repo)
 bash setup/install.sh
 
 # 4. Install test dependencies
@@ -64,13 +66,13 @@ npm install
 
 ### Windows (PowerShell)
 ```powershell
-# 1. Create config from template and fill in tenant_id + client_id
-Copy-Item outlook-skills\config.example.json "$env:USERPROFILE\.skills\config.json"
+# 1. Create config in-repo (gitignored) and fill in tenant_id + client_id
+Copy-Item outlook-skills\config.example.json outlook-skills\config.json
 
-# 2. Authenticate (creates .venv, stores tokens in OS keychain)
+# 2. Authenticate -- creates .venv via uv, stores tokens in outlook-skills\
 .\outlook-skills\auth.ps1
 
-# 3. Install skills to Claude's skills directory
+# 3. Install skills to Claude's skills directory (paths rewritten to this repo)
 .\setup\install.ps1
 
 # 4. Install test dependencies
@@ -79,17 +81,15 @@ npm install
 
 Auth management:
 ```bash
-# bash
 bash outlook-skills/auth.sh --status   # check token validity
 bash outlook-skills/auth.sh --reauth   # force re-authentication
 ```
 ```powershell
-# PowerShell
 .\outlook-skills\auth.ps1 -Status   # check token validity
 .\outlook-skills\auth.ps1 -Reauth   # force re-authentication
 ```
 
-For Claude Desktop: `bash setup/package.sh` or `.\setup\package.ps1` produces `outlook-skills.zip` — import via Settings → Skills. Auth must be completed first.
+For Claude Desktop: `bash setup/package.sh` or `.\setup\package.ps1` produces `outlook-skills.zip` — import via Settings → Skills. Auth must be completed in the repo first.
 
 ## Skill File Conventions
 

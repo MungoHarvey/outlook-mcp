@@ -38,8 +38,8 @@ except ImportError:
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-SKILLS_DIR       = Path.home() / ".skills"
-TOKEN_FILE       = SKILLS_DIR / "tokens.enc"
+# Token file lives alongside this script in the cloned repo (gitignored).
+TOKEN_FILE       = Path(__file__).parent / "tokens.enc"
 KEYCHAIN_SERVICE = "azure-skills-auth"
 KEYCHAIN_USER    = "token-encryption-key"
 MAX_SESSION_AGE  = 30 * 24 * 60 * 60   # 30 days

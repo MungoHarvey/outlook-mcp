@@ -38,6 +38,9 @@ research/
 # Virtual environments and encrypted files
 outlook-skills/.venv/
 *.enc
+outlook-skills/salt.bin
+outlook-skills/config.json
 
 # Packaged distribution zips
+outlook-skills.zip
 outlook-skills-*.zip

@@ -12,7 +12,14 @@
       "Bash(npm install:*)",
       "Bash(node:*)",
       "Bash(npm test:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(powershell.exe -Command \"\n\\\\$err = \\\\$null\n\\\\$null = [System.Management.Automation.Language.Parser]::ParseFile\\('M:\\\\\\\\Coding\\\\\\\\outlook-mcp\\\\\\\\setup\\\\\\\\install.ps1', [ref]\\\\$null, [ref]\\\\$err\\)\nif \\(\\\\$err.Count -eq 0\\) { Write-Host 'PARSE OK' } else { \\\\$err | ForEach-Object { Write-Host \\\\$_.Message } }\n\")",
+      "Bash(powershell.exe -Command \"\nforeach \\(\\\\$f in @\\('M:\\\\\\\\Coding\\\\\\\\outlook-mcp\\\\\\\\setup\\\\\\\\install.ps1','M:\\\\\\\\Coding\\\\\\\\outlook-mcp\\\\\\\\setup\\\\\\\\package.ps1'\\)\\) {\n    \\\\$err = \\\\$null\n    \\\\$null = [System.Management.Automation.Language.Parser]::ParseFile\\(\\\\$f, [ref]\\\\$null, [ref]\\\\$err\\)\n    if \\(\\\\$err.Count -eq 0\\) { Write-Host \\\\\"PASS: \\\\$f\\\\\" } else { Write-Host \\\\\"FAIL: \\\\$f\\\\\"; \\\\$err | ForEach-Object { Write-Host \\\\\" \\\\$_\\\\\" } }\n}\n\")",
+      "Bash(bash -n /m/Coding/outlook-mcp/setup/install.sh)",
+      "Bash(bash -n /m/Coding/outlook-mcp/setup/package.sh)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(bash -n /m/Coding/outlook-mcp/outlook-skills/auth.sh)"
     ]
   }
 }

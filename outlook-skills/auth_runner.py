@@ -45,10 +45,12 @@ except ImportError as e:
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-SKILLS_DIR       = Path.home() / ".skills"
-CONFIG_FILE      = SKILLS_DIR / "config.json"
-TOKEN_FILE       = SKILLS_DIR / "tokens.enc"
-SALT_FILE        = SKILLS_DIR / "salt.bin"       # Non-secret; safe on disk
+# All paths are relative to this script's directory (the cloned repo's outlook-skills/).
+# Nothing is stored in ~/.skills/ or any Claude directory.
+_SCRIPT_DIR      = Path(__file__).parent
+CONFIG_FILE      = _SCRIPT_DIR / "config.json"
+TOKEN_FILE       = _SCRIPT_DIR / "tokens.enc"
+SALT_FILE        = _SCRIPT_DIR / "salt.bin"
 
 KEYCHAIN_SERVICE = "azure-skills-auth"
 KEYCHAIN_USER    = "token-encryption-key"
@@ -127,7 +129,7 @@ def get_or_retrieve_client_secret(config: dict) -> str:
         secret = config["client_secret"]
         keyring.set_password(KEYCHAIN_SERVICE, KEYCHAIN_CLIENT_SECRET_USER, secret)
         print("  [migrated] client_secret moved from config.json to OS keychain.")
-        print("  [info]     You can remove 'client_secret' from ~/.skills/config.json")
+        print("  [info]     You can remove 'client_secret' from config.json")
         return secret
 
     # Interactive prompt (first-time setup)
@@ -161,7 +163,7 @@ def load_tokens() -> dict:
 
 def save_tokens(tokens: dict):
     """Encrypt and persist token store."""
-    SKILLS_DIR.mkdir(mode=0o700, exist_ok=True)
+    TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
     key  = get_or_create_encryption_key()
     f    = Fernet(key)
     data = f.encrypt(json.dumps(tokens).encode())
