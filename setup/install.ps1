@@ -1,21 +1,19 @@
 param(
-    [string]$InstallDir = "$env:USERPROFILE\.skills\outlook-mcp",
+    [string]$InstallDir = "",
     [string]$SkillsDir  = "$env:USERPROFILE\.claude\skills"
 )
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RootDir   = Split-Path -Parent $ScriptDir
 
-# 1. Create directories
-New-Item -ItemType Directory -Force -Path "$InstallDir\scripts", "$InstallDir\outlook-skills", $SkillsDir | Out-Null
+# Default: auth and proxy live in the cloned repo (self-contained developer workflow).
+# Override: .\setup\install.ps1 -InstallDir "D:\other\path"
+if (-not $InstallDir) { $InstallDir = $RootDir }
 
-# 2. Install Python auth system
-Copy-Item -Recurse -Force "$RootDir\outlook-skills\*" "$InstallDir\outlook-skills\"
+# 1. Create skills directory
+New-Item -ItemType Directory -Force -Path $SkillsDir | Out-Null
 
-# 3. Install graph_call.py proxy
-Copy-Item -Force "$RootDir\scripts\graph_call.py" "$InstallDir\scripts\graph_call.py"
-
-# 4. Install skill folders — rewrite relative paths to installed locations
+# 2. Install skill folders -- rewrite relative paths to repo locations
 $proxy = ($InstallDir + "\scripts\graph_call.py") -replace '\\', '/'
 $auth  = ($InstallDir + "\outlook-skills\auth.sh") -replace '\\', '/'
 
@@ -30,12 +28,12 @@ Get-ChildItem "$RootDir\.claude\skills" -Directory | Where-Object { $_.Name -lik
     }
 }
 
-# 5. Bootstrap venv
+# 3. Bootstrap venv (no-op if already done)
 bash ($InstallDir + "/outlook-skills/auth.sh") --status 2>$null
 
 Write-Host "Outlook skills installed"
 Write-Host "  Skills: $SkillsDir\outlook-*"
-Write-Host "  Auth:   $InstallDir\outlook-skills"
 Write-Host "  Proxy:  $InstallDir\scripts\graph_call.py"
 Write-Host ""
-Write-Host "Next step: bash $auth"
+Write-Host "Next step -- authenticate (run in Git Bash / MSYS2 / WSL):"
+Write-Host "  bash $auth"

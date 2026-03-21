@@ -45,16 +45,22 @@ OUTLOOK_INTEGRATION_TEST=true npm run test:integration  # live API smoke tests (
 
 ## Setup
 
-1. Run `bash setup/install.sh` (macOS/Linux/WSL) or `setup\install.ps1` (PowerShell)
-2. Create `~/.skills/config.json` with `tenant_id` and `client_id` from your Azure AD app registration (use `outlook-skills/config.example.json` as template)
-3. Run `bash ~/.skills/outlook-mcp/outlook-skills/auth.sh` — prompts for client secret (stored in OS keychain), opens browser for OAuth login; also creates `outlook-skills/.venv`
+Auth and the API proxy live in the cloned repo — nothing is copied elsewhere.
+
+1. Create `outlook-skills/config.json` with `tenant_id` and `client_id` from your Azure AD app registration (use `outlook-skills/config.example.json` as template)
+2. Run `bash outlook-skills/auth.sh` — prompts for client secret (stored in OS keychain), opens browser for OAuth login; creates `outlook-skills/.venv`
+3. Install skills to Claude's skills directory (rewrites paths to point back to this repo):
+   - bash: `bash setup/install.sh`
+   - PowerShell: `.\setup\install.ps1`
 4. Run `npm install` to install test dependencies
 
 Auth management commands:
 ```bash
-bash ~/.skills/outlook-mcp/outlook-skills/auth.sh --status   # check token validity
-bash ~/.skills/outlook-mcp/outlook-skills/auth.sh --reauth   # force re-authentication
+bash outlook-skills/auth.sh --status   # check token validity
+bash outlook-skills/auth.sh --reauth   # force re-authentication
 ```
+
+For Claude Desktop: run `bash setup/package.sh` (or `.\setup\package.ps1`) to produce `outlook-skills.zip`, then import via Settings → Skills. Auth must be completed in the repo before packaging.
 
 ## Skill File Conventions
 

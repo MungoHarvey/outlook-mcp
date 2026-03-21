@@ -24,8 +24,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Default auth system location (where install.sh puts it)
-INSTALL_DIR="${INSTALL_DIR:-$HOME/.skills/outlook-mcp}"
+# Default: bake paths pointing to this repo (developer workflow, machine-specific).
+# Override: INSTALL_DIR=/other/path bash setup/package.sh
+INSTALL_DIR="${INSTALL_DIR:-$ROOT_DIR}"
 
 PKG_NAME="outlook-skills"
 OUTPUT="$ROOT_DIR/$PKG_NAME.zip"
