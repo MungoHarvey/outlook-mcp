@@ -253,7 +253,7 @@ task_name: Cleanup, package script updates, docs, and full verification
 max_iterations: 6
 on_max_iterations: escalate
 handoff_summary:
-  done: ""
+  done: "Phase 6 complete. Deleted outlook-references/, updated package scripts to produce undated outlook-skills.zip, updated README.md/CLAUDE.md/SKILLS.md docs, fixed CRLF-handling in test parseFrontmatter functions, all verification checks passed (test:static exit 0, npm test 301/301 pass, 16 references/ dirs, no curl in templates.md)."
   failed: ""
   needed: ""
 todos:
@@ -262,56 +262,56 @@ todos:
     skill: "NA"
     agent: "worker"
     outcome: ".claude/skills/outlook-references/ directory does not exist; ls .claude/skills/ shows no outlook-references entry"
-    status: pending
+    status: completed
     priority: high
   - id: "602-2"
     content: "Update setup/package.sh: (1) remove the 'VERSION=$(date +%Y%m%d)' line, (2) change 'PKG_NAME=outlook-skills-$VERSION' to 'PKG_NAME=outlook-skills', (3) remove the 3-line outlook-references copy block (mkdir -p + cp -r of outlook-references), (4) update comment header from 'outlook-skills-YYYYMMDD/' to 'outlook-skills/'"
     skill: "NA"
     agent: "worker"
     outcome: "setup/package.sh produces 'outlook-skills' as PKG_NAME with no date; contains no outlook-references copy block; comment header shows 'outlook-skills/'"
-    status: pending
+    status: completed
     priority: high
   - id: "602-3"
     content: "Update setup/package.ps1: (1) remove '$Version = Get-Date -Format yyyyMMdd' line, (2) change '$PkgName = outlook-skills-$Version' to '$PkgName = outlook-skills', (3) remove the outlook-references copy block ($refDest lines), (4) update comment header from 'outlook-skills-YYYYMMDD/' to 'outlook-skills/'"
     skill: "NA"
     agent: "worker"
     outcome: "setup/package.ps1 produces 'outlook-skills' as PkgName with no date; contains no outlook-references copy block"
-    status: pending
+    status: completed
     priority: high
   - id: "602-4"
     content: "Update README.md: (1) change 'outlook-skills-YYYYMMDD.zip' to 'outlook-skills.zip' in all occurrences; (2) in the Project Structure section, remove the outlook-references/ entries and add a note that each skill carries its own references/ subdir with the YAML files it needs"
     skill: "NA"
     agent: "worker"
     outcome: "README.md contains zero 'outlook-skills-YYYYMMDD' occurrences; project structure section mentions per-skill references/ subdirs"
-    status: pending
+    status: completed
     priority: high
   - id: "602-5"
     content: "Update CLAUDE.md: (1) remove any 'outlook-references/' directory entries; (2) add a note in Skill File Conventions that skills carry YAML reference data in a references/ subdir"
     skill: "NA"
     agent: "worker"
     outcome: "CLAUDE.md contains no 'outlook-references' directory entry; mentions references/ subdir convention"
-    status: pending
+    status: completed
     priority: high
   - id: "602-6"
     content: "Update setup/SKILLS.md: remove the 'Shared data' table listing timezones.yaml, colors.yaml, errors.yaml, graph-api-patterns.yaml as shared files. Replace with: 'Each skill carries its own reference data in a references/ subdirectory — only the files it actually uses.'"
     skill: "NA"
     agent: "worker"
     outcome: "setup/SKILLS.md contains no 'outlook-references' references; has a note about per-skill references/ subdirs"
-    status: pending
+    status: completed
     priority: high
   - id: "602-7"
     content: "Run full verification: (1) npm run test:static — must pass; (2) grep -r '../outlook-references/' .claude/skills/ = 0; (3) ls .claude/skills/outlook-references/ should fail (directory absent); (4) find .claude/skills -name 'references' -type d | wc -l = 16; (5) grep -r 'curl' .claude/skills/outlook-rules/templates.md = 0; (6) ls .claude/skills/outlook-calendar-update/params.yaml = exists; (7) npm test — must pass"
     skill: "NA"
     agent: "worker"
     outcome: "All 7 verification checks pass: test:static passes, zero ../outlook-references/ refs, outlook-references/ deleted, 16 references/ dirs, no curl in templates.md, calendar-update params.yaml exists, npm test passes"
-    status: pending
+    status: completed
     priority: high
   - id: "602-8"
     content: "Commit final state: git add -A && git commit -m 'feat: self-contained skills with per-skill references/ subdirs and undated zip'"
     skill: "NA"
     agent: "worker"
     outcome: "Git commit created with all Phase 6 changes"
-    status: pending
+    status: completed
     priority: high
 prompt: |
   ## Context from prior loop
