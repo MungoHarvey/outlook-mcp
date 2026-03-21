@@ -45,22 +45,51 @@ OUTLOOK_INTEGRATION_TEST=true npm run test:integration  # live API smoke tests (
 
 ## Setup
 
-Auth and the API proxy live in the cloned repo — nothing is copied elsewhere.
+Auth and the API proxy live in the cloned repo — nothing is copied elsewhere. Two parallel workflows are supported.
 
-1. Create `outlook-skills/config.json` with `tenant_id` and `client_id` from your Azure AD app registration (use `outlook-skills/config.example.json` as template)
-2. Run `bash outlook-skills/auth.sh` — prompts for client secret (stored in OS keychain), opens browser for OAuth login; creates `outlook-skills/.venv`
-3. Install skills to Claude's skills directory (rewrites paths to point back to this repo):
-   - bash: `bash setup/install.sh`
-   - PowerShell: `.\setup\install.ps1`
-4. Run `npm install` to install test dependencies
-
-Auth management commands:
+### macOS / Linux / WSL / Git Bash
 ```bash
+# 1. Create config from template and fill in tenant_id + client_id
+cp outlook-skills/config.example.json ~/.skills/config.json
+
+# 2. Authenticate (creates .venv, stores tokens in OS keychain)
+bash outlook-skills/auth.sh
+
+# 3. Install skills to Claude's skills directory
+bash setup/install.sh
+
+# 4. Install test dependencies
+npm install
+```
+
+### Windows (PowerShell)
+```powershell
+# 1. Create config from template and fill in tenant_id + client_id
+Copy-Item outlook-skills\config.example.json "$env:USERPROFILE\.skills\config.json"
+
+# 2. Authenticate (creates .venv, stores tokens in OS keychain)
+.\outlook-skills\auth.ps1
+
+# 3. Install skills to Claude's skills directory
+.\setup\install.ps1
+
+# 4. Install test dependencies
+npm install
+```
+
+Auth management:
+```bash
+# bash
 bash outlook-skills/auth.sh --status   # check token validity
 bash outlook-skills/auth.sh --reauth   # force re-authentication
 ```
+```powershell
+# PowerShell
+.\outlook-skills\auth.ps1 -Status   # check token validity
+.\outlook-skills\auth.ps1 -Reauth   # force re-authentication
+```
 
-For Claude Desktop: run `bash setup/package.sh` (or `.\setup\package.ps1`) to produce `outlook-skills.zip`, then import via Settings → Skills. Auth must be completed in the repo before packaging.
+For Claude Desktop: `bash setup/package.sh` or `.\setup\package.ps1` produces `outlook-skills.zip` — import via Settings → Skills. Auth must be completed first.
 
 ## Skill File Conventions
 
