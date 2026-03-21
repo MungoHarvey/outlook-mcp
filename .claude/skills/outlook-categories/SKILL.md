@@ -32,6 +32,6 @@ Categories returned here can be applied to:
 - **Calendar events**: `"categories": ["Category Name"]` in create/update
 - **Email messages**: update a message with `"categories": ["Category Name"]`
 
-For color preset mapping, see [colors](../outlook-references/colors.yaml).
+For color preset mapping, see [colors](references/colors.yaml).
 
 For applying categories to specific items, use the [outlook-email-organize](../outlook-email-organize/SKILL.md) or [outlook-calendar-update](../outlook-calendar-update/SKILL.md) skills.

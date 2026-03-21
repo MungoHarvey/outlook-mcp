@@ -59,7 +59,7 @@ For major recurrence changes, it's often safer to cancel the series and create a
 
 ## Error Handling
 
-See [errors](../outlook-references/errors.yaml) for common HTTP error codes.
+See [errors](references/errors.yaml) for common HTTP error codes.
 
 | Code | Specific Meaning |
 |---|---|

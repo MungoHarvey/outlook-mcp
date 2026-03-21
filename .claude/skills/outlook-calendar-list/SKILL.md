@@ -20,12 +20,12 @@ python3 scripts/graph_call.py GET "/me/calendarView?startDateTime=$START&endDate
   --header "Prefer: outlook.timezone=\"America/New_York\""
 ```
 
-Use `--header "Prefer: outlook.timezone=\"...\"` to get times in the user's timezone. See [timezones](../outlook-references/timezones.yaml).
+Use `--header "Prefer: outlook.timezone=\"...\"` to get times in the user's timezone. See [timezones](references/timezones.yaml).
 
 Response contains `data.value[]` with the events array. Use `@odata.nextLink` for pagination.
 
 ## Pagination
 
-If the response contains `@odata.nextLink`, use that URL directly. See [graph-api-patterns](../outlook-references/graph-api-patterns.yaml).
+If the response contains `@odata.nextLink`, use that URL directly. See [graph-api-patterns](references/graph-api-patterns.yaml).
 
 For parsing template and alternative listing approaches, see [reference.md](reference.md).

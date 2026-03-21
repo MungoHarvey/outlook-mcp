@@ -26,7 +26,7 @@ python3 scripts/graph_call.py PATCH "/me/messages/{messageId}" '{"isRead":false}
 python3 scripts/graph_call.py PATCH "/me/messages/{messageId}" '{"categories":["Category Name","Another Category"]}'
 ```
 
-For available category colors, see [colors](../outlook-references/colors.yaml).
+For available category colors, see [colors](references/colors.yaml).
 
 ## Set Flag
 

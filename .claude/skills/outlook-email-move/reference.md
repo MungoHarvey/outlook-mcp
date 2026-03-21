@@ -18,7 +18,7 @@ for MSG_ID in id1 id2 id3; do
 done
 ```
 
-Note: Respect throttling limits (max 4 concurrent Outlook requests). See [graph-api-patterns](../outlook-references/graph-api-patterns.yaml).
+Note: Respect throttling limits (max 4 concurrent Outlook requests). See [graph-api-patterns](references/graph-api-patterns.yaml).
 
 ## Copy Email (Non-Destructive)
 
@@ -36,7 +36,7 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
 
 ## Error Handling
 
-See [errors](../outlook-references/errors.yaml) for common HTTP error codes.
+See [errors](references/errors.yaml) for common HTTP error codes.
 
 | Code | Specific Meaning |
 |---|---|

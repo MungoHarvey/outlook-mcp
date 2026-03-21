@@ -87,7 +87,7 @@ if next_link:
     # Use this URL directly for the next page request
 ```
 
-See [graph-api-patterns](../outlook-references/graph-api-patterns.yaml) for full pagination guidance.
+See [graph-api-patterns](references/graph-api-patterns.yaml) for full pagination guidance.
 
 ## Throttling
 
@@ -96,7 +96,7 @@ See [graph-api-patterns](../outlook-references/graph-api-patterns.yaml) for full
 - Use exponential backoff: 2s, 4s, 8s, 16s
 - Always use `$select` to reduce payload size
 
-See [graph-api-patterns](../outlook-references/graph-api-patterns.yaml) for detailed throttling limits.
+See [graph-api-patterns](references/graph-api-patterns.yaml) for detailed throttling limits.
 
 ## Calendar Timezone Header
 
@@ -106,7 +106,7 @@ For calendar GET requests, use the `Prefer` header to get times in user's timezo
 -H "Prefer: outlook.timezone=\"America/New_York\""
 ```
 
-See [timezones](../outlook-references/timezones.yaml) for IANA timezone values.
+See [timezones](references/timezones.yaml) for IANA timezone values.
 
 ## OAuth Scopes
 
@@ -123,8 +123,8 @@ See [timezones](../outlook-references/timezones.yaml) for IANA timezone values.
 
 ## Shared References
 
-For detailed reference data, see the YAML files in [outlook-references](../outlook-references/):
-- [timezones.yaml](../outlook-references/timezones.yaml) — IANA timezone values
-- [colors.yaml](../outlook-references/colors.yaml) — Category color presets
-- [errors.yaml](../outlook-references/errors.yaml) — HTTP error codes and actions
-- [graph-api-patterns.yaml](../outlook-references/graph-api-patterns.yaml) — Pagination, throttling, batch, large attachments
+For detailed reference data, see the YAML files in [outlook-references](references/):
+- [timezones.yaml](references/timezones.yaml) — IANA timezone values
+- [colors.yaml](references/colors.yaml) — Category color presets
+- [errors.yaml](references/errors.yaml) — HTTP error codes and actions
+- [graph-api-patterns.yaml](references/graph-api-patterns.yaml) — Pagination, throttling, batch, large attachments

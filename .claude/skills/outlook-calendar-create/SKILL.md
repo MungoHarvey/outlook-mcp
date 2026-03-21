@@ -26,7 +26,7 @@ Response: `.data` contains the created event with its `id`.
 ## Timezone Handling
 
 Always specify `timeZone` in start/end. Ask the user's timezone if not established.
-See [timezones](../outlook-references/timezones.yaml) for IANA timezone values.
+See [timezones](references/timezones.yaml) for IANA timezone values.
 
 ## Parameter Options
 
@@ -36,4 +36,4 @@ See [params.yaml](params.yaml) for showAs, importance, sensitivity, attendee typ
 
 For attendees, Teams meetings, all-day events, recurring events, and location, see [reference.md](reference.md).
 
-For category colors, see [colors](../outlook-references/colors.yaml).
+For category colors, see [colors](references/colors.yaml).

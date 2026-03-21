@@ -41,7 +41,7 @@ python3 scripts/graph_call.py POST "/me/events/{eventId}/tentativelyAccept" '{
 
 ## Error Handling
 
-See [errors](../outlook-references/errors.yaml) for common HTTP error codes.
+See [errors](references/errors.yaml) for common HTTP error codes.
 
 | Code | Specific Meaning |
 |---|---|

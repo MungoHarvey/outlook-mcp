@@ -3,8 +3,7 @@
 ## Move and Mark Read from Specific Senders
 
 ```bash
-curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{
+python3 scripts/graph_call.py POST "/me/mailFolders/inbox/messageRules" '{
     "displayName": "Team notifications",
     "sequence": 75,
     "isEnabled": true,
@@ -18,15 +17,13 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
       "moveToFolder": "FOLDER_ID",
       "markAsRead": true
     }
-  }' \
-  "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messageRules"
+  }'
 ```
 
 ## Auto-Read by Subject Keyword
 
 ```bash
-curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{
+python3 scripts/graph_call.py POST "/me/mailFolders/inbox/messageRules" '{
     "displayName": "Auto-read notifications",
     "sequence": 50,
     "isEnabled": true,
@@ -36,15 +33,13 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
     "actions": {
       "markAsRead": true
     }
-  }' \
-  "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messageRules"
+  }'
 ```
 
 ## Forward and Stop Processing
 
 ```bash
-curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{
+python3 scripts/graph_call.py POST "/me/mailFolders/inbox/messageRules" '{
     "displayName": "Forward urgent to team",
     "sequence": 10,
     "isEnabled": true,
@@ -56,8 +51,7 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
       "forwardTo": [{"emailAddress": {"address": "team@example.com"}}],
       "stopProcessingRules": true
     }
-  }' \
-  "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messageRules"
+  }'
 ```
 
 ## Available Conditions

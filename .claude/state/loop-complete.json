@@ -1,12 +1,12 @@
 {
-  "loop_name": "ralph-loop-600",
+  "loop_name": "ralph-loop-601",
   "status": "completed",
-  "todos_done": 5,
+  "todos_done": 8,
   "todos_failed": 0,
-  "todos_count": 5,
+  "todos_count": 8,
   "handoff": {
-    "done": "Created 16 per-skill references/ subdirectories with correct YAML files. All YAML files copied verbatim from outlook-references/. Verified count = 16. No references/ created for outlook-auth or outlook-folders.",
+    "done": "Updated all ../outlook-references/ paths to references/ across all skill files. Added params.yaml to outlook-calendar-update. Fixed templates.md to use graph_call.py instead of curl. All verification checks passed.",
     "failed": "",
-    "needed": "Loop 601 should update all ../outlook-references/ path references in skill files, add params.yaml to calendar-update, and fix templates.md."
+    "needed": "Loop 602 should delete outlook-references/, update package scripts (remove date), update docs (README.md, CLAUDE.md, setup/SKILLS.md), and run full verification."
   }
 }

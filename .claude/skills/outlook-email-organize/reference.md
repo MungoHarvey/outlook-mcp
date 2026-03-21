@@ -35,7 +35,7 @@ for MSG_ID in id1 id2 id3; do
 done
 ```
 
-Note: Respect throttling limits (max 4 concurrent). See [graph-api-patterns](../outlook-references/graph-api-patterns.yaml).
+Note: Respect throttling limits (max 4 concurrent). See [graph-api-patterns](references/graph-api-patterns.yaml).
 
 ## Set Importance
 
@@ -49,4 +49,4 @@ Values: `low`, `normal`, `high`
 
 ## Error Handling
 
-See [errors](../outlook-references/errors.yaml) for common HTTP error codes.
+See [errors](references/errors.yaml) for common HTTP error codes.

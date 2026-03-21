@@ -59,7 +59,7 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
 
 ## Error Handling
 
-See [errors](../outlook-references/errors.yaml) for common HTTP error codes.
+See [errors](references/errors.yaml) for common HTTP error codes.
 
 | Code | Specific Meaning |
 |---|---|

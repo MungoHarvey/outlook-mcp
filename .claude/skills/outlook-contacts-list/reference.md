@@ -47,4 +47,4 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 ## Error Handling
 
-See [errors](../outlook-references/errors.yaml) for common HTTP error codes.
+See [errors](references/errors.yaml) for common HTTP error codes.

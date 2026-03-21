@@ -117,65 +117,65 @@ task_name: Update ../outlook-references/ paths, add params.yaml, fix templates.m
 max_iterations: 8
 on_max_iterations: escalate
 handoff_summary:
-  done: ""
+  done: "Updated all ../outlook-references/ paths to references/ across all skill files (SKILL.md and reference.md files). Added params.yaml to outlook-calendar-update. Fixed templates.md to use graph_call.py instead of curl. All verification checks passed."
   failed: ""
-  needed: "Loop 602 should delete outlook-references/, update package scripts, update docs, and run full verification."
+  needed: "Loop 602 should delete outlook-references/, update package scripts (remove date), update docs (README.md, CLAUDE.md, setup/SKILLS.md), and run full verification."
 todos:
   - id: "601-1"
     content: "Update outlook-base/reference.md: replace all 7 occurrences of '../outlook-references/' with 'references/' — lines 90, 99, 109, 126, 127, 128, 129, 130. Also update the section header text on line 126 from 'YAML files in [outlook-references](../outlook-references/)' to 'YAML files in [references/](references/)'"
     skill: "outlook-base"
     agent: "worker"
     outcome: "outlook-base/reference.md contains zero occurrences of '../outlook-references/'; all 7 replaced links now point to 'references/X.yaml'"
-    status: pending
+    status: completed
     priority: high
   - id: "601-2"
     content: "Update outlook-calendar-create/SKILL.md lines 29 and 39: replace '../outlook-references/timezones.yaml' with 'references/timezones.yaml' and '../outlook-references/colors.yaml' with 'references/colors.yaml'"
     skill: "outlook-calendar-create"
     agent: "worker"
     outcome: "outlook-calendar-create/SKILL.md has zero '../outlook-references/' occurrences; both links point to references/"
-    status: pending
+    status: completed
     priority: high
   - id: "601-3"
     content: "Update outlook-calendar-update/SKILL.md: (a) line 37 — change '../outlook-calendar-create/params.yaml' to 'params.yaml'; (b) line 39 — change '../outlook-references/timezones.yaml' to 'references/timezones.yaml'"
     skill: "outlook-calendar-update"
     agent: "worker"
     outcome: "outlook-calendar-update/SKILL.md references 'params.yaml' (local) not '../outlook-calendar-create/params.yaml'; references 'references/timezones.yaml' not '../outlook-references/timezones.yaml'"
-    status: pending
+    status: completed
     priority: high
   - id: "601-4"
     content: "Copy .claude/skills/outlook-calendar-create/params.yaml to .claude/skills/outlook-calendar-update/params.yaml (same parameters apply to update operations)"
     skill: "outlook-calendar-update"
     agent: "worker"
     outcome: ".claude/skills/outlook-calendar-update/params.yaml exists with same content as outlook-calendar-create/params.yaml"
-    status: pending
+    status: completed
     priority: high
   - id: "601-5"
     content: "Update outlook-categories/SKILL.md line 35: replace '../outlook-references/colors.yaml' with 'references/colors.yaml'"
     skill: "outlook-categories"
     agent: "worker"
     outcome: "outlook-categories/SKILL.md has zero '../outlook-references/' occurrences"
-    status: pending
+    status: completed
     priority: high
   - id: "601-6"
     content: "Update all remaining reference.md files that contain '../outlook-references/': outlook-email-list/reference.md (line 63), outlook-email-organize/reference.md (lines 38, 52), outlook-calendar-create/reference.md (line 107), outlook-calendar-update/reference.md (line 62), outlook-rules/reference.md (line 50). Also scan and update: outlook-email-read, outlook-email-send, outlook-email-reply, outlook-email-move, outlook-email-delete, outlook-calendar-list, outlook-calendar-respond, outlook-contacts-list, outlook-contacts-manage reference.md files."
     skill: "NA"
     agent: "worker"
     outcome: "grep -r '../outlook-references/' .claude/skills/ returns zero matches"
-    status: pending
+    status: completed
     priority: high
   - id: "601-7"
     content: "Fix outlook-rules/templates.md: replace all 3 curl command blocks with graph_call.py equivalents. Each template uses: curl -s -X POST -H 'Authorization: Bearer $TOKEN' -H 'Content-Type: application/json' -d '{...}' 'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messageRules'. Replace with: python3 scripts/graph_call.py POST '/me/mailFolders/inbox/messageRules' '{...}'. Apply to all 3 templates."
     skill: "outlook-rules"
     agent: "worker"
     outcome: "outlook-rules/templates.md contains zero 'curl', 'Bearer', or '$TOKEN' occurrences; all 3 templates use python3 scripts/graph_call.py POST"
-    status: pending
+    status: completed
     priority: high
   - id: "601-8"
     content: "Verify loop 601: (1) grep -r '../outlook-references/' .claude/skills/ = 0 matches; (2) grep 'curl' .claude/skills/outlook-rules/templates.md = 0 matches; (3) grep 'Bearer' .claude/skills/outlook-rules/templates.md = 0 matches; (4) ls .claude/skills/outlook-calendar-update/params.yaml confirms file exists"
     skill: "NA"
     agent: "worker"
     outcome: "All 4 verification checks pass: zero '../outlook-references/' paths, zero curl/Bearer in templates.md, params.yaml exists for calendar-update"
-    status: pending
+    status: completed
     priority: high
 prompt: |
   ## Context from prior loop

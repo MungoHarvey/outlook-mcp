@@ -34,6 +34,6 @@ Change location:
 
 For updatable fields reference and recurring event changes, see [reference.md](reference.md).
 
-For parameter values (showAs, importance, etc.), see [calendar-create params](../outlook-calendar-create/params.yaml).
+For parameter values (showAs, importance, etc.), see [calendar-create params](params.yaml).
 
-For timezone values, see [timezones](../outlook-references/timezones.yaml).
+For timezone values, see [timezones](references/timezones.yaml).

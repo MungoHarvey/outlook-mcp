@@ -55,7 +55,7 @@ END=$(date -u +"%Y-%m-%dT23:59:59.0000000")
 
 ## Error Handling
 
-See [errors](../outlook-references/errors.yaml) for common HTTP error codes.
+See [errors](references/errors.yaml) for common HTTP error codes.
 
 | Code | Specific Meaning |
 |---|---|

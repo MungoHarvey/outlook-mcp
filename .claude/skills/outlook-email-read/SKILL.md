@@ -26,4 +26,4 @@ Returns `{"status": 200, "data": {...}}`. The `.data.value[]` array contains att
 
 For body parsing template and attachment download, see [reference.md](reference.md).
 
-For error handling, see [errors](../outlook-references/errors.yaml).
+For error handling, see [errors](references/errors.yaml).

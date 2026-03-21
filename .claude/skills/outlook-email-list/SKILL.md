@@ -16,7 +16,7 @@ python3 scripts/graph_call.py GET "/me/messages?$select=id,subject,from,toRecipi
 
 The result is `{"status": 200, "data": {...}}`. The `.data.value[]` array contains the messages.
 
-Always use `$select` for performance. See [graph-api-patterns](../outlook-references/graph-api-patterns.yaml) for recommended fields.
+Always use `$select` for performance. See [graph-api-patterns](references/graph-api-patterns.yaml) for recommended fields.
 
 ## Search Emails (KQL)
 
@@ -28,6 +28,6 @@ Field-specific: `$search="from:user@example.com"` or `$search="subject:report"`
 
 ## Pagination
 
-If the response contains `@odata.nextLink`, use that URL directly for the next page. Never manually construct `$skip`. See [graph-api-patterns](../outlook-references/graph-api-patterns.yaml).
+If the response contains `@odata.nextLink`, use that URL directly for the next page. Never manually construct `$skip`. See [graph-api-patterns](references/graph-api-patterns.yaml).
 
 For folder-specific listing, OData filters, and response parsing templates, see [reference.md](reference.md).

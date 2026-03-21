@@ -50,11 +50,11 @@ print(f\"Saved: {data['name']} ({len(content)} bytes)\")
 
 ## Attachment Pagination
 
-If a message has many attachments, the response may include `@odata.nextLink`. Use that URL directly for the next page. See [graph-api-patterns](../outlook-references/graph-api-patterns.yaml).
+If a message has many attachments, the response may include `@odata.nextLink`. Use that URL directly for the next page. See [graph-api-patterns](references/graph-api-patterns.yaml).
 
 ## Error Handling
 
-See [errors](../outlook-references/errors.yaml) for common HTTP error codes.
+See [errors](references/errors.yaml) for common HTTP error codes.
 
 | Code | Specific Meaning |
 |---|---|
