@@ -2,7 +2,7 @@
 """
 azure-auth/auth_runner.py
 
-Handles the full Azure OAuth 2.0 + PKCE flow:
+Handles the Azure OAuth 2.0 Authorization Code flow:
   - Launches browser for user login and consent
   - Spins up a temporary local HTTP server to catch the callback
   - Stores tokens in outlook-skills/tokens.json (gitignored, plain JSON)
@@ -21,7 +21,6 @@ Usage (via auth.sh or auth.ps1 — do not call directly):
 
 import argparse
 import base64
-import hashlib
 import hmac
 import http.server
 import json
@@ -104,16 +103,6 @@ def delete_tokens():
         TOKEN_FILE.unlink()
 
 
-# ── PKCE helpers ──────────────────────────────────────────────────────────────
-
-def generate_pkce() -> tuple[str, str]:
-    """Generate PKCE code_verifier and code_challenge (S256)."""
-    verifier  = secrets.token_urlsafe(96)
-    digest    = hashlib.sha256(verifier.encode()).digest()
-    challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
-    return verifier, challenge
-
-
 # ── Scope builder ─────────────────────────────────────────────────────────────
 
 def build_scopes(permissions: list[str]) -> list[str]:
@@ -130,18 +119,16 @@ def build_scopes(permissions: list[str]) -> list[str]:
 # ── Auth URL builder ──────────────────────────────────────────────────────────
 
 def build_auth_url(tenant_id: str, client_id: str,
-                   scopes: list[str], state: str, code_challenge: str) -> str:
+                   scopes: list[str], state: str) -> str:
     """Construct the Azure AD authorisation URL."""
     params = {
-        "client_id":             client_id,
-        "response_type":         "code",
-        "redirect_uri":          REDIRECT_URI,
-        "response_mode":         "query",
-        "scope":                 " ".join(scopes),
-        "state":                 state,
-        "code_challenge":        code_challenge,
-        "code_challenge_method": "S256",
-        "prompt":                "select_account",
+        "client_id":     client_id,
+        "response_type": "code",
+        "redirect_uri":  REDIRECT_URI,
+        "response_mode": "query",
+        "scope":         " ".join(scopes),
+        "state":         state,
+        "prompt":        "select_account",
     }
     base = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize"
     return f"{base}?{urllib.parse.urlencode(params)}"
@@ -207,7 +194,7 @@ def wait_for_callback(state: str, timeout: int = 120) -> dict:
 # ── Token exchange ────────────────────────────────────────────────────────────
 
 def exchange_code(tenant_id: str, client_id: str, client_secret: str,
-                  code: str, code_verifier: str) -> dict:
+                  code: str) -> dict:
     """Exchange authorisation code for access + refresh tokens."""
     url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
 
@@ -217,7 +204,6 @@ def exchange_code(tenant_id: str, client_id: str, client_secret: str,
         "grant_type":    "authorization_code",
         "code":          code,
         "redirect_uri":  REDIRECT_URI,
-        "code_verifier": code_verifier,
     }).encode()
 
     req = urllib.request.Request(url, data=payload, method="POST")
@@ -262,11 +248,10 @@ def do_auth(permissions: list[str], force: bool = False):
             else:
                 print("  Session has expired (>30 days). Starting re-authentication...\n")
 
-    scopes                   = build_scopes(permissions)
-    code_verifier, challenge = generate_pkce()
-    state                    = secrets.token_urlsafe(32)
+    scopes   = build_scopes(permissions)
+    state    = secrets.token_urlsafe(32)
 
-    auth_url = build_auth_url(TENANT_ID, CLIENT_ID, scopes, state, challenge)
+    auth_url = build_auth_url(TENANT_ID, CLIENT_ID, scopes, state)
 
     print("  Opening browser for Microsoft login...")
     print(f"  Requested permissions: {', '.join(permissions)}")
@@ -295,7 +280,7 @@ def do_auth(permissions: list[str], force: bool = False):
     print("  Login successful. Exchanging code for tokens...")
 
     token_response = exchange_code(TENANT_ID, CLIENT_ID, CLIENT_SECRET,
-                                   result["code"], code_verifier)
+                                   result["code"])
 
     email = decode_id_token_email(token_response.get("id_token", ""))
 
