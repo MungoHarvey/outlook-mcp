@@ -91,10 +91,22 @@ def load_tokens() -> dict:
 
 
 def save_tokens(tokens: dict):
-    """Persist token store as plain JSON."""
+    """Persist token store as plain JSON (atomic write)."""
     TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
-    TOKEN_FILE.write_text(json.dumps(tokens, indent=2))
-    TOKEN_FILE.chmod(0o600)
+    tmp = TOKEN_FILE.parent / (TOKEN_FILE.name + ".tmp")
+    tmp.write_text(json.dumps(tokens, indent=2))
+    tmp.replace(TOKEN_FILE)
+    if sys.platform == "win32":
+        import subprocess
+        import getpass
+        result = subprocess.run(
+            ["icacls", str(TOKEN_FILE), "/inheritance:r", "/grant:r", f"{getpass.getuser()}:(R,W)"],
+            capture_output=True
+        )
+        if result.returncode != 0:
+            print("  [warn] Could not set restrictive ACL on tokens.json")
+    else:
+        TOKEN_FILE.chmod(0o600)
 
 
 def delete_tokens():
@@ -156,7 +168,7 @@ class CallbackHandler(http.server.BaseHTTPRequestHandler):
             body = b"<html><body><h2>Authentication successful.</h2><p>You may close this tab.</p></body></html>"
             self.send_response(200)
         elif "error" in params:
-            CallbackHandler.result = {"error": params.get("error"), "description": params.get("error_description", "")}
+            CallbackHandler.result = {"error": params.get("error"), "description": params.get("error_description", ""), "state": params.get("state", "")}
             body = b"<html><body><h2>Authentication failed.</h2><p>Check the terminal for details.</p></body></html>"
             self.send_response(400)
         else:
@@ -173,7 +185,12 @@ class CallbackHandler(http.server.BaseHTTPRequestHandler):
 
 def wait_for_callback(state: str, timeout: int = 120) -> dict:
     """Start local server, wait for OAuth redirect, return result."""
-    server = http.server.HTTPServer(("localhost", REDIRECT_PORT), CallbackHandler)
+    try:
+        server = http.server.HTTPServer(("localhost", REDIRECT_PORT), CallbackHandler)
+    except OSError as e:
+        print(f"\n  [error] Port {REDIRECT_PORT} is already in use.")
+        print(f"          Is another auth process running? ({e})")
+        sys.exit(1)
     CallbackHandler.result = {}
 
     def serve():
@@ -268,13 +285,14 @@ def do_auth(permissions: list[str], force: bool = False):
         print("\n  [error] Timed out. Please run auth.sh again.")
         sys.exit(1)
 
+    # Validate state before acting on any response (prevents CSRF)
+    if not hmac.compare_digest(result.get("state", ""), state):
+        print("\n  [error] State mismatch — possible CSRF. Aborting.")
+        sys.exit(1)
+
     if "error" in result:
         print(f"\n  [error] Auth failed: {result['error']}")
         print(f"          {result.get('description', '')}")
-        sys.exit(1)
-
-    if not hmac.compare_digest(result.get("state", ""), state):
-        print("\n  [error] State mismatch — possible CSRF. Aborting.")
         sys.exit(1)
 
     print("  Login successful. Exchanging code for tokens...")
@@ -293,7 +311,7 @@ def do_auth(permissions: list[str], force: bool = False):
         "user_email":              email,
         "tenant_id":               TENANT_ID,
         "client_id":               CLIENT_ID,
-        "client_secret":           CLIENT_SECRET,
+        # client_secret is NOT stored here — token_helper reads it from .env at refresh time
     }
 
     save_tokens(tokens)

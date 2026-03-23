@@ -33,6 +33,21 @@ Write-Host "  Credentials: $EnvFile"
 Write-Host "  Venv:        $VenvDir"
 Write-Host ""
 
+# -- Validate .env exists (before bootstrap — fail fast) ----------------------
+if (-not (Test-Path $EnvFile)) {
+    Write-Host ""
+    Write-Warning "No .env found at $EnvFile"
+    Write-Host ""
+    Write-Host "  Copy the template and fill in your Azure app credentials:"
+    Write-Host "    Copy-Item '$EnvExample' '$EnvFile'"
+    Write-Host "    notepad '$EnvFile'"
+    Write-Host ""
+    Write-Host "  Required: OUTLOOK_CLIENT_ID, OUTLOOK_CLIENT_SECRET, OUTLOOK_TENANT_ID"
+    exit 1
+}
+Write-Host "  [ok]   Credentials file found"
+Write-Host ""
+
 # -- Bootstrap virtual environment --------------------------------------------
 $useUv = $null -ne (Get-Command uv -ErrorAction SilentlyContinue)
 
@@ -103,20 +118,6 @@ if ($useUv) {
         Write-Host "  [ok]   Dependencies installed"
     }
 }
-
-# -- Validate .env exists -----------------------------------------------------
-if (-not (Test-Path $EnvFile)) {
-    Write-Host ""
-    Write-Warning "No .env found at $EnvFile"
-    Write-Host ""
-    Write-Host "  Copy the template and fill in your Azure app credentials:"
-    Write-Host "    Copy-Item '$EnvExample' '$EnvFile'"
-    Write-Host "    notepad '$EnvFile'"
-    Write-Host ""
-    Write-Host "  Required: OUTLOOK_CLIENT_ID, OUTLOOK_CLIENT_SECRET, OUTLOOK_TENANT_ID"
-    exit 1
-}
-Write-Host "  [ok]   Credentials file found"
 
 # -- Delegate to auth_runner.py -----------------------------------------------
 $runnerArgs = @()

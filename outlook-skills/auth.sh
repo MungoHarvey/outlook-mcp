@@ -113,8 +113,8 @@ main() {
     echo "  Venv:        $VENV_DIR"
     echo ""
 
-    bootstrap_venv
     ensure_env
+    bootstrap_venv
 
     # Pass all arguments through to the Python runner
     python "$RUNNER" "$@"

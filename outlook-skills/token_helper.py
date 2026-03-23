@@ -20,6 +20,8 @@ The helper:
 """
 
 import json
+import os
+import sys
 import time
 import urllib.error
 import urllib.parse
@@ -31,6 +33,13 @@ from pathlib import Path
 _SCRIPT_DIR     = Path(__file__).parent
 TOKEN_FILE      = _SCRIPT_DIR / "tokens.json"
 MAX_SESSION_AGE = 30 * 24 * 60 * 60   # 30 days
+
+# Load .env so client_secret is available for silent token refresh
+try:
+    from dotenv import load_dotenv
+    load_dotenv(_SCRIPT_DIR / ".env")
+except ImportError:
+    pass  # dotenv not installed yet (first-run before bootstrap); refresh will fail gracefully
 
 
 # ── Exceptions ────────────────────────────────────────────────────────────────
@@ -66,9 +75,21 @@ def _load_tokens() -> dict:
 
 
 def _save_tokens(tokens: dict):
-    """Persist updated tokens (used after refresh)."""
-    TOKEN_FILE.write_text(json.dumps(tokens, indent=2))
-    TOKEN_FILE.chmod(0o600)
+    """Persist updated tokens (atomic write)."""
+    tmp = TOKEN_FILE.parent / (TOKEN_FILE.name + ".tmp")
+    tmp.write_text(json.dumps(tokens, indent=2))
+    tmp.replace(TOKEN_FILE)
+    if sys.platform == "win32":
+        import subprocess
+        import getpass
+        result = subprocess.run(
+            ["icacls", str(TOKEN_FILE), "/inheritance:r", "/grant:r", f"{getpass.getuser()}:(R,W)"],
+            capture_output=True
+        )
+        if result.returncode != 0:
+            pass  # Non-fatal; ACL failure does not break token use
+    else:
+        TOKEN_FILE.chmod(0o600)
 
 
 # ── Internal: token refresh ───────────────────────────────────────────────────
@@ -81,12 +102,12 @@ def _refresh_access_token(tokens: dict) -> dict:
     """
     tenant_id     = tokens.get("tenant_id", "")
     client_id     = tokens.get("client_id", "")
-    client_secret = tokens.get("client_secret", "")
+    client_secret = os.environ.get("OUTLOOK_CLIENT_SECRET", "")
 
     if not client_secret:
         raise AuthRequiredError(
-            "Client secret not found in token store. "
-            "Run: bash outlook-skills/auth.sh"
+            "OUTLOOK_CLIENT_SECRET not found. "
+            "Ensure outlook-skills/.env exists with your credentials and run auth again."
         )
 
     url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"

@@ -169,15 +169,8 @@ def make_request(method, endpoint, body, headers, _retried=False):
     except urllib.error.HTTPError as e:
         # ── Handle 401 with auto-retry ────────────────────────────────────────
         if e.code == 401 and not _retried:
-            try:
-                get_token()
-                return make_request(method, endpoint, body, headers, _retried=True)
-            except Exception:
-                return {
-                    "status": 401,
-                    "error": "auth_required",
-                    "message": f"Run: {_AUTH_CMD}"
-                }
+            # Retry once — make_request will call get_token() again, triggering silent refresh
+            return make_request(method, endpoint, body, headers, _retried=True)
         elif e.code == 401:
             return {
                 "status": 401,
@@ -306,7 +299,9 @@ Examples:
         # ── Output as JSON (never including tokens) ────────────────────────────────
         print(json.dumps(result))
 
-    except BaseException:
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except Exception:
         # ── Top-level exception handler: no tokens in local variables ────────────
         print(json.dumps({
             "status": 500,
