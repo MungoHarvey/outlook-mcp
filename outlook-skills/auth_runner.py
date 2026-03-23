@@ -5,10 +5,14 @@ azure-auth/auth_runner.py
 Handles the full Azure OAuth 2.0 + PKCE flow:
   - Launches browser for user login and consent
   - Spins up a temporary local HTTP server to catch the callback
-  - Stores encrypted tokens in outlook-skills/tokens.enc
-  - Stores the encryption key in the OS keychain (never on disk)
+  - Stores tokens in outlook-skills/tokens.json (gitignored, plain JSON)
 
-Usage (via auth.sh — do not call directly):
+Credentials are loaded from outlook-skills/.env:
+  OUTLOOK_CLIENT_ID=...
+  OUTLOOK_CLIENT_SECRET=...
+  OUTLOOK_TENANT_ID=...   (defaults to "common")
+
+Usage (via auth.sh or auth.ps1 — do not call directly):
   auth.sh                  First-time setup or re-check
   auth.sh --reauth         Force new browser login (clears existing session)
   auth.sh --revoke         Revoke and delete all stored tokens
@@ -34,146 +38,70 @@ from pathlib import Path
 
 # ── Optional dependency guard ─────────────────────────────────────────────────
 try:
-    import keyring
-    from cryptography.fernet import Fernet
+    from dotenv import load_dotenv
 except ImportError as e:
     print(f"[error] Missing dependency: {e}")
-    print("        Run auth.sh to auto-install dependencies.")
+    print("        Run auth.sh (or auth.ps1) to auto-install dependencies.")
     sys.exit(1)
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-# All paths are relative to this script's directory (the cloned repo's outlook-skills/).
-# Nothing is stored in ~/.skills/ or any Claude directory.
 _SCRIPT_DIR = Path(__file__).parent
-CONFIG_FILE = _SCRIPT_DIR / "config.json"
-TOKEN_FILE  = _SCRIPT_DIR / "tokens.enc"
+TOKEN_FILE  = _SCRIPT_DIR / "tokens.json"
 
-from constants import (
-    KEYCHAIN_SERVICE,
-    KEYCHAIN_USER_ENCRYPTION_KEY,
-    KEYCHAIN_USER_CLIENT_SECRET,
-)
+load_dotenv(_SCRIPT_DIR / ".env")
 
-REDIRECT_PORT    = 8400
-REDIRECT_URI     = f"http://localhost:{REDIRECT_PORT}/callback"
+CLIENT_ID     = os.environ.get("OUTLOOK_CLIENT_ID", "")
+CLIENT_SECRET = os.environ.get("OUTLOOK_CLIENT_SECRET", "")
+TENANT_ID     = os.environ.get("OUTLOOK_TENANT_ID", "common")
 
-# 30-day session enforcement (seconds)
-MAX_SESSION_AGE  = 30 * 24 * 60 * 60
+REDIRECT_PORT   = 8400
+REDIRECT_URI    = f"http://localhost:{REDIRECT_PORT}/callback"
+MAX_SESSION_AGE = 30 * 24 * 60 * 60   # 30 days
 
 # Scope catalogue — maps friendly names to Microsoft Graph scopes
 SCOPE_CATALOGUE = {
-    "mail_read":        "Mail.Read",
-    "mail_write":       "Mail.ReadWrite",
-    "mail_send":        "Mail.Send",
-    "calendar_read":    "Calendars.Read",
-    "calendar_write":   "Calendars.ReadWrite",
-    "user_profile":     "User.Read",
-    "contacts_read":    "Contacts.Read",
-    "contacts_write":   "Contacts.ReadWrite",
+    "mail_read":     "Mail.Read",
+    "mail_write":    "Mail.ReadWrite",
+    "mail_send":     "Mail.Send",
+    "calendar_read": "Calendars.Read",
+    "calendar_write":"Calendars.ReadWrite",
+    "user_profile":  "User.Read",
+    "contacts_read": "Contacts.Read",
+    "contacts_write":"Contacts.ReadWrite",
 }
 
-# Base scopes always included
 BASE_SCOPES = ["openid", "profile", "email", "offline_access"]
 
-# Default scope set for this skill (Outlook + Calendar + Contacts)
 DEFAULT_PERMISSIONS = [
     "mail_read", "mail_write", "mail_send", "calendar_read", "calendar_write",
     "user_profile", "contacts_read", "contacts_write"
 ]
 
 
-# ── Keychain helpers ──────────────────────────────────────────────────────────
-
-def get_or_create_encryption_key() -> bytes:
-    """
-    Retrieve encryption key from OS keychain, or generate and store a new one.
-    The key is a 32-byte Fernet key, base64-encoded in the keychain.
-    """
-    existing = keyring.get_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_ENCRYPTION_KEY)
-    if existing:
-        return base64.urlsafe_b64decode(existing.encode())
-
-    # First run — generate a new key
-    key = Fernet.generate_key()
-    keyring.set_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_ENCRYPTION_KEY, key.decode())
-    return key
-
-
-def delete_encryption_key():
-    """Remove key from keychain (used during revoke)."""
-    try:
-        keyring.delete_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_ENCRYPTION_KEY)
-    except keyring.errors.PasswordDeleteError:
-        pass  # Already gone
-
-
-# ── Client secret management ──────────────────────────────────────────────────
-
-def get_or_retrieve_client_secret(config: dict) -> str:
-    """
-    Retrieve client_secret from OS keychain.
-    If not in keychain:
-      1. Check config dict (one-time migration from config.json)
-      2. Prompt user interactively via getpass
-    Stores the secret in keychain for future use.
-    """
-    # Try keychain first
-    existing = keyring.get_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_CLIENT_SECRET)
-    if existing:
-        return existing
-
-    # One-time migration: if config.json still has client_secret, migrate it
-    if config.get("client_secret"):
-        secret = config["client_secret"]
-        keyring.set_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_CLIENT_SECRET, secret)
-        print("  [migrated] client_secret moved from config.json to OS keychain.")
-        print("  [info]     You can remove 'client_secret' from config.json")
-        return secret
-
-    # Interactive prompt (first-time setup)
-    import getpass
-    print("\n  Client secret not found in keychain.")
-    print("  Enter your Azure app client secret (it will be stored securely in the OS keychain):")
-    secret = getpass.getpass("  client_secret: ")
-    if not secret.strip():
-        print("[error] Client secret cannot be empty.")
-        sys.exit(1)
-    keyring.set_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_CLIENT_SECRET, secret.strip())
-    print("  ✓ client_secret stored in OS keychain.")
-    return secret.strip()
-
-
 # ── Token store ───────────────────────────────────────────────────────────────
 
 def load_tokens() -> dict:
-    """Decrypt and load token store. Returns empty dict if not found."""
+    """Load token store from disk. Returns empty dict if not found."""
     if not TOKEN_FILE.exists():
         return {}
     try:
-        key  = get_or_create_encryption_key()
-        f    = Fernet(key)
-        data = f.decrypt(TOKEN_FILE.read_bytes())
-        return json.loads(data)
+        return json.loads(TOKEN_FILE.read_text())
     except Exception:
         return {}
 
 
 def save_tokens(tokens: dict):
-    """Encrypt and persist token store."""
+    """Persist token store as plain JSON."""
     TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
-    key  = get_or_create_encryption_key()
-    f    = Fernet(key)
-    data = f.encrypt(json.dumps(tokens).encode())
-    TOKEN_FILE.write_bytes(data)
-    TOKEN_FILE.chmod(0o600)  # Owner read/write only
+    TOKEN_FILE.write_text(json.dumps(tokens, indent=2))
+    TOKEN_FILE.chmod(0o600)
 
 
 def delete_tokens():
-    """Remove token file and keychain entry."""
+    """Remove token file."""
     if TOKEN_FILE.exists():
         TOKEN_FILE.unlink()
-    delete_encryption_key()
 
 
 # ── PKCE helpers ──────────────────────────────────────────────────────────────
@@ -213,7 +141,7 @@ def build_auth_url(tenant_id: str, client_id: str,
         "state":                 state,
         "code_challenge":        code_challenge,
         "code_challenge_method": "S256",
-        "prompt":                "select_account",  # Always show account picker
+        "prompt":                "select_account",
     }
     base = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize"
     return f"{base}?{urllib.parse.urlencode(params)}"
@@ -224,11 +152,10 @@ def build_auth_url(tenant_id: str, client_id: str,
 class CallbackHandler(http.server.BaseHTTPRequestHandler):
     """Minimal HTTP handler — catches the OAuth redirect, extracts the code."""
 
-    # Shared result across server and main thread
     result: dict = {}
 
     def do_GET(self):
-        # Ignore browser prefetches (favicon, etc.) — only handle the callback path
+        # Ignore browser prefetches (favicon, etc.)
         if not self.path.startswith("/callback"):
             self.send_response(404)
             self.end_headers()
@@ -237,7 +164,6 @@ class CallbackHandler(http.server.BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         params = dict(urllib.parse.parse_qsl(parsed.query))
 
-        # Extract auth code or error
         if "code" in params:
             CallbackHandler.result = {"code": params["code"], "state": params.get("state", "")}
             body = b"<html><body><h2>Authentication successful.</h2><p>You may close this tab.</p></body></html>"
@@ -255,19 +181,15 @@ class CallbackHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def log_message(self, *args):
-        pass  # Suppress server access logs
+        pass
 
 
 def wait_for_callback(state: str, timeout: int = 120) -> dict:
-    """
-    Start local server, wait for OAuth redirect, return result.
-    Raises TimeoutError if user doesn't complete auth within timeout seconds.
-    """
+    """Start local server, wait for OAuth redirect, return result."""
     server = http.server.HTTPServer(("localhost", REDIRECT_PORT), CallbackHandler)
     CallbackHandler.result = {}
 
     def serve():
-        # Loop until a /callback request sets result (ignores prefetches/favicons)
         while not CallbackHandler.result:
             server.handle_request()
 
@@ -309,7 +231,7 @@ def decode_id_token_email(id_token: str) -> str:
     """Extract email/upn from JWT id_token without verifying signature."""
     try:
         payload = id_token.split(".")[1]
-        payload += "=" * (4 - len(payload) % 4)  # Pad base64
+        payload += "=" * (4 - len(payload) % 4)
         claims = json.loads(base64.urlsafe_b64decode(payload))
         return claims.get("email") or claims.get("upn") or claims.get("preferred_username", "unknown")
     except Exception:
@@ -318,11 +240,12 @@ def decode_id_token_email(id_token: str) -> str:
 
 # ── Main auth flow ────────────────────────────────────────────────────────────
 
-def do_auth(config: dict, permissions: list[str], force: bool = False):
+def do_auth(permissions: list[str], force: bool = False):
     """Run the full OAuth flow."""
-    tenant_id     = config["tenant_id"]
-    client_id     = config["client_id"]
-    client_secret = get_or_retrieve_client_secret(config)
+    if not CLIENT_ID or not CLIENT_SECRET:
+        print("[error] OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET must be set in outlook-skills/.env")
+        print("        Copy outlook-skills/.env.example to outlook-skills/.env and fill in your Azure app credentials.")
+        sys.exit(1)
 
     # Check existing session
     if not force:
@@ -332,19 +255,18 @@ def do_auth(config: dict, permissions: list[str], force: bool = False):
             if age < MAX_SESSION_AGE:
                 days_left = int((MAX_SESSION_AGE - age) / 86400)
                 email = tokens.get("user_email", "unknown")
-                print(f"\n  ✓ Already authenticated as {email}")
+                print(f"\n  Already authenticated as {email}")
                 print(f"    Session valid for ~{days_left} more days.")
                 print(f"    Use --reauth to force a new login.\n")
                 return
             else:
                 print("  Session has expired (>30 days). Starting re-authentication...\n")
 
-    # Build scopes and PKCE
-    scopes                  = build_scopes(permissions)
+    scopes                   = build_scopes(permissions)
     code_verifier, challenge = generate_pkce()
-    state                   = secrets.token_urlsafe(32)
+    state                    = secrets.token_urlsafe(32)
 
-    auth_url = build_auth_url(tenant_id, client_id, scopes, state, challenge)
+    auth_url = build_auth_url(TENANT_ID, CLIENT_ID, scopes, state, challenge)
 
     print("  Opening browser for Microsoft login...")
     print(f"  Requested permissions: {', '.join(permissions)}")
@@ -354,7 +276,6 @@ def do_auth(config: dict, permissions: list[str], force: bool = False):
 
     webbrowser.open(auth_url)
 
-    # Wait for redirect
     print("  Waiting for authentication... (2 minute timeout)")
     try:
         result = wait_for_callback(state, timeout=120)
@@ -367,36 +288,34 @@ def do_auth(config: dict, permissions: list[str], force: bool = False):
         print(f"          {result.get('description', '')}")
         sys.exit(1)
 
-    # Validate state to prevent CSRF
     if not hmac.compare_digest(result.get("state", ""), state):
         print("\n  [error] State mismatch — possible CSRF. Aborting.")
         sys.exit(1)
 
     print("  Login successful. Exchanging code for tokens...")
 
-    token_response = exchange_code(tenant_id, client_id, client_secret,
+    token_response = exchange_code(TENANT_ID, CLIENT_ID, CLIENT_SECRET,
                                    result["code"], code_verifier)
 
     email = decode_id_token_email(token_response.get("id_token", ""))
 
-    # Build token record
     tokens = {
         "access_token":            token_response["access_token"],
         "refresh_token":           token_response["refresh_token"],
         "access_token_expires_at": time.time() + token_response.get("expires_in", 3600) - 60,
-        "session_started_at":      time.time(),   # Never updated — enforces 30-day limit
+        "session_started_at":      time.time(),
         "scopes":                  token_response.get("scope", "").split(),
         "user_email":              email,
-        "tenant_id":               tenant_id,
-        "client_id":               client_id,
+        "tenant_id":               TENANT_ID,
+        "client_id":               CLIENT_ID,
+        "client_secret":           CLIENT_SECRET,
     }
 
     save_tokens(tokens)
 
-    print(f"\n  ✓ Authenticated as: {email}")
+    print(f"\n  Authenticated as: {email}")
     print(f"    Scopes granted: {', '.join(tokens['scopes'])}")
-    print(f"    Tokens encrypted and stored at: {TOKEN_FILE}")
-    print(f"    Encryption key stored in OS keychain.")
+    print(f"    Tokens stored at: {TOKEN_FILE}")
     print(f"    Session will expire in 30 days.\n")
 
 
@@ -404,10 +323,10 @@ def do_status():
     """Print current auth status."""
     tokens = load_tokens()
     if not tokens:
-        print("\n  Not authenticated. Run auth.sh to set up.\n")
+        print("\n  Not authenticated. Run auth.sh (or auth.ps1) to set up.\n")
         return
 
-    age      = time.time() - tokens.get("session_started_at", 0)
+    age       = time.time() - tokens.get("session_started_at", 0)
     days_used = int(age / 86400)
     days_left = max(0, int((MAX_SESSION_AGE - age) / 86400))
     token_exp = tokens.get("access_token_expires_at", 0)
@@ -431,35 +350,26 @@ def do_revoke():
 
     email = tokens.get("user_email", "unknown")
     delete_tokens()
-    print(f"\n  ✓ Tokens for {email} have been revoked and deleted.")
-    print(f"    Keychain entry removed.\n")
+    print(f"\n  Tokens for {email} have been revoked and deleted.\n")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description="Azure OAuth skill authentication")
-    parser.add_argument("--reauth",  action="store_true", help="Force new browser login")
-    parser.add_argument("--revoke",  action="store_true", help="Delete all stored tokens")
-    parser.add_argument("--status",  action="store_true", help="Show auth status")
-    parser.add_argument("--scopes",  nargs="*", default=DEFAULT_PERMISSIONS,
+    parser.add_argument("--reauth", action="store_true", help="Force new browser login")
+    parser.add_argument("--revoke", action="store_true", help="Delete all stored tokens")
+    parser.add_argument("--status", action="store_true", help="Show auth status")
+    parser.add_argument("--scopes", nargs="*", default=DEFAULT_PERMISSIONS,
                         help=f"Permissions to request. Options: {list(SCOPE_CATALOGUE.keys())}")
     args = parser.parse_args()
-
-    # Load config
-    if not CONFIG_FILE.exists():
-        print(f"[error] Config not found at {CONFIG_FILE}")
-        sys.exit(1)
-
-    with open(CONFIG_FILE) as f:
-        config = json.load(f)
 
     if args.revoke:
         do_revoke()
     elif args.status:
         do_status()
     else:
-        do_auth(config, args.scopes, force=args.reauth)
+        do_auth(args.scopes, force=args.reauth)
 
 
 if __name__ == "__main__":

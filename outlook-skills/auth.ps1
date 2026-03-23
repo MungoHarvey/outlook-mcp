@@ -3,9 +3,9 @@
 # PowerShell entry point for Azure OAuth authentication setup.
 # Parallel to auth.sh -- works on Windows without requiring bash or WSL.
 #
-# Config:  outlook-skills\config.json  (copy from config.example.json)
-# Venv:    outlook-skills\.venv        (created here, never in Claude dirs)
-# Tokens:  outlook-skills\tokens.enc  (gitignored, never in Claude dirs)
+# Credentials: outlook-skills\.env  (copy from .env.example)
+# Venv:        outlook-skills\.venv (created here, never in Claude dirs)
+# Tokens:      outlook-skills\tokens.json (gitignored)
 #
 # Usage:
 #   .\outlook-skills\auth.ps1            # full auth flow
@@ -20,17 +20,17 @@ param(
     [switch]$Revoke
 )
 
-$ScriptDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
-$VenvDir       = Join-Path $ScriptDir ".venv"
-$Runner        = Join-Path $ScriptDir "auth_runner.py"
-$Requirements  = Join-Path $ScriptDir "requirements.txt"
-$ConfigFile    = Join-Path $ScriptDir "config.json"
-$ConfigExample = Join-Path $ScriptDir "config.example.json"
+$ScriptDir    = Split-Path -Parent $MyInvocation.MyCommand.Path
+$VenvDir      = Join-Path $ScriptDir ".venv"
+$Runner       = Join-Path $ScriptDir "auth_runner.py"
+$Requirements = Join-Path $ScriptDir "requirements.txt"
+$EnvFile      = Join-Path $ScriptDir ".env"
+$EnvExample   = Join-Path $ScriptDir ".env.example"
 
 Write-Host ""
 Write-Host "Azure Skills Authentication"
-Write-Host "  Config: $ConfigFile"
-Write-Host "  Venv:   $VenvDir"
+Write-Host "  Credentials: $EnvFile"
+Write-Host "  Venv:        $VenvDir"
 Write-Host ""
 
 # -- Bootstrap virtual environment --------------------------------------------
@@ -54,7 +54,7 @@ if ($useUv) {
     . $activateScript
 
     $needsInstall = $false
-    try { python -c "import keyring, cryptography" 2>$null; if ($LASTEXITCODE -ne 0) { $needsInstall = $true } }
+    try { python -c "import dotenv" 2>$null; if ($LASTEXITCODE -ne 0) { $needsInstall = $true } }
     catch { $needsInstall = $true }
 
     if ($needsInstall) {
@@ -92,7 +92,7 @@ if ($useUv) {
     . $activateScript
 
     $needsInstall = $false
-    try { python -c "import keyring, cryptography" 2>$null; if ($LASTEXITCODE -ne 0) { $needsInstall = $true } }
+    try { python -c "import dotenv" 2>$null; if ($LASTEXITCODE -ne 0) { $needsInstall = $true } }
     catch { $needsInstall = $true }
 
     if ($needsInstall) {
@@ -104,33 +104,19 @@ if ($useUv) {
     }
 }
 
-# -- Validate config.json -----------------------------------------------------
-if (-not (Test-Path $ConfigFile)) {
+# -- Validate .env exists -----------------------------------------------------
+if (-not (Test-Path $EnvFile)) {
     Write-Host ""
-    Write-Warning "No config found at $ConfigFile"
+    Write-Warning "No .env found at $EnvFile"
     Write-Host ""
-    Write-Host "  Copy the template and fill in your Azure app details:"
-    Write-Host "    Copy-Item '$ConfigExample' '$ConfigFile'"
-    Write-Host "    notepad '$ConfigFile'"
+    Write-Host "  Copy the template and fill in your Azure app credentials:"
+    Write-Host "    Copy-Item '$EnvExample' '$EnvFile'"
+    Write-Host "    notepad '$EnvFile'"
     Write-Host ""
-    Write-Host "  Required fields: tenant_id, client_id"
+    Write-Host "  Required: OUTLOOK_CLIENT_ID, OUTLOOK_CLIENT_SECRET, OUTLOOK_TENANT_ID"
     exit 1
 }
-
-try {
-    $cfg = Get-Content $ConfigFile -Raw | ConvertFrom-Json
-} catch {
-    Write-Error "config.json is not valid JSON: $_"
-    exit 1
-}
-
-$missing = @("tenant_id", "client_id") | Where-Object { -not $cfg.$_ }
-if ($missing.Count -gt 0) {
-    Write-Error "config.json is missing: $($missing -join ', ')"
-    Write-Host "  See $ConfigExample for reference"
-    exit 1
-}
-Write-Host "  [ok]   Config valid"
+Write-Host "  [ok]   Credentials file found"
 
 # -- Delegate to auth_runner.py -----------------------------------------------
 $runnerArgs = @()

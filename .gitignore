@@ -35,9 +35,10 @@ logs
 # Folders
 research/
 
-# Virtual environments and encrypted files
+# Virtual environments and token/credential files
 outlook-skills/.venv/
-*.enc
+outlook-skills/.env
+outlook-skills/tokens.json
 outlook-skills/config.json
 
 # Packaged distribution zips

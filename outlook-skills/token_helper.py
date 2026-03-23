@@ -14,39 +14,23 @@ Usage:
         print(f"Please run: bash outlook-skills/auth.sh\\n{e}")
 
 The helper:
-  - Decrypts tokens using the OS keychain key
+  - Loads tokens from outlook-skills/tokens.json (plain JSON, gitignored)
   - Returns a valid access token, refreshing silently if expired
   - Raises AuthRequiredError if the 30-day session has expired or no tokens exist
 """
 
-import base64
 import json
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
 
-# ── Optional dependency guard ─────────────────────────────────────────────────
-try:
-    import keyring
-    from cryptography.fernet import Fernet
-except ImportError:
-    raise ImportError(
-        "Missing dependencies. Run: bash outlook-skills/auth.sh"
-    )
-
-
 # ── Constants ─────────────────────────────────────────────────────────────────
-# Token file lives alongside this script in the cloned repo (gitignored).
-TOKEN_FILE      = Path(__file__).parent / "tokens.enc"
+_SCRIPT_DIR     = Path(__file__).parent
+TOKEN_FILE      = _SCRIPT_DIR / "tokens.json"
 MAX_SESSION_AGE = 30 * 24 * 60 * 60   # 30 days
-
-from constants import (
-    KEYCHAIN_SERVICE,
-    KEYCHAIN_USER_ENCRYPTION_KEY,
-    KEYCHAIN_USER_CLIENT_SECRET,
-)
 
 
 # ── Exceptions ────────────────────────────────────────────────────────────────
@@ -64,45 +48,26 @@ class TokenRefreshError(Exception):
     pass
 
 
-# ── Internal: keychain + store ────────────────────────────────────────────────
-
-def _get_encryption_key() -> bytes:
-    """Retrieve encryption key from OS keychain."""
-    key = keyring.get_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_ENCRYPTION_KEY)
-    if not key:
-        raise AuthRequiredError(
-            "No encryption key found in keychain. "
-            "Run: bash outlook-skills/auth.sh"
-        )
-    return base64.urlsafe_b64decode(key.encode())
-
+# ── Internal: load + save ─────────────────────────────────────────────────────
 
 def _load_tokens() -> dict:
-    """Decrypt and load tokens from disk."""
+    """Load tokens from disk."""
     if not TOKEN_FILE.exists():
         raise AuthRequiredError(
             "No token file found. Run: bash outlook-skills/auth.sh"
         )
     try:
-        key  = _get_encryption_key()
-        f    = Fernet(key)
-        data = f.decrypt(TOKEN_FILE.read_bytes())
-        return json.loads(data)
-    except AuthRequiredError:
-        raise
+        return json.loads(TOKEN_FILE.read_text())
     except Exception as e:
         raise AuthRequiredError(
-            f"Could not decrypt token store ({e}). "
+            f"Could not read token store ({e}). "
             "Run: bash outlook-skills/auth.sh --reauth"
         )
 
 
 def _save_tokens(tokens: dict):
-    """Encrypt and persist updated tokens (used after refresh)."""
-    key  = _get_encryption_key()
-    f    = Fernet(key)
-    data = f.encrypt(json.dumps(tokens).encode())
-    TOKEN_FILE.write_bytes(data)
+    """Persist updated tokens (used after refresh)."""
+    TOKEN_FILE.write_text(json.dumps(tokens, indent=2))
     TOKEN_FILE.chmod(0o600)
 
 
@@ -116,15 +81,11 @@ def _refresh_access_token(tokens: dict) -> dict:
     """
     tenant_id     = tokens.get("tenant_id", "")
     client_id     = tokens.get("client_id", "")
+    client_secret = tokens.get("client_secret", "")
 
-    # client_secret is stored in OS keychain — never in config.json
-    try:
-        client_secret = keyring.get_password(KEYCHAIN_SERVICE, KEYCHAIN_USER_CLIENT_SECRET) or ""
-    except Exception:
-        client_secret = ""
     if not client_secret:
         raise AuthRequiredError(
-            "Client secret not found in keychain. "
+            "Client secret not found in token store. "
             "Run: bash outlook-skills/auth.sh"
         )
 
@@ -152,7 +113,6 @@ def _refresh_access_token(tokens: dict) -> dict:
             pass
 
         error_code = error_data.get("error", "")
-        # These errors mean the refresh token is dead — need full re-auth
         if error_code in ("invalid_grant", "interaction_required", "consent_required"):
             raise AuthRequiredError(
                 f"Refresh token rejected ({error_code}). "
@@ -164,8 +124,7 @@ def _refresh_access_token(tokens: dict) -> dict:
     tokens["access_token"]            = data["access_token"]
     tokens["access_token_expires_at"] = time.time() + data.get("expires_in", 3600) - 60
 
-    # Azure may rotate the refresh token — always update it if provided
-    # Note: do NOT update session_started_at — that would reset the 30-day clock
+    # Azure may rotate the refresh token — always update if provided
     if "refresh_token" in data:
         tokens["refresh_token"] = data["refresh_token"]
 
@@ -179,7 +138,7 @@ def get_token() -> str:
     Return a valid Bearer access token.
 
     Transparently handles:
-      - Decryption from local encrypted store
+      - Loading from local token store
       - Silent refresh when access token is expired
       - 30-day session enforcement
 
@@ -192,7 +151,6 @@ def get_token() -> str:
     # ── 30-day session check ──────────────────────────────────────────────────
     session_age = time.time() - tokens.get("session_started_at", 0)
     if session_age > MAX_SESSION_AGE:
-        # Wipe tokens to prevent stale use
         _save_tokens({})
         raise AuthRequiredError(
             "Session has expired (30-day limit). "
@@ -219,13 +177,13 @@ def get_session_info() -> dict:
     except AuthRequiredError:
         return {"authenticated": False}
 
-    age      = time.time() - tokens.get("session_started_at", 0)
+    age       = time.time() - tokens.get("session_started_at", 0)
     days_left = max(0, int((MAX_SESSION_AGE - age) / 86400))
 
     return {
-        "authenticated": True,
-        "user_email":    tokens.get("user_email", "unknown"),
+        "authenticated":  True,
+        "user_email":     tokens.get("user_email", "unknown"),
         "days_remaining": days_left,
-        "scopes":        tokens.get("scopes", []),
-        "token_valid":   time.time() < tokens.get("access_token_expires_at", 0),
+        "scopes":         tokens.get("scopes", []),
+        "token_valid":    time.time() < tokens.get("access_token_expires_at", 0),
     }

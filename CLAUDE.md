@@ -47,12 +47,13 @@ OUTLOOK_INTEGRATION_TEST=true npm run test:integration  # live API smoke tests (
 
 Auth and the API proxy live in the cloned repo — nothing is copied elsewhere. Two parallel workflows are supported.
 
-Auth data (config, venv, tokens) lives entirely within the cloned repo — nothing is written to Claude directories or system config folders. `uv` is used for the Python environment (falls back to pip if uv is not installed).
+Auth data (.env, venv, tokens) lives entirely within the cloned repo — nothing is written to Claude directories or system config folders. `uv` is used for the Python environment (falls back to pip if uv is not installed).
 
 ### macOS / Linux / WSL / Git Bash
 ```bash
-# 1. Create config in-repo (gitignored) and fill in tenant_id + client_id
-cp outlook-skills/config.example.json outlook-skills/config.json
+# 1. Create credentials file (gitignored) and fill in your Azure app details
+cp outlook-skills/.env.example outlook-skills/.env
+# Edit outlook-skills/.env — add OUTLOOK_CLIENT_ID, OUTLOOK_CLIENT_SECRET, OUTLOOK_TENANT_ID
 
 # 2. Authenticate — creates .venv via uv, stores tokens in outlook-skills/
 bash outlook-skills/auth.sh
@@ -66,8 +67,9 @@ npm install
 
 ### Windows (PowerShell)
 ```powershell
-# 1. Create config in-repo (gitignored) and fill in tenant_id + client_id
-Copy-Item outlook-skills\config.example.json outlook-skills\config.json
+# 1. Create credentials file (gitignored) and fill in your Azure app details
+Copy-Item outlook-skills\.env.example outlook-skills\.env
+# Edit outlook-skills\.env — add OUTLOOK_CLIENT_ID, OUTLOOK_CLIENT_SECRET, OUTLOOK_TENANT_ID
 
 # 2. Authenticate -- creates .venv via uv, stores tokens in outlook-skills\
 .\outlook-skills\auth.ps1
@@ -147,20 +149,21 @@ Skills that link to reference data (timezones, colors, errors, graph-api-pattern
 
 ## Environment Variables
 
+All credentials are set in `outlook-skills/.env` (gitignored). Copy `.env.example` as a starting template.
+
 | Variable | Required | Description |
 |---|---|---|
 | `OUTLOOK_CLIENT_ID` | Yes | Azure AD application client ID |
-| `OUTLOOK_CLIENT_SECRET` | Keychain | Stored in OS keychain via auth setup — not in env vars |
+| `OUTLOOK_CLIENT_SECRET` | Yes | Azure AD application client secret |
 | `OUTLOOK_TENANT_ID` | No | Tenant ID (defaults to `common` for personal accounts) |
-| `MS_TENANT_ID` | No | Alternative tenant ID variable |
 | `OUTLOOK_REDIRECT_URI` | No | OAuth redirect (default: `http://localhost:8400/callback`) |
 
 ## Security Architecture
 
 Tokens are never exposed to the LLM. The security boundary works as follows:
 
-1. **Auth**: `bash outlook-skills/auth.sh` runs the OAuth 2.0 + PKCE flow and stores encrypted tokens
-2. **Encryption**: Tokens encrypted at rest with AES-256 Fernet; encryption key in OS keychain
+1. **Auth**: `bash outlook-skills/auth.sh` runs the OAuth 2.0 + PKCE flow and stores tokens in `outlook-skills/tokens.json` (gitignored)
+2. **Credentials**: `outlook-skills/.env` holds client credentials (gitignored); tokens include the client secret for silent refresh
 3. **API calls**: `python3 scripts/graph_call.py METHOD "/endpoint"` — injects Bearer token internally, returns only JSON response
 4. **LLM rule**: Never import `token_helper`, call the token acquisition function, or read token files directly
 
