@@ -35,6 +35,14 @@ logs
 # Folders
 research/
 
+# Skill eval workspaces (contain live API output and may include personal data)
+.claude/skills/*-workspace/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
 # Virtual environments and token/credential files
 outlook-skills/.venv/
 outlook-skills/.env

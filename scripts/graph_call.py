@@ -24,35 +24,21 @@ from pathlib import Path
 
 _AUTH_CMD = r".\outlook-skills\auth.ps1" if sys.platform == "win32" else "bash outlook-skills/auth.sh"
 
-# ── Bootstrap: add venv site-packages to sys.path ──────────────────────────────
-_script_dir = Path(__file__).parent
-_venv_base = _script_dir.parent / "outlook-skills" / ".venv"
+# ── Bootstrap: add outlook-skills to sys.path ─────────────────────────────────
+_skills_dir = Path(__file__).parent.parent / "outlook-skills"
+if str(_skills_dir) not in sys.path:
+    sys.path.insert(0, str(_skills_dir))
 
+# ── Bootstrap: optionally add venv site-packages (for dotenv if installed) ────
+_venv_base = _skills_dir / ".venv"
 if sys.platform == "win32":
     _site_pkgs = _venv_base / "Lib" / "site-packages"
 else:
-    # POSIX: lib/python3.X/site-packages
     _matches = glob.glob(str(_venv_base / "lib" / "python3.*" / "site-packages"))
     _site_pkgs = Path(_matches[0]) if _matches else None
 
 if _site_pkgs and _site_pkgs.exists():
     sys.path.insert(0, str(_site_pkgs))
-
-
-# ── Bootstrap: check venv exists ──────────────────────────────────────────────
-if not (_site_pkgs and _site_pkgs.exists()):
-    print(json.dumps({
-        "status": 500,
-        "error": "venv_missing",
-        "message": f"Run: {_AUTH_CMD} to set up dependencies"
-    }))
-    sys.exit(1)
-
-
-# ── Bootstrap: add outlook-skills to sys.path ─────────────────────────────────
-_skills_dir = Path(__file__).parent.parent / "outlook-skills"
-if str(_skills_dir) not in sys.path:
-    sys.path.insert(0, str(_skills_dir))
 
 
 # ── Lazy-import token helper (deferred to allow --help without auth deps) ──────

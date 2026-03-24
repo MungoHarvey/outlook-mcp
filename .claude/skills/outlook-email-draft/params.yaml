@@ -1,0 +1,10 @@
+# outlook-email-draft parameter options
+
+importance:
+  - normal      # default
+  - high
+  - low
+
+contentType:
+  - text        # plain text (default)
+  - html        # HTML content

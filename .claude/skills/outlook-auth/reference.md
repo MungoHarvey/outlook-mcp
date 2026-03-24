@@ -45,3 +45,16 @@ For Microsoft 365 / organizational accounts:
 1. Find Tenant ID: Azure Portal → Azure Active Directory → Overview → Tenant ID
 2. Set in `.env`: `OUTLOOK_TENANT_ID=your-tenant-id`
 3. Or set: `MS_TENANT_ID=your-tenant-id` (alternative variable)
+
+## Error Handling
+
+| Error | Cause | Resolution |
+|---|---|---|
+| AADSTS7000215 | Used secret **ID** instead of secret **value** | Copy the Value column from Certificates & secrets, not the Secret ID |
+| AADSTS700016 | Wrong client ID or app not found | Verify `OUTLOOK_CLIENT_ID` matches the Application (client) ID in Azure |
+| AADSTS50011 | Redirect URI mismatch | Ensure Azure app has `http://localhost:8400/callback` as a Web redirect URI |
+| AADSTS65001 | Missing consent / permissions | Re-run auth with `--reauth`; ensure all required API permissions are added |
+| AADSTS70011 | Invalid scope requested | Check that all requested scopes are added as delegated permissions in Azure |
+| 401 from Graph API after auth | Token expired and refresh failed | Run `auth.sh --reauth` to get fresh tokens |
+| Port 8400 in use | Another auth process is running | Kill the other process or wait for it to finish |
+| `client_secret not found` | Missing from tokens.json and .env | Run `auth.sh --reauth` to re-authenticate with current credentials |

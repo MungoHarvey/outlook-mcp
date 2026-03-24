@@ -4,53 +4,75 @@
 
 | Endpoint | Use When |
 |---|---|
-| `/me/calendarView` | Date-range queries — expands recurring events into individual occurrences |
-| `/me/events` | Listing all events without a date range, or when you need the master recurring event |
+| `/me/calendarView` | Date-range queries — expands recurring events into individual occurrences ✓ preferred |
+| `/me/events` | Listing without a date range, or when you need the master recurring event |
 
-## Alternative Listing (No Date Range)
+## Common Date Ranges
 
-```bash
-python3 scripts/graph_call.py GET "/me/events?$top=10&$orderby=start/dateTime&$select=id,subject,start,end,location,organizer,attendees,isAllDay,showAs,categories"
+```python
+from datetime import datetime, timedelta, timezone
+
+now   = datetime.now()
+today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+# Today
+start = today.strftime("%Y-%m-%dT00:00:00")
+end   = today.strftime("%Y-%m-%dT23:59:59")
+
+# This week (Mon–Sun)
+monday = today - timedelta(days=today.weekday())
+end    = (monday + timedelta(days=7)).strftime("%Y-%m-%dT00:00:00")
+start  = monday.strftime("%Y-%m-%dT00:00:00")
+
+# Next N days from now
+start = now.strftime("%Y-%m-%dT%H:%M:%S")
+end   = (now + timedelta(days=N)).strftime("%Y-%m-%dT%H:%M:%S")
 ```
 
-## Parsing Template
+## Alternative: No Date Range
 
 ```bash
-python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-for i, evt in enumerate(data.get('value', []), 1):
-    start = evt.get('start', {}).get('dateTime', '')[:16]
-    end = evt.get('end', {}).get('dateTime', '')[:16]
-    loc = evt.get('location', {}).get('displayName', '')
-    cancelled = ' [CANCELLED]' if evt.get('isCancelled') else ''
-    allday = ' [ALL DAY]' if evt.get('isAllDay') else ''
-    online = ' [TEAMS]' if evt.get('isOnlineMeeting') else ''
-    print(f\"{i}. {evt.get('subject', '(no subject)')}{cancelled}{allday}{online}\")
-    print(f\"   {start} — {end}\")
-    if loc:
-        print(f\"   Location: {loc}\")
-    attendees = evt.get('attendees', [])
-    if attendees:
-        names = ', '.join(a.get('emailAddress', {}).get('name', a.get('emailAddress', {}).get('address', '')) for a in attendees[:5])
-        print(f\"   Attendees: {names}{'...' if len(attendees) > 5 else ''}\")
-    cats = evt.get('categories', [])
-    if cats:
-        print(f\"   Categories: {', '.join(cats)}\")
-    print(f\"   Show as: {evt.get('showAs', 'busy')}\")
-    print(f\"   ID: {evt.get('id')}\")
-    print()
-next_link = data.get('@odata.nextLink')
-if next_link:
-    print(f'More results available. Next page: {next_link}')
-"
+python3 scripts/graph_call.py GET \
+  "/me/events?$top=10&$orderby=start/dateTime&$select=id,subject,start,end,location,organizer,isAllDay,showAs,categories"
 ```
 
-## Today's Events Shortcut
+## Searching for a Specific Event
+
+Use `$filter` with `contains`:
 
 ```bash
-START=$(date -u +"%Y-%m-%dT00:00:00.0000000")
-END=$(date -u +"%Y-%m-%dT23:59:59.0000000")
+python3 scripts/graph_call.py GET \
+  "/me/events?$filter=contains(subject,'budget')&$select=id,subject,start,end,location"
+```
+
+## Day-of-Week Computation
+
+Always derive the day name from the date itself — never count sequentially from an assumed starting day:
+
+```python
+from datetime import datetime
+dt = datetime.fromisoformat("2026-03-24T09:00:00")
+day_name = dt.strftime("%A")   # "Tuesday" — computed, never assumed
+```
+
+## Cross-Platform strftime
+
+| Goal | Linux/Mac | Windows |
+|---|---|---|
+| Day without leading zero | `%-d` | `%#d` |
+| Hour without leading zero | `%-I` | `%#I` |
+
+## Attendee Formatting
+
+```python
+attendees = evt.get("attendees", [])
+names = ", ".join(
+    a.get("emailAddress", {}).get("name") or
+    a.get("emailAddress", {}).get("address", "")
+    for a in attendees[:5]
+)
+if len(attendees) > 5:
+    names += f" +{len(attendees)-5} more"
 ```
 
 ## Error Handling
@@ -60,3 +82,4 @@ See [errors](references/errors.yaml) for common HTTP error codes.
 | Code | Specific Meaning |
 |---|---|
 | 403 | Calendar may be read-only or insufficient permissions |
+| 400 | startDateTime/endDateTime must be in ISO 8601 format |

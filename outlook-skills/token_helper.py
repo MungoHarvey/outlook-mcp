@@ -102,12 +102,12 @@ def _refresh_access_token(tokens: dict) -> dict:
     """
     tenant_id     = tokens.get("tenant_id", "")
     client_id     = tokens.get("client_id", "")
-    client_secret = os.environ.get("OUTLOOK_CLIENT_SECRET", "")
+    client_secret = tokens.get("client_secret", "") or os.environ.get("OUTLOOK_CLIENT_SECRET", "")
 
     if not client_secret:
         raise AuthRequiredError(
-            "OUTLOOK_CLIENT_SECRET not found. "
-            "Ensure outlook-skills/.env exists with your credentials and run auth again."
+            "client_secret not found in token store or environment. "
+            "Run: bash outlook-skills/auth.sh --reauth"
         )
 
     url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
