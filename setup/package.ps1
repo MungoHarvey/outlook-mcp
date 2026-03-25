@@ -36,8 +36,9 @@ $PkgDir    = Join-Path $Tmp $PkgName
 New-Item -ItemType Directory -Force -Path $PkgDir | Out-Null
 
 # Forward-slash paths for use inside .md file content
-$ProxyPath = ($InstallDir + "\scripts\graph_call.py") -replace '\\', '/'
-$AuthPath  = ($InstallDir + "\outlook-skills\auth.sh") -replace '\\', '/'
+$ProxyPath   = ($InstallDir + "\scripts\graph_call.py") -replace '\\', '/'
+$AuthPathSh  = ($InstallDir + "\outlook-skills\auth.sh")  -replace '\\', '/'
+$AuthPathPs1 = ($InstallDir + "\outlook-skills\auth.ps1") -replace '\\', '/'
 
 Write-Host "Packaging Outlook skills..."
 Write-Host "  Output:    $Output"
@@ -47,16 +48,17 @@ Write-Host ""
 # -- SKILLS.md overview -------------------------------------------------------
 Copy-Item -Force "$ScriptDir\SKILLS.md" "$PkgDir\SKILLS.md"
 
-# -- Skill folders (flat -- no .claude/skills/ nesting) ----------------------
-Get-ChildItem "$RootDir\.claude\skills" -Directory |
+# -- Skill folders (flat -- no nesting) --------------------------------------
+Get-ChildItem "$RootDir\skills" -Directory |
     Where-Object { $_.Name -like "outlook-*" } |
     ForEach-Object {
         $dest = Join-Path $PkgDir $_.Name
         Copy-Item -Recurse -Force $_.FullName $dest
         Get-ChildItem $dest -Recurse -Filter "*.md" | ForEach-Object {
             (Get-Content $_.FullName -Raw).
-                Replace('python3 scripts/graph_call.py', "python3 $ProxyPath").
-                Replace('bash outlook-skills/auth.sh', "bash $AuthPath") |
+                Replace('${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py', "$ProxyPath").
+                Replace('${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh', "$AuthPathSh").
+                Replace('${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1', "$AuthPathPs1") |
             Set-Content $_.FullName -Encoding UTF8 -NoNewline
         }
     }
@@ -71,4 +73,5 @@ Write-Host "Import into Claude Desktop or Cowork:"
 Write-Host "  Settings -> Skills -> Import from zip"
 Write-Host ""
 Write-Host "Auth must be set up in the repo before importing:"
-Write-Host "  bash $AuthPath"
+Write-Host "  Windows: .\`"$AuthPathPs1`""
+Write-Host "  Mac/Linux: bash $AuthPathSh"

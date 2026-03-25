@@ -1,0 +1,8 @@
+{
+  "name": "outlook-skills",
+  "version": "1.0.0",
+  "description": "Microsoft Outlook integration — email, calendar, contacts, folders, and inbox rules via the Microsoft Graph API",
+  "author": {
+    "name": "MungoHarvey"
+  }
+}

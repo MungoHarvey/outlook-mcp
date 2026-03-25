@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const SKILLS_DIR = path.join(__dirname, '..', '..', '.claude', 'skills');
+const SKILLS_DIR = path.join(__dirname, '..', '..', 'skills');
 
 const OPERATION_SKILLS = [
   'outlook-email-list', 'outlook-email-read', 'outlook-email-send',
@@ -25,7 +25,7 @@ describe('API call structure — graph_call.py patterns', () => {
       it('should use graph_call.py for API calls', () => {
         const content = fs.readFileSync(skillPath, 'utf8');
         assert.ok(
-          content.includes('python3 scripts/graph_call.py'),
+          content.includes('scripts/graph_call.py'),
           `${skill}/SKILL.md does not contain graph_call.py API call pattern`
         );
       });

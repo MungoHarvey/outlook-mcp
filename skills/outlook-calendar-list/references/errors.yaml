@@ -1,0 +1,40 @@
+# Microsoft Graph API Common Error Codes
+# Reference this from any skill when handling API responses
+
+http_codes:
+  200:
+    meaning: Success
+    action: Parse JSON response
+  201:
+    meaning: Created
+    action: Parse JSON response for new resource ID
+  202:
+    meaning: Accepted (no body)
+    action: Operation queued (e.g., sendMail)
+  204:
+    meaning: No Content
+    action: Operation succeeded (e.g., delete, mark read)
+  400:
+    meaning: Bad Request
+    action: Check request body format and field values
+  401:
+    meaning: Unauthorized / Token expired
+    action: "`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py` handles token refresh and retry automatically — no manual action needed"
+  403:
+    meaning: Insufficient permissions
+    action: User must re-authenticate with broader scopes
+  404:
+    meaning: Resource not found
+    action: Resource may have been deleted or moved; report to user
+  409:
+    meaning: Conflict
+    action: Resource was modified by another client or name already exists
+  429:
+    meaning: Too Many Requests (throttled)
+    action: Wait per Retry-After header (seconds), then retry
+  500:
+    meaning: Internal Server Error
+    action: Retry once after 2-second wait
+  503:
+    meaning: Service Unavailable
+    action: Retry with exponential backoff (2s, 4s, 8s)

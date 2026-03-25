@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const yaml = require('js-yaml');
 
-const SKILLS_DIR = path.join(__dirname, '..', '..', '.claude', 'skills');
+const SKILLS_DIR = path.join(__dirname, '..', '..', 'skills');
 const FIXTURES_DIR = path.join(__dirname, 'fixtures');
 
 function parseFrontmatter(content) {

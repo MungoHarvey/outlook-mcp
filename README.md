@@ -1,10 +1,10 @@
 # Outlook Skills for Claude Code
 
-Claude Code skills for interacting with Microsoft Outlook — email, calendar, contacts, folders, rules, and categories — via the Microsoft Graph API.
+A Claude Code plugin providing skills for interacting with Microsoft Outlook — email, calendar, contacts, folders, rules, and categories — via the Microsoft Graph API.
 
 ## How It Works
 
-Instead of an MCP server, this project uses **Claude Code skills** — markdown files that teach Claude the Microsoft Graph API patterns. All API calls go through `scripts/graph_call.py`, a secure Python proxy that injects Bearer tokens internally. Tokens are stored in `outlook-skills/tokens.json` (gitignored) and never exposed to Claude.
+This project is a **Claude Code plugin** using skill files that teach Claude the Microsoft Graph API patterns. All API calls go through `scripts/graph_call.py`, a secure Python proxy that injects Bearer tokens internally. Tokens are stored in `outlook-skills/tokens.json` (gitignored) and never exposed to Claude.
 
 Authentication is handled by `outlook-skills/auth-server.js` — a small Node.js HTTP server that performs the OAuth 2.0 Authorization Code flow identically to the companion MCP server: a server-side redirect to Microsoft login, a local callback to exchange the code for tokens, and silent refresh thereafter.
 
@@ -16,9 +16,9 @@ Authentication is handled by `outlook-skills/auth-server.js` — a small Node.js
 
 ## Quick Start
 
-1. **Clone the repository (skills branch):**
+1. **Clone the repository:**
    ```bash
-   git clone --branch outlook-skills https://github.com/MungoHarvey/outlook-mcp.git
+   git clone --branch plugin-dev https://github.com/MungoHarvey/outlook-mcp.git
    cd outlook-mcp
    ```
 
@@ -42,12 +42,24 @@ Authentication is handled by `outlook-skills/auth-server.js` — a small Node.js
    ```
    This opens a browser tab for Microsoft login. On success, tokens are saved to `outlook-skills/tokens.json` (gitignored).
 
-4. **Install test dependencies (optional):**
+4. **Install as a Claude Code plugin:**
+   ```bash
+   cc --plugin-dir /path/to/outlook-mcp
+   ```
+
+   Alternatively, for **Claude Desktop / Cowork**, package as a zip:
+   ```bash
+   bash setup/package.sh          # macOS/Linux
+   .\setup\package.ps1            # Windows
+   ```
+   Then import via Settings → Skills → Import from zip.
+
+5. **Install test dependencies (optional):**
    ```bash
    npm install
    ```
 
-5. **Use naturally in Claude:**
+6. **Use naturally in Claude:**
    ```
    Check my inbox
    What meetings do I have this week?
@@ -164,7 +176,10 @@ Tokens are refreshed automatically when expired. Re-authentication is only neede
 ## Project Structure
 
 ```
-.claude/skills/                          # 18 skill folders
+.claude-plugin/
+  plugin.json                            # Plugin manifest
+
+skills/                                  # 19 skill folders (auto-discovered by plugin)
   outlook-base/SKILL.md                  # Shared: proxy patterns, error handling
   outlook-auth/SKILL.md                  # Authentication flow
   outlook-email-{list,read,draft,send,   # 8 email operation skills
@@ -194,7 +209,7 @@ test/
   integration/                           # Live API smoke tests (requires auth)
 ```
 
-Each skill folder contains a lean `SKILL.md` (~40-60 lines) plus adjacent `reference.md` and optional `params.yaml`.
+Each skill folder contains a lean `SKILL.md` (~40-60 lines) plus adjacent `reference.md` and optional `params.yaml`. Paths in skill files use `${CLAUDE_PLUGIN_ROOT}` for portability.
 
 ---
 
