@@ -81,54 +81,9 @@ Authentication is handled by `outlook-skills/auth-server.js` — a small Node.js
 
 ## Azure App Registration
 
-### 1. Register the App
+You need an Azure App Registration to use these skills. Follow the **[Visual Setup Guide](setup/AZURE_SETUP.md)** for step-by-step instructions with screenshots.
 
-1. Open [Azure Portal](https://portal.azure.com/) and search for **App registrations**
-2. Click **New registration**
-3. **Name:** anything descriptive (e.g. "Outlook Skills")
-4. **Supported account types:** Accounts in any organizational directory and personal Microsoft accounts
-5. **Redirect URI:** select **Web** and enter `http://localhost:8400/auth/callback`
-6. Click **Register**
-7. Copy the **Application (client) ID** — you'll need this for your `.env` file
-
-### 2. Add API Permissions
-
-1. Go to **API permissions** → **Add a permission** → **Microsoft Graph** → **Delegated permissions**
-2. Add the following permissions:
-
-   | Permission | Purpose |
-   |---|---|
-   | `offline_access` | Silent token refresh |
-   | `User.Read` | Read your profile |
-   | `Mail.Read` | Read emails |
-   | `Mail.ReadWrite` | Organise, move, delete emails |
-   | `Mail.Send` | Send emails |
-   | `Calendars.Read` | Read calendar events |
-   | `Calendars.ReadWrite` | Create and update events |
-   | `Contacts.Read` | Read contacts |
-
-3. Click **Add permissions**
-
-> No admin consent is required — all permissions are delegated (user-level).
-
-### 3. Create a Client Secret
-
-1. Go to **Certificates & secrets** → **Client secrets** → **New client secret**
-2. Add a description and select an expiration period
-3. Click **Add**
-4. **Copy the VALUE** (the long string) — not the Secret ID. You will not be able to see it again.
-
-### 4. Configure `.env`
-
-Edit `outlook-skills/.env`:
-
-```bash
-OUTLOOK_TENANT_ID=common
-OUTLOOK_CLIENT_ID=your-application-client-id-here
-OUTLOOK_CLIENT_SECRET=your-client-secret-value-here
-```
-
-Use `OUTLOOK_TENANT_ID=common` for personal Microsoft accounts. For a work or school account restricted to a single tenant, use your Azure tenant ID instead — but note that tenant-specific endpoints may require admin consent for some permissions.
+**Quick summary:** Register an app in the [Azure Portal](https://portal.azure.com/), set the redirect URI to `http://localhost:8400/auth/callback`, add Microsoft Graph delegated permissions (Mail, Calendar, Contacts, User), create a client secret, and copy your credentials into `outlook-skills/.env`.
 
 ---
 

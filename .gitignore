@@ -53,3 +53,7 @@ outlook-skills/config.json
 # Packaged distribution zips
 outlook-skills.zip
 outlook-skills-*.zip
+
+# Source PowerPoint files and Office temp files
+setup/AzureGuide.pptx
+setup/~$*
