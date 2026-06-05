@@ -18,13 +18,15 @@ _safe_dir="${INSTALL_DIR//\\/\\\\}"
 _safe_dir="${_safe_dir//&/\\&}"
 _safe_dir="${_safe_dir//|/\\|}"
 
-for dir in "$ROOT_DIR/.claude/skills"/outlook-*/; do
+for dir in "$ROOT_DIR/skills"/outlook-*/; do
   name=$(basename "$dir")
   dest="$SKILLS_DIR/$name"
   cp -r "$dir" "$dest/"
+  # Rewrite ${CLAUDE_PLUGIN_ROOT} paths to absolute installed locations
   find "$dest" -name "*.md" -exec sed -i \
-    -e "s|python3 scripts/graph_call.py|python3 $_safe_dir/scripts/graph_call.py|g" \
-    -e "s|bash outlook-skills/auth.sh|bash $_safe_dir/outlook-skills/auth.sh|g" {} \;
+    -e "s|\${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py|$_safe_dir/scripts/graph_call.py|g" \
+    -e "s|\${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh|$_safe_dir/outlook-skills/auth.sh|g" \
+    -e "s|\${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1|$_safe_dir/outlook-skills/auth.ps1|g" {} \;
 done
 
 # 3. Bootstrap venv (no-op if already done)

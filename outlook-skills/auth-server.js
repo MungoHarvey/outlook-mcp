@@ -10,6 +10,7 @@
  *   node outlook-skills/auth-server.js            # start auth flow
  *   node outlook-skills/auth-server.js --status   # check token status
  *   node outlook-skills/auth-server.js --reauth   # force new login
+ *   node outlook-skills/auth-server.js --revoke   # delete stored tokens
  *
  * Credentials: outlook-skills/.env (OUTLOOK_CLIENT_ID, OUTLOOK_CLIENT_SECRET)
  */
@@ -75,6 +76,19 @@ const SCOPES = [
 const args = process.argv.slice(2);
 const isStatus = args.includes('--status');
 const isReauth = args.includes('--reauth');
+const isRevoke = args.includes('--revoke');
+
+// ── Revoke — delete stored tokens ───────────────────────────────────────────
+if (isRevoke) {
+  if (fs.existsSync(TOKEN_FILE)) {
+    fs.unlinkSync(TOKEN_FILE);
+    console.log(`\n  Tokens revoked and deleted: ${TOKEN_FILE}`);
+    console.log('  Run auth again to re-authenticate.\n');
+  } else {
+    console.log('\n  No tokens to revoke (already signed out).\n');
+  }
+  process.exit(0);
+}
 
 // ── Status check ────────────────────────────────────────────────────────────
 if (isStatus) {
