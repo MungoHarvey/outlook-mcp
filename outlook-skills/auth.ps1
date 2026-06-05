@@ -10,11 +10,13 @@
 #   .\outlook-skills\auth.ps1            # full auth flow
 #   .\outlook-skills\auth.ps1 -Status    # check token validity
 #   .\outlook-skills\auth.ps1 -Reauth    # force re-authentication
+#   .\outlook-skills\auth.ps1 -Revoke    # revoke and delete all tokens
 # =============================================================================
 
 param(
     [switch]$Status,
-    [switch]$Reauth
+    [switch]$Reauth,
+    [switch]$Revoke
 )
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -52,10 +54,12 @@ Write-Host ""
 $rawArgs = $MyInvocation.UnboundArguments
 $isReauth = $Reauth -or ($rawArgs -contains "--reauth")
 $isStatus = $Status -or ($rawArgs -contains "--status")
+$isRevoke = $Revoke -or ($rawArgs -contains "--revoke")
 
 $nodeArgs = @($AuthServer)
 if ($isStatus) { $nodeArgs += "--status" }
 if ($isReauth) { $nodeArgs += "--reauth" }
+if ($isRevoke) { $nodeArgs += "--revoke" }
 
 node @nodeArgs
 exit $LASTEXITCODE

@@ -57,7 +57,8 @@ for dir in "$ROOT_DIR/skills"/outlook-*/; do
     find "$dest" -name "*.md" -exec sed -i \
         -e "s|\${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py|$_safe_dir/scripts/graph_call.py|g" \
         -e "s|\${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh|$_safe_dir/outlook-skills/auth.sh|g" \
-        -e "s|\${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1|$_safe_dir/outlook-skills/auth.ps1|g" {} \;
+        -e "s|\${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1|$_safe_dir/outlook-skills/auth.ps1|g" \
+        -e "s|\${CLAUDE_PLUGIN_ROOT}/setup/azure-setup-guide.html|$_safe_dir/setup/azure-setup-guide.html|g" {} \;
 done
 
 # ── Create zip ────────────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@
 #   bash outlook-skills/auth.sh            # full auth flow
 #   bash outlook-skills/auth.sh --status   # check token validity
 #   bash outlook-skills/auth.sh --reauth   # force re-authentication
+#   bash outlook-skills/auth.sh --revoke   # revoke and delete all tokens
 # =============================================================================
 
 set -euo pipefail

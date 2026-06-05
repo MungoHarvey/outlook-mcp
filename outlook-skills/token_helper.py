@@ -110,13 +110,20 @@ def _refresh_access_token(tokens: dict) -> dict:
             "Run: bash outlook-skills/auth.sh --reauth"
         )
 
+    refresh_token = tokens.get("refresh_token")
+    if not refresh_token:
+        raise AuthRequiredError(
+            "No refresh_token found in token store. "
+            "Run: bash outlook-skills/auth.sh --reauth"
+        )
+
     url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
 
     payload = urllib.parse.urlencode({
         "client_id":     client_id,
         "client_secret": client_secret,
         "grant_type":    "refresh_token",
-        "refresh_token": tokens["refresh_token"],
+        "refresh_token": refresh_token,
     }).encode()
 
     req = urllib.request.Request(url, data=payload, method="POST")
