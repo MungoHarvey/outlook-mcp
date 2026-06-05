@@ -14,8 +14,9 @@ All Microsoft Graph API calls go through `scripts/graph_call.py` — a secure Py
 .claude-plugin/
   plugin.json                  — Plugin manifest
 
-skills/                        — 19 skill folders (plugin auto-discovers these)
+skills/                        — 20 skill folders (plugin auto-discovers these)
   outlook-base/                — Shared proxy patterns; NOT user-invocable
+  outlook-setup/               — Guided first-time setup (/outlook-setup)
   outlook-auth/                — OAuth flow (/outlook-auth)
   outlook-email-{list,read,draft,send,reply,move,delete,organize}/
   outlook-calendar-{list,create,update,respond}/
@@ -143,6 +144,7 @@ Skills reference the API proxy via `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_
 
 | Domain | Slash Command | Auto-triggers On |
 |---|---|---|
+| Setup | `/outlook-setup` | "set up Outlook", "install Outlook skills", "first time setup" |
 | Auth | `/outlook-auth` | "connect to Outlook", "sign in" |
 | Email — List | `/outlook-email-list` | inbox, emails, unread, check mail, search |
 | Email — Read | `/outlook-email-read` | read email, open email, show message |

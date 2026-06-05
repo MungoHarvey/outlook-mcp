@@ -21,6 +21,8 @@ Claude uses 19 bundled skills to know which API endpoints to call for each task.
 
 ## Setup
 
+> **Guided setup with Claude:** once the plugin is loaded, just run **`/outlook-setup`** (or say "set up Outlook"). Claude walks you through prerequisites, install, Azure app registration, credentials, and authentication — opening the visual Azure guide ([`setup/azure-setup-guide.html`](setup/azure-setup-guide.html)) in your browser. The manual steps below are for reference.
+
 ### Prerequisites
 
 - Node.js >= 18.0.0
