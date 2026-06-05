@@ -25,9 +25,10 @@ if (-not $InstallDir) { $InstallDir = $RootDir }
 New-Item -ItemType Directory -Force -Path $SkillsDir | Out-Null
 
 # 2. Copy skill folders and rewrite ${CLAUDE_PLUGIN_ROOT} paths to this repo
-$proxy  = ($InstallDir + "\scripts\graph_call.py")      -replace '\\', '/'
-$authSh = ($InstallDir + "\outlook-skills\auth.sh")     -replace '\\', '/'
-$authPs = ($InstallDir + "\outlook-skills\auth.ps1")    -replace '\\', '/'
+$proxy  = ($InstallDir + "\scripts\graph_call.py")          -replace '\\', '/'
+$authSh = ($InstallDir + "\outlook-skills\auth.sh")         -replace '\\', '/'
+$authPs = ($InstallDir + "\outlook-skills\auth.ps1")        -replace '\\', '/'
+$guide  = ($InstallDir + "\setup\azure-setup-guide.html")   -replace '\\', '/'
 
 Get-ChildItem "$RootDir\skills" -Directory |
     Where-Object { $_.Name -like "outlook-*" } |
@@ -38,7 +39,8 @@ Get-ChildItem "$RootDir\skills" -Directory |
             (Get-Content $_.FullName -Raw).
                 Replace('${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py', $proxy).
                 Replace('${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh', $authSh).
-                Replace('${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1', $authPs) |
+                Replace('${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1', $authPs).
+                Replace('${CLAUDE_PLUGIN_ROOT}/setup/azure-setup-guide.html', $guide) |
             Set-Content $_.FullName -Encoding UTF8 -NoNewline
         }
     }

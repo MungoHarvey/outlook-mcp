@@ -21,7 +21,9 @@ Claude uses 19 bundled skills to know which API endpoints to call for each task.
 
 ## Setup
 
-> **Guided setup with Claude:** once the plugin is loaded, just run **`/outlook-setup`** (or say "set up Outlook"). Claude walks you through prerequisites, install, Azure app registration, credentials, and authentication — opening the visual Azure guide ([`setup/azure-setup-guide.html`](setup/azure-setup-guide.html)) in your browser. The manual steps below are for reference.
+> **Fastest path — let Claude set it up.** Paste the one-paste prompt in **[`setup/SETUP-PROMPT.md`](setup/SETUP-PROMPT.md)** into a fresh Claude Code session. Claude clones the repo, installs dependencies, prepares the project, then opens the visual Azure guide ([`setup/azure-setup-guide.html`](setup/azure-setup-guide.html)) in your browser and finishes by authenticating you. You only supply three Azure values (~5 min).
+>
+> Already have the plugin loaded? Just run **`/outlook-setup`** (or say "set up Outlook") for the same flow. The manual steps below are for reference.
 
 ### Prerequisites
 
