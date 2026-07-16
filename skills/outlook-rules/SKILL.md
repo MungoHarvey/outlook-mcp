@@ -23,7 +23,7 @@ For parsing template, see [reference.md](reference.md).
 **SAFETY: Always show rule summary and confirm before creating.**
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/mailFolders/inbox/messageRules" '{"displayName":"RuleName","sequence":1,"isEnabled":true,"conditions":{},"actions":{}}'
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/mailFolders/inbox/messageRules" '{"displayName":"RuleName","sequence":1,"isEnabled":true,"conditions":{"subjectContains":["invoice"]},"actions":{"markAsRead":true}}'
 ```
 
 For conditions, actions, and more templates, see [templates.md](templates.md).

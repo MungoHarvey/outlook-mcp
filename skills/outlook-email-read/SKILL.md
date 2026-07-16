@@ -11,7 +11,7 @@ Shared patterns: see [outlook-base](../outlook-base/SKILL.md)
 ## Read Email by ID
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/messages/{messageId}?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,body,hasAttachments,importance,isRead,flag,categories"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/messages/{messageId}?\$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,body,hasAttachments,importance,isRead,flag,categories"
 ```
 
 The result is `{"status": 200, "data": {...}}`. The `.data.body.content` contains the full email body.
@@ -21,7 +21,7 @@ The result is `{"status": 200, "data": {...}}`. The `.data.body.content` contain
 ## List Attachments
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/messages/{messageId}/attachments?$select=id,name,contentType,size"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/messages/{messageId}/attachments?\$select=id,name,contentType,size"
 ```
 
 Returns `{"status": 200, "data": {...}}`. The `.data.value[]` array contains attachments.

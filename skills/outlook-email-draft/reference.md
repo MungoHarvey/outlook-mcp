@@ -54,7 +54,7 @@ Use an upload session on the draft. See [graph-api-patterns](references/graph-ap
 ## List Drafts
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/drafts/messages?$select=id,subject,toRecipients,createdDateTime,bodyPreview&$top=10&$orderby=createdDateTime desc"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/drafts/messages?\$select=id,subject,toRecipients,createdDateTime,bodyPreview&\$top=10&\$orderby=createdDateTime%20desc"
 ```
 
 ## Delete a Draft

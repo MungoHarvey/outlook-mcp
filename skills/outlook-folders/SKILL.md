@@ -13,7 +13,7 @@ Shared patterns: see [outlook-base](../outlook-base/SKILL.md)
 ## List Folders
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders?$select=id,displayName,totalItemCount,unreadItemCount"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders?\$select=id,displayName,totalItemCount,unreadItemCount"
 ```
 
 For child folders and parsing template, see [reference.md](reference.md).

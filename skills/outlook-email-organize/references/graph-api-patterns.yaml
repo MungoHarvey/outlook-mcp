@@ -43,7 +43,7 @@ performance:
 
 timezone_header:
   description: "Use Prefer header for calendar GET requests"
-  pattern: '-H "Prefer: outlook.timezone=\"America/New_York\""'
+  pattern: '--header "Prefer: outlook.timezone=\"America/New_York\""'
   note: "Returns event times in the specified timezone instead of UTC"
 
 large_attachments:

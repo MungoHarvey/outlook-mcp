@@ -16,7 +16,7 @@ Shared patterns: see [outlook-base](../outlook-base/SKILL.md)
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages/{messageId}/move" '{"destinationId":"TARGET_FOLDER_ID"}'
 ```
 
-Returns the moved message object: `{"status": 200, "data": {...}}` with its new ID in `.data.id`.
+Returns the moved message object: `{"status": 201, "data": {...}}` with its new ID in `.data.id`.
 
 ## Well-Known Folder IDs
 

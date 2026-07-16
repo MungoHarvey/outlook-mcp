@@ -21,7 +21,7 @@ for f in data.get('value', []):
 ## List Child Folders
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/{parentFolderId}/childFolders?$select=id,displayName,totalItemCount,unreadItemCount"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/{parentFolderId}/childFolders?\$select=id,displayName,totalItemCount,unreadItemCount"
 ```
 
 ## Resolve Folder Name to ID

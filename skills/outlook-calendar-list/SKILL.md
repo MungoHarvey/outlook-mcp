@@ -29,11 +29,11 @@ Group events by day, computing the day name from the actual date. Users care abo
 Use this Python snippet to parse and display:
 
 ```python
-import json, subprocess, sys
+import json, subprocess, sys, os
 from datetime import datetime
 
 data = json.loads(subprocess.run(
-    [sys.executable, "scripts/graph_call.py", "GET",
+    [sys.executable, os.path.join(os.environ["CLAUDE_PLUGIN_ROOT"], "scripts", "graph_call.py"), "GET",
      "/me/calendarView?startDateTime=START&endDateTime=END&$top=50&$orderby=start/dateTime"
      "&$select=id,subject,start,end,location,organizer,attendees,isAllDay,isCancelled,showAs,isOnlineMeeting,categories",
      "--header", "Prefer: outlook.timezone=\"Europe/London\""],
