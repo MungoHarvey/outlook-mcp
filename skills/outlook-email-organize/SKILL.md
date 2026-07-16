@@ -26,7 +26,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py PATCH "/me/messages/{message
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py PATCH "/me/messages/{messageId}" '{"categories":["Category Name","Another Category"]}'
 ```
 
-For available category colors, see [colors](references/colors.yaml).
+For available category colors, see [colors](../outlook-base/references/colors.yaml).
 
 ## Set Flag
 

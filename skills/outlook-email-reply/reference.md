@@ -47,7 +47,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages/$DRAFT_ID
 
 ## Error Handling
 
-See [errors](references/errors.yaml) for common HTTP error codes.
+See [errors](../outlook-base/references/errors.yaml) for common HTTP error codes.
 
 | Code | Specific Meaning |
 |---|---|

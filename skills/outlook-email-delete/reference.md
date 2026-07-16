@@ -18,7 +18,7 @@ for MSG_ID in id1 id2 id3; do
 done
 ```
 
-Note: Respect throttling limits (max 4 concurrent). See [graph-api-patterns](references/graph-api-patterns.yaml).
+Note: Respect throttling limits (max 4 concurrent). See [graph-api-patterns](../outlook-base/references/graph-api-patterns.yaml).
 
 ## Soft vs Permanent Delete
 
@@ -29,7 +29,7 @@ Note: Respect throttling limits (max 4 concurrent). See [graph-api-patterns](ref
 
 ## Error Handling
 
-See [errors](references/errors.yaml) for common HTTP error codes.
+See [errors](../outlook-base/references/errors.yaml) for common HTTP error codes.
 
 | Code | Specific Meaning |
 |---|---|

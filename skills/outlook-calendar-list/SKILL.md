@@ -18,7 +18,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET \
   --header "Prefer: outlook.timezone=\"Europe/London\""
 ```
 
-**Always** request the user's timezone via the `Prefer` header — the API otherwise returns UTC, which makes day grouping incorrect. Default to `Europe/London`; adjust if the user indicates a different timezone. See [timezones](references/timezones.yaml) for valid values.
+**Always** request the user's timezone via the `Prefer` header — the API otherwise returns UTC, which makes day grouping incorrect. Default to `Europe/London`; adjust if the user indicates a different timezone. See [timezones](../outlook-base/references/timezones.yaml) for valid values.
 
 Response contains `data.value[]`. Use `@odata.nextLink` for pagination if present.
 

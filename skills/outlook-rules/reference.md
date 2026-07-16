@@ -47,7 +47,7 @@ The inbox rules API supports only a subset of the full Outlook desktop client ru
 
 ## Error Handling
 
-See [errors](references/errors.yaml) for common HTTP error codes.
+See [errors](../outlook-base/references/errors.yaml) for common HTTP error codes.
 
 | Code | Meaning | Action |
 |---|---|---|

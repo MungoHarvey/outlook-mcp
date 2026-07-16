@@ -60,4 +60,4 @@ if next_link:
 
 ## Error Handling
 
-See [errors](references/errors.yaml) for common HTTP error codes.
+See [errors](../outlook-base/references/errors.yaml) for common HTTP error codes.
