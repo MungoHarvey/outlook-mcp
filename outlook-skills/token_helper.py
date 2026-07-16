@@ -19,9 +19,11 @@ The helper:
   - Raises AuthRequiredError if the 30-day session has expired or no tokens exist
 """
 
+import contextlib
 import json
 import os
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -95,22 +97,70 @@ def _load_tokens() -> dict:
         )
 
 
+def _harden_perms(path):
+    """Restrict a file to the current user (best-effort; non-fatal on failure)."""
+    try:
+        if sys.platform == "win32":
+            import subprocess
+            import getpass
+            subprocess.run(
+                ["icacls", str(path), "/inheritance:r", "/grant:r",
+                 f"{getpass.getuser()}:(R,W)"],
+                capture_output=True,
+            )
+        else:
+            Path(path).chmod(0o600)
+    except Exception:
+        pass  # ACL/chmod failure does not break token use
+
+
+LOCK_FILE = _SCRIPT_DIR / "tokens.json.lock"
+
+
+@contextlib.contextmanager
+def _refresh_lock(timeout=10.0, poll=0.1):
+    """Best-effort advisory lock so two processes don't refresh concurrently
+    and corrupt the token store. Falls through (unlocked) on timeout rather
+    than deadlocking."""
+    fd = None
+    deadline = time.time() + timeout
+    while True:
+        try:
+            fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except FileExistsError:
+            if time.time() >= deadline:
+                break  # contended/stale — proceed best-effort
+            time.sleep(poll)
+    try:
+        yield
+    finally:
+        if fd is not None:
+            os.close(fd)
+            try:
+                os.unlink(str(LOCK_FILE))
+            except OSError:
+                pass
+
+
 def _save_tokens(tokens: dict):
-    """Persist updated tokens (atomic write)."""
-    tmp = TOKEN_FILE.parent / (TOKEN_FILE.name + ".tmp")
-    tmp.write_text(json.dumps(tokens, indent=2))
-    tmp.replace(TOKEN_FILE)
-    if sys.platform == "win32":
-        import subprocess
-        import getpass
-        result = subprocess.run(
-            ["icacls", str(TOKEN_FILE), "/inheritance:r", "/grant:r", f"{getpass.getuser()}:(R,W)"],
-            capture_output=True
-        )
-        if result.returncode != 0:
-            pass  # Non-fatal; ACL failure does not break token use
-    else:
-        TOKEN_FILE.chmod(0o600)
+    """Persist updated tokens atomically, with restrictive permissions and a
+    unique temp file so concurrent writers never clobber a shared tmp."""
+    fd, tmpname = tempfile.mkstemp(dir=str(TOKEN_FILE.parent),
+                                   prefix=TOKEN_FILE.name + ".", suffix=".tmp")
+    tmp = Path(tmpname)
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(json.dumps(tokens, indent=2))
+        _harden_perms(tmp)      # tighten before it becomes the live token file
+        tmp.replace(TOKEN_FILE)
+        _harden_perms(TOKEN_FILE)
+    finally:
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
 
 
 # ── Internal: token refresh ───────────────────────────────────────────────────
@@ -240,10 +290,14 @@ def get_token() -> str:
     if time.time() < tokens.get("access_token_expires_at", 0):
         return tokens["access_token"]
 
-    # ── Silently refresh ──────────────────────────────────────────────────────
-    updated = _refresh_access_token(tokens)
-    _save_tokens(updated)
-    return updated["access_token"]
+    # ── Silently refresh (locked; re-check expiry after acquiring) ────────────
+    with _refresh_lock():
+        tokens = _load_tokens()  # another process may have refreshed meanwhile
+        if time.time() < tokens.get("access_token_expires_at", 0):
+            return tokens["access_token"]
+        updated = _refresh_access_token(tokens)
+        _save_tokens(updated)
+        return updated["access_token"]
 
 
 def get_session_info() -> dict:

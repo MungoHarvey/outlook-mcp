@@ -68,6 +68,21 @@ const SCOPES = JSON.parse(
   fs.readFileSync(path.join(SCRIPT_DIR, 'scopes.json'), 'utf8')
 ).scopes;
 
+// Restrict the token file to the current user (best-effort; non-fatal).
+function hardenPerms(file) {
+  try {
+    if (process.platform === 'win32') {
+      const { execSync } = require('child_process');
+      const user = process.env.USERNAME || process.env.USER || '';
+      if (user) {
+        execSync(`icacls "${file}" /inheritance:r /grant:r "${user}:(R,W)"`, { stdio: 'ignore' });
+      }
+    } else {
+      fs.chmodSync(file, 0o600);
+    }
+  } catch (e) { /* non-fatal — file still usable */ }
+}
+
 // ── CLI flags ───────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
 const isStatus = args.includes('--status');
@@ -241,7 +256,9 @@ const server = http.createServer((req, res) => {
           const email = decodeEmail(tokenResponse.id_token);
           const now = Date.now() / 1000;
 
-          // Save in the format token_helper.py expects
+          // Save in the format token_helper.py expects. The client secret is
+          // NOT persisted — refresh reads it from outlook-skills/.env, so a
+          // leaked tokens.json can't also leak the long-lived app secret.
           const tokens = {
             access_token:            tokenResponse.access_token,
             refresh_token:           tokenResponse.refresh_token,
@@ -251,10 +268,10 @@ const server = http.createServer((req, res) => {
             user_email:              email,
             tenant_id:               TENANT_ID,
             client_id:               CLIENT_ID,
-            client_secret:           CLIENT_SECRET,
           };
 
-          fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2), 'utf8');
+          fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2), { encoding: 'utf8', mode: 0o600 });
+          hardenPerms(TOKEN_FILE);
 
           console.log(`\n  Authenticated as: ${email}`);
           console.log(`  Scopes granted: ${tokens.scopes.join(', ')}`);
