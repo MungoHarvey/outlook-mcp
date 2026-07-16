@@ -22,6 +22,8 @@ Go to API permissions → Add a permission → Microsoft Graph → Delegated:
 - `Calendars.Read`
 - `Calendars.ReadWrite`
 - `Contacts.Read`
+- `Contacts.ReadWrite`
+- `MailboxSettings.ReadWrite`
 
 ### 3. Create Client Secret
 Go to Certificates & secrets → New client secret → Copy the value immediately.

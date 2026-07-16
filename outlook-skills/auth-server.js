@@ -60,17 +60,13 @@ const TENANT_ID     = env.OUTLOOK_TENANT_ID || 'common';
 const PORT          = parseInt(env.OUTLOOK_AUTH_PORT || '8400', 10);
 const REDIRECT_URI  = env.OUTLOOK_REDIRECT_URI || `http://localhost:${PORT}/auth/callback`;
 
-// Same scopes as the working MCP server
-const SCOPES = [
-  'offline_access',
-  'User.Read',
-  'Mail.Read',
-  'Mail.ReadWrite',
-  'Mail.Send',
-  'Calendars.Read',
-  'Calendars.ReadWrite',
-  'Contacts.Read'
-];
+// Canonical scope list — single source of truth in outlook-skills/scopes.json.
+// Keep the permission tables in setup/ and skills/outlook-auth in sync with it.
+// Includes OpenID Connect scopes (openid/profile/email) so the token response
+// carries an id_token (used to record user_email in tokens.json).
+const SCOPES = JSON.parse(
+  fs.readFileSync(path.join(SCRIPT_DIR, 'scopes.json'), 'utf8')
+).scopes;
 
 // ── CLI flags ───────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);

@@ -94,6 +94,8 @@ Search for and add each of the following delegated permissions:
 | `Calendars.Read` | Read calendar events |
 | `Calendars.ReadWrite` | Create and update events |
 | `Contacts.Read` | Read contacts |
+| `Contacts.ReadWrite` | Add and update contacts |
+| `MailboxSettings.ReadWrite` | Inbox rules and categories (list and manage) |
 
 Click **Add permissions** after selecting each one.
 
