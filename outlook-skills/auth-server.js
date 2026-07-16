@@ -21,6 +21,7 @@ const url = require('url');
 const querystring = require('querystring');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 // ── Load .env manually (no dependencies needed) ────────────────────────────
 const SCRIPT_DIR = __dirname;
@@ -28,13 +29,11 @@ const ENV_FILE = path.join(SCRIPT_DIR, '.env');
 const TOKEN_FILE = path.join(SCRIPT_DIR, 'tokens.json');
 
 function loadEnv() {
-  if (!fs.existsSync(ENV_FILE)) {
-    console.error(`[error] No .env file found at ${ENV_FILE}`);
-    console.error('        Copy .env.example to .env and add your Azure credentials.');
-    process.exit(1);
-  }
-  const lines = fs.readFileSync(ENV_FILE, 'utf8').split('\n');
+  // Missing .env is not fatal here — process.env is used as a fallback below,
+  // and the credential check further down gives a clear error if both are empty.
   const env = {};
+  if (!fs.existsSync(ENV_FILE)) return env;
+  const lines = fs.readFileSync(ENV_FILE, 'utf8').split('\n');
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
@@ -54,11 +53,11 @@ function loadEnv() {
 
 const env = loadEnv();
 
-const CLIENT_ID     = env.OUTLOOK_CLIENT_ID || '';
-const CLIENT_SECRET = env.OUTLOOK_CLIENT_SECRET || '';
-const TENANT_ID     = env.OUTLOOK_TENANT_ID || 'common';
-const PORT          = parseInt(env.OUTLOOK_AUTH_PORT || '8400', 10);
-const REDIRECT_URI  = env.OUTLOOK_REDIRECT_URI || `http://localhost:${PORT}/auth/callback`;
+const CLIENT_ID     = env.OUTLOOK_CLIENT_ID     || process.env.OUTLOOK_CLIENT_ID     || '';
+const CLIENT_SECRET = env.OUTLOOK_CLIENT_SECRET || process.env.OUTLOOK_CLIENT_SECRET || '';
+const TENANT_ID     = env.OUTLOOK_TENANT_ID     || process.env.OUTLOOK_TENANT_ID     || 'common';
+const PORT          = parseInt(env.OUTLOOK_AUTH_PORT || process.env.OUTLOOK_AUTH_PORT || '8400', 10);
+const REDIRECT_URI  = env.OUTLOOK_REDIRECT_URI  || process.env.OUTLOOK_REDIRECT_URI  || `http://localhost:${PORT}/auth/callback`;
 
 // Canonical scope list — single source of truth in outlook-skills/scopes.json.
 // Keep the permission tables in setup/ and skills/outlook-auth in sync with it.
@@ -193,11 +192,32 @@ function exchangeCodeForTokens(code) {
       });
     });
 
+    req.setTimeout(30000, () => {
+      req.destroy(new Error('Token exchange timed out after 30s'));
+    });
     req.on('error', reject);
     req.write(postData);
     req.end();
   });
 }
+
+// ── HTML-escape values interpolated into callback pages (reflected-XSS guard) ─
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Only accept requests whose Host is loopback (defeats DNS-rebinding at :PORT).
+function isLocalHost(req) {
+  const host = (req.headers.host || '').toLowerCase();
+  return host === `localhost:${PORT}`
+      || host === `127.0.0.1:${PORT}`
+      || host === `[::1]:${PORT}`;
+}
+
+// Single-use CSRF state, set at /auth and verified at /auth/callback.
+let authState = null;
 
 // ── Decode email from id_token JWT (no verification needed) ─────────────────
 function decodeEmail(idToken) {
@@ -216,15 +236,23 @@ const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
 
+  // ── Loopback-only: reject cross-origin / DNS-rebinding hits on auth routes ─
+  if ((pathname === '/auth' || pathname === '/auth/callback') && !isLocalHost(req)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain' });
+    res.end('Forbidden');
+    return;
+  }
+
   // ── /auth → 302 redirect to Microsoft (matches MCP server exactly) ────────
   if (pathname === '/auth') {
+    authState = crypto.randomBytes(32).toString('hex');
     const authParams = {
       client_id: CLIENT_ID,
       response_type: 'code',
       redirect_uri: REDIRECT_URI,
       scope: SCOPES.join(' '),
       response_mode: 'query',
-      state: Date.now().toString()
+      state: authState
     };
 
     const authUrl = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/authorize?${querystring.stringify(authParams)}`;
@@ -239,11 +267,22 @@ const server = http.createServer((req, res) => {
   if (pathname === '/auth/callback') {
     const query = parsedUrl.query;
 
+    // ── Single-use CSRF state check — reject any callback we didn't start ────
+    // Do NOT shut down on mismatch: a stray/drive-by request must not be able
+    // to kill an in-flight legitimate login. Just reject and keep listening.
+    if (!authState || query.state !== authState) {
+      console.error('\n  [error] Auth callback rejected: state parameter mismatch');
+      res.writeHead(400, { 'Content-Type': 'text/html' });
+      res.end('<html><body><h2>Authentication failed</h2><p>Invalid or missing state parameter.</p></body></html>');
+      return;
+    }
+    authState = null;  // consume — single use
+
     if (query.error) {
       console.error(`\n  [error] Auth failed: ${query.error}`);
       console.error(`          ${query.error_description || ''}`);
       res.writeHead(400, { 'Content-Type': 'text/html' });
-      res.end(`<html><body><h2>Authentication failed</h2><p>${query.error}: ${query.error_description || ''}</p><p>Check the terminal for details.</p></body></html>`);
+      res.end(`<html><body><h2>Authentication failed</h2><p>${escapeHtml(query.error)}: ${escapeHtml(query.error_description || '')}</p><p>Check the terminal for details.</p></body></html>`);
       shutdownServer();
       return;
     }
@@ -279,13 +318,13 @@ const server = http.createServer((req, res) => {
           console.log('  Session will expire in 30 days.\n');
 
           res.writeHead(200, { 'Content-Type': 'text/html' });
-          res.end(`<html><body><h2>Authentication successful!</h2><p>Signed in as ${email}.</p><p>You can close this tab and return to Claude.</p></body></html>`);
+          res.end(`<html><body><h2>Authentication successful!</h2><p>Signed in as ${escapeHtml(email)}.</p><p>You can close this tab and return to Claude.</p></body></html>`);
           shutdownServer();
         })
         .catch((error) => {
           console.error(`\n  [error] Token exchange failed: ${error.message}`);
           res.writeHead(500, { 'Content-Type': 'text/html' });
-          res.end(`<html><body><h2>Token exchange failed</h2><p>${error.message}</p></body></html>`);
+          res.end(`<html><body><h2>Token exchange failed</h2><p>${escapeHtml(error.message)}</p></body></html>`);
           shutdownServer();
         });
       return;
@@ -312,6 +351,14 @@ function shutdownServer() {
 
 // ── Start server and open browser ───────────────────────────────────────────
 server.listen(PORT, () => {
+  // Overall deadline — never leave an auth-capable server listening forever if
+  // the user abandons the login.
+  setTimeout(() => {
+    console.error('\n  [error] Auth timed out (no callback within 10 minutes). Shutting down.');
+    server.close();
+    process.exit(1);
+  }, 10 * 60 * 1000).unref();
+
   const authPageUrl = `http://localhost:${PORT}/auth`;
   console.log(`\n  Auth server running at http://localhost:${PORT}`);
   console.log(`  Redirect URI: ${REDIRECT_URI}`);
@@ -319,7 +366,8 @@ server.listen(PORT, () => {
   console.log(`\n  Opening browser to: ${authPageUrl}`);
   console.log('  If the browser does not open, navigate to the URL above manually.\n');
 
-  // Open browser — cross-platform
+  // Open browser — cross-platform (skippable for automated tests)
+  if (process.env.OUTLOOK_NO_BROWSER) return;
   const { exec } = require('child_process');
   const openCmd = process.platform === 'win32' ? `start "" "${authPageUrl}"`
                 : process.platform === 'darwin' ? `open "${authPageUrl}"`
