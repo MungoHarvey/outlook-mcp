@@ -227,9 +227,12 @@
       <tr><td><code>Calendars.Read</code></td><td>Read calendar events</td></tr>
       <tr><td><code>Calendars.ReadWrite</code></td><td>Create and update events</td></tr>
       <tr><td><code>Contacts.Read</code></td><td>Read contacts</td></tr>
-      <tr><td><code>Contacts.ReadWrite</code></td><td>Add and update contacts</td></tr>
-      <tr><td><code>MailboxSettings.ReadWrite</code></td><td>Inbox rules and categories (list and manage)</td></tr>
     </table>
+    <div class="note"><strong>Optional (do NOT add unless you need them):</strong>
+    <code>Contacts.ReadWrite</code> and <code>MailboxSettings.ReadWrite</code> enable the
+    contacts-manage, rules, and categories skills, but on many managed tenants they
+    require <strong>admin consent</strong> and will trigger a "Need admin approval"
+    screen at sign-in. Add them only with admin consent.</div>
     <p>Click <strong>Add permissions</strong> after selecting each one.</p>
     <div class="note">No admin consent is required — all permissions are delegated (user-level). The screenshot also shows
       <code>Files.Read</code> and <code>Files.ReadWrite</code> — these are optional and support future OneDrive integration.</div>

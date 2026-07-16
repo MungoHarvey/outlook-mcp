@@ -94,8 +94,13 @@ Search for and add each of the following delegated permissions:
 | `Calendars.Read` | Read calendar events |
 | `Calendars.ReadWrite` | Create and update events |
 | `Contacts.Read` | Read contacts |
-| `Contacts.ReadWrite` | Add and update contacts |
-| `MailboxSettings.ReadWrite` | Inbox rules and categories (list and manage) |
+
+**Optional (do NOT add unless you need them):** `Contacts.ReadWrite` (add/update
+contacts) and `MailboxSettings.ReadWrite` (inbox rules and categories) enable the
+contacts-manage, rules, and categories skills. On many managed tenants
+(university / enterprise) these require **admin consent** and will trigger a
+"Need admin approval" screen at sign-in — so they are left out of the default set
+above. Add them only if you have admin consent, or ask your Azure admin to grant them.
 
 Click **Add permissions** after selecting each one.
 

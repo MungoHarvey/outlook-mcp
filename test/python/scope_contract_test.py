@@ -56,7 +56,10 @@ class ScopeContractTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.scopes = set(json.loads(_SCOPES_FILE.read_text(encoding="utf-8"))["scopes"])
+        data = json.loads(_SCOPES_FILE.read_text(encoding="utf-8"))
+        cls.requested = set(data["scopes"])                       # user-consentable, requested by default
+        cls.admin = set(data.get("admin_consent_scopes", []))     # admin-gated, NOT requested by default
+        cls.covered = cls.requested | cls.admin
         cls.pairs = _collect_invocations()
 
     def test_found_invocations(self):
@@ -72,15 +75,28 @@ class ScopeContractTest(unittest.TestCase):
             + ", ".join(f"{m} {p}" for m, p in unmapped),
         )
 
-    def test_all_required_scopes_are_granted(self):
+    def test_every_required_scope_is_known(self):
+        # A skill's scope must be either requested by default or listed as an
+        # admin-consent scope — never silently absent from scopes.json.
         missing = []
         for method, path, skill in self.pairs:
             scope = required_scope(method, path)
-            if scope and scope not in self.scopes:
+            if scope and scope not in self.covered:
                 missing.append(f"{skill}: {method} {path} needs {scope}")
         self.assertFalse(
             missing,
-            "SCOPES (scopes.json) is missing required scopes:\n  " + "\n  ".join(sorted(set(missing))),
+            "scopes.json does not account for required scopes:\n  " + "\n  ".join(sorted(set(missing))),
+        )
+
+    def test_requested_scopes_stay_user_consentable(self):
+        # Regression guard: the admin-gated scopes (Contacts.ReadWrite,
+        # MailboxSettings.ReadWrite) must NOT be in the requested set — adding
+        # them triggers the "Need admin approval" screen on managed tenants and
+        # breaks ordinary sign-in.
+        leaked = self.requested & self.admin
+        self.assertFalse(
+            leaked,
+            f"Admin-gated scopes leaked into the requested set (breaks user sign-in): {sorted(leaked)}",
         )
 
 

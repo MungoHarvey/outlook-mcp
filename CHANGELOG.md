@@ -9,6 +9,12 @@ a single version across `.claude-plugin/plugin.json` and `package.json`.
 Fixes from a full code review (functional, security, tests, docs). Highlights:
 
 ### Fixed
+- **Scope set kept user-consentable**: `Contacts.ReadWrite` and
+  `MailboxSettings.ReadWrite` are NOT requested by default — on managed
+  tenants they require admin consent and trigger a "Need admin approval"
+  screen at sign-in. They are documented as optional/admin-gated in
+  `scopes.json` (`admin_consent_scopes`). contacts-manage, rules, and
+  categories require an admin to grant these.
 - **Missing OAuth scopes**: `Contacts.ReadWrite` and `MailboxSettings.ReadWrite`
   are now requested, so contacts-manage, rules, and categories no longer 403.
   Existing users must run auth with `--reauth` to grant them.

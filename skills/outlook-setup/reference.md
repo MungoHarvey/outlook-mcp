@@ -34,7 +34,7 @@ Full visual version: `setup/azure-setup-guide.html` (also `setup/AZURE_SETUP.md`
 4. **Copy credentials** — from the overview, copy **Application (client) ID** → `OUTLOOK_CLIENT_ID` and **Directory (tenant) ID** → `OUTLOOK_TENANT_ID`.
 5. **Client secret** — *Certificates & secrets* → *+ New client secret* → copy the **Value** immediately (not the Secret ID). → `OUTLOOK_CLIENT_SECRET`.
 6. **API permissions** — *API permissions* → *+ Add a permission* → *Microsoft Graph* → *Delegated permissions*.
-7. **Select permissions** — add: `offline_access`, `User.Read`, `Mail.Read`, `Mail.ReadWrite`, `Mail.Send`, `Calendars.Read`, `Calendars.ReadWrite`, `Contacts.Read`, `Contacts.ReadWrite`, `MailboxSettings.ReadWrite`. No admin consent needed.
+7. **Select permissions** — add: `offline_access`, `User.Read`, `Mail.Read`, `Mail.ReadWrite`, `Mail.Send`, `Calendars.Read`, `Calendars.ReadWrite`, `Contacts.Read`. No admin consent needed. (`Contacts.ReadWrite` and `MailboxSettings.ReadWrite` are optional and require admin consent on many managed tenants — omit them unless you need contacts-write/rules/categories and have admin consent.)
 8. **`.env`** — fill `OUTLOOK_TENANT_ID` (`common` for personal accounts), `OUTLOOK_CLIENT_ID`, `OUTLOOK_CLIENT_SECRET`.
 
 ## Troubleshooting
