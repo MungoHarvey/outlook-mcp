@@ -14,6 +14,7 @@ Examples:
 
 import sys
 import json
+import re
 import argparse
 import posixpath
 import urllib.parse
@@ -81,15 +82,41 @@ def make_request(method, endpoint, body, headers, _retried=False):
     # ── Get token functions ────────────────────────────────────────────────────
     get_token, AuthRequiredError = _ensure_token_helper()
 
-    # ── Validate endpoint prefix (defence-in-depth — token scopes are the primary guard) ──
+    # ── Self-heal Git-Bash (MSYS) path mangling ────────────────────────────────
+    # On Windows, Git Bash rewrites an argument starting with "/" into a Windows
+    # path (e.g. "/me" -> "C:/.../Git/me"), which would fail validation. Only a
+    # drive-letter-prefixed endpoint can be mangled — a real Graph endpoint never
+    # starts with "<drive>:". When we detect that shape, recover the "/me..." or
+    # "/users/..." tail and use it for both validation and the outgoing URL.
     _path_only = endpoint.split("?")[0]
+    _query = endpoint[len(_path_only):]  # includes leading "?" if present
+    if re.match(r"^[A-Za-z]:[\\/]", _path_only):
+        # Greedy prefix picks the rightmost /me or /users segment — the mangled
+        # arg is always the tail, so this recovers it even if the install path
+        # happens to contain a similar segment.
+        _heal = re.match(r"^[A-Za-z]:.*(/(?:me|users)(?:/.*)?)$",
+                         _path_only.replace("\\", "/"))
+        if _heal:
+            _path_only = _heal.group(1)
+            endpoint = _path_only + _query
+
+    # ── Validate endpoint (defence-in-depth — token scopes are the primary guard) ──
+    # Reject encoded path separators (single or double encoded) — the traversal
+    # vector — then require a segment-exact /me or /users/ prefix so lookalikes
+    # like /messages or /memberOf do not slip through a bare startswith check.
+    _low = _path_only.lower()
+    _bad_endpoint = {
+        "status": 400,
+        "error": "invalid_endpoint",
+        "message": "Endpoint must start with /me or /users/"
+    }
+    if "%2f" in _low or "%5c" in _low or "%25" in _low:
+        return _bad_endpoint
     _normalized = posixpath.normpath(urllib.parse.unquote(_path_only))
-    if not (_normalized.startswith("/me") or _normalized.startswith("/users/")):
-        return {
-            "status": 400,
-            "error": "invalid_endpoint",
-            "message": "Endpoint must start with /me or /users/"
-        }
+    if not (_normalized == "/me"
+            or _normalized.startswith("/me/")
+            or _normalized.startswith("/users/")):
+        return _bad_endpoint
 
     # ── Build URL ──────────────────────────────────────────────────────────────
     url = GRAPH_BASE_URL + endpoint
