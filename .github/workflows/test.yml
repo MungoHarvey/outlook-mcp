@@ -7,7 +7,11 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,3 +23,16 @@ jobs:
       - run: npm ci
       - run: python -m py_compile scripts/graph_call.py outlook-skills/token_helper.py
       - run: npm test
+
+  lint-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck (bash setup + auth scripts)
+        run: shellcheck -S error setup/*.sh outlook-skills/*.sh
+      - name: PSScriptAnalyzer (PowerShell scripts)
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+          $issues = Invoke-ScriptAnalyzer -Path setup,outlook-skills -Recurse -Severity Error
+          if ($issues) { $issues | Format-Table; exit 1 }
