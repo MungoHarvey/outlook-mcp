@@ -16,7 +16,7 @@ Shared patterns: see [outlook-base](../outlook-base/SKILL.md)
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/sendMail" '{"message":{"subject":"SUBJECT","body":{"contentType":"text","content":"BODY"},"toRecipients":[{"emailAddress":{"address":"to@example.com"}}]},"saveToSentItems":true}'
 ```
 
-Returns HTTP 204 on success: `{"status": 204, "data": null}` (no body).
+Returns HTTP 202 on success: `{"status": 202, "data": null}` (no body).
 
 ## Confirmation Template
 

@@ -3,13 +3,12 @@
   "version": "2.0.0",
   "description": "Claude Code skills for Outlook via Microsoft Graph API — email, calendar, contacts, folders, rules",
   "scripts": {
-    "auth-server": "node scripts/outlook-auth-server.js",
-    "token-refresh": "node scripts/outlook-token-refresh.js",
-    "test": "node --test test/static/*.test.js test/unit/*.test.js test/eval/*.test.js test/integration/*.test.js",
+    "test": "node --test test/static/*.test.js test/eval/*.test.js test/node/*.test.js test/integration/*.test.js && npm run test:python",
     "test:static": "node --test test/static/*.test.js",
     "test:security": "node --test test/static/security.test.js",
-    "test:unit": "node --test test/unit/*.test.js",
     "test:eval": "node --test test/eval/*.test.js",
+    "test:node": "node --test test/node/*.test.js",
+    "test:python": "python -m unittest discover -s test/python -p \"*_test.py\"",
     "test:integration": "OUTLOOK_INTEGRATION_TEST=true node --test test/integration/*.test.js"
   },
   "keywords": [
@@ -31,6 +30,6 @@
     "js-yaml": "^4.1.0"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=18.0.0"
   }
 }

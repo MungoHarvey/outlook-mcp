@@ -8,14 +8,15 @@ This project is a **Claude Code plugin** providing skills for interacting with M
 
 All Microsoft Graph API calls go through `scripts/graph_call.py` — a secure Python proxy that injects Bearer tokens internally. Tokens are stored in `outlook-skills/tokens.json` (gitignored) and never exposed to the LLM. Authentication is handled by `outlook-skills/auth-server.js` — a Node.js OAuth 2.0 server on port 8400.
 
-**Progressive loading**: Each `SKILL.md` is lean (~40-60 lines) with only the core operation. Adjacent `reference.md` files contain parsing templates, advanced patterns, and error handling. `params.yaml` files provide YAML-formatted parameter options (showAs, importance, recurrence, etc.). Each skill carries reference YAML files (timezones, colors, errors, graph-api-patterns) in its own `references/` subdirectory.
+**Progressive loading**: Each `SKILL.md` is lean (~40-60 lines) with only the core operation. Adjacent `reference.md` files contain parsing templates, advanced patterns, and error handling. `params.yaml` files provide YAML-formatted parameter options (showAs, importance, recurrence, etc.). Shared reference YAML (timezones, colors, errors, graph-api-patterns) lives **once** in `skills/outlook-base/references/`; other skills link to it via `../outlook-base/references/`.
 
 ```
 .claude-plugin/
   plugin.json                  — Plugin manifest
+.mcp.json                      — MCP server config for Claude Desktop / Cowork
 
 skills/                        — 20 skill folders (plugin auto-discovers these)
-  outlook-base/                — Shared proxy patterns; NOT user-invocable
+  outlook-base/                — Shared patterns + canonical references/; NOT user-invocable
   outlook-setup/               — Guided first-time setup (/outlook-setup)
   outlook-auth/                — OAuth flow (/outlook-auth)
   outlook-email-{list,read,draft,send,reply,move,delete,organize}/
@@ -30,12 +31,17 @@ outlook-skills/                — Auth system
   auth-server.js               — Node.js OAuth 2.0 server (port 8400)
   auth.sh / auth.ps1           — Auth entry points
   token_helper.py              — Token loading, silent refresh, session enforcement
+  scopes.json                  — Canonical OAuth scope list (single source of truth)
   .env.example                 — Credentials template (copy to .env)
+
+mcp-server/                    — stdio MCP transport for Claude Desktop / Cowork
+  src/{index,auth,graph}.js    — its own token + Graph proxy (mirrors graph_call.py)
 
 test/
   static/    — Structural lint of skill files (no auth needed)
-  unit/      — Auth script unit tests (no auth needed)
   eval/      — Skill description / API pattern assertions (no auth needed)
+  node/      — Auth-server behavioral tests (spawns the server)
+  python/    — graph_call.py + token_helper.py behavioral tests
   integration/ — Live Graph API smoke tests (requires auth + env flag)
 ```
 
@@ -43,11 +49,12 @@ test/
 
 ```bash
 npm install          # install dependencies (js-yaml, dotenv)
-npm test             # run all tests (static + unit + eval; integration skipped by default)
+npm test             # all tests: static + eval + node + python (integration self-skips)
 npm run test:static  # validate skill file structure
-npm run test:security # security-specific static checks
-npm run test:unit    # test auth scripts
+npm run test:security # security-specific static checks (scans all skill files)
 npm run test:eval    # skill selection / API pattern eval
+npm run test:node    # auth-server behavioral tests
+npm run test:python  # graph_call.py + token_helper.py behavioral tests
 OUTLOOK_INTEGRATION_TEST=true npm run test:integration  # live API smoke tests (requires valid token)
 ```
 
@@ -72,14 +79,18 @@ Produces `outlook-skills.zip` — import via Settings → Skills. Auth must be c
 
 ## Setup
 
-Auth data (.env, venv, tokens) lives entirely within the cloned repo. `uv` is used for the Python environment (falls back to pip if uv is not installed).
+Auth data (`.env`, `tokens.json`) lives entirely within the cloned repo.
+Authentication runs through Node (`auth-server.js`) — no Python venv is required
+to authenticate. `token_helper.py` and `graph_call.py` use only the Python
+standard library; if extra Python deps are ever needed, install them with
+`pip install -r outlook-skills/requirements.txt`.
 
 ### macOS / Linux / WSL / Git Bash
 ```bash
 # 1. Create credentials file (gitignored) and fill in your Azure app details
 cp outlook-skills/.env.example outlook-skills/.env
 
-# 2. Authenticate — creates .venv via uv, stores tokens in outlook-skills/
+# 2. Authenticate — runs the OAuth flow, stores tokens in outlook-skills/
 bash outlook-skills/auth.sh
 
 # 3. Install test dependencies
@@ -91,7 +102,7 @@ npm install
 # 1. Create credentials file (gitignored) and fill in your Azure app details
 Copy-Item outlook-skills\.env.example outlook-skills\.env
 
-# 2. Authenticate — creates .venv via uv, stores tokens in outlook-skills\
+# 2. Authenticate — runs the OAuth flow, stores tokens in outlook-skills\
 .\outlook-skills\auth.ps1
 
 # 3. Install test dependencies
@@ -132,7 +143,7 @@ Skills reference the API proxy via `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_
 
 - All API calls use `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py METHOD "/endpoint" [body] [--header "K:V"]`
 - Endpoints must start with `/me` or `/users/` — `graph_call.py` rejects anything else with a 400
-- `graph_call.py` bootstraps its Python dependencies from `outlook-skills/.venv` (created by `auth.sh`); if missing, it returns a 500 with instructions to run `auth.sh`
+- `graph_call.py` runs on the Python standard library; it will use an existing `outlook-skills/.venv` if present, and on an import failure returns a 503 `import_error` with instructions to `pip install -r outlook-skills/requirements.txt`
 - Tokens are stored in `outlook-skills/tokens.json` (gitignored) — never exposed to the LLM
 - Response format: `{"status": N, "data": {...}}` — parse the `.data` field for the API response body
 - **Destructive operations** (send email, delete, cancel event, create rules) always require explicit user confirmation before executing

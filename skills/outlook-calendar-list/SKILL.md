@@ -1,6 +1,6 @@
 ---
 name: outlook-calendar-list
-description: List and view Outlook calendar events. Use when the user mentions calendar, schedule, meetings, what's on today, this week, next week, my events, what have I got, availability, free/busy, or asks about any upcoming appointments. Use proactively whenever dates or scheduling come up.
+description: List and view Outlook calendar events. Use when the user asks about their calendar, schedule, meetings, upcoming appointments, what's on today/this week/next week, or their availability (free/busy).
 user_invocable: true
 ---
 
@@ -18,7 +18,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET \
   --header "Prefer: outlook.timezone=\"Europe/London\""
 ```
 
-**Always** request the user's timezone via the `Prefer` header — the API otherwise returns UTC, which makes day grouping incorrect. Default to `Europe/London`; adjust if the user indicates a different timezone. See [timezones](references/timezones.yaml) for valid values.
+**Always** request the user's timezone via the `Prefer` header — the API otherwise returns UTC, which makes day grouping incorrect. Default to `Europe/London`; adjust if the user indicates a different timezone. See [timezones](../outlook-base/references/timezones.yaml) for valid values.
 
 Response contains `data.value[]`. Use `@odata.nextLink` for pagination if present.
 
@@ -29,11 +29,11 @@ Group events by day, computing the day name from the actual date. Users care abo
 Use this Python snippet to parse and display:
 
 ```python
-import json, subprocess, sys
+import json, subprocess, sys, os
 from datetime import datetime
 
 data = json.loads(subprocess.run(
-    [sys.executable, "scripts/graph_call.py", "GET",
+    [sys.executable, os.path.join(os.environ["CLAUDE_PLUGIN_ROOT"], "scripts", "graph_call.py"), "GET",
      "/me/calendarView?startDateTime=START&endDateTime=END&$top=50&$orderby=start/dateTime"
      "&$select=id,subject,start,end,location,organizer,attendees,isAllDay,isCancelled,showAs,isOnlineMeeting,categories",
      "--header", "Prefer: outlook.timezone=\"Europe/London\""],

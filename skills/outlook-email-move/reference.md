@@ -3,29 +3,24 @@
 ## Resolve Folder Name to ID
 
 ```bash
-FOLDER_ID=$(curl -s -H "Authorization: Bearer $TOKEN" \
-  "https://graph.microsoft.com/v1.0/me/mailFolders?\$filter=displayName%20eq%20'FolderName'" | \
-  python3 -c "import sys,json; v=json.load(sys.stdin).get('value',[]); print(v[0]['id'] if v else 'NOT_FOUND')")
+FOLDER_ID=$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders?\$filter=displayName%20eq%20'FolderName'" | \
+  python3 -c "import sys,json; v=json.load(sys.stdin).get('data',{}).get('value',[]); print(v[0]['id'] if v else 'NOT_FOUND')")
 ```
 
 ## Batch Move Multiple Emails
 
 ```bash
 for MSG_ID in id1 id2 id3; do
-  curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-    -d "{\"destinationId\": \"$FOLDER_ID\"}" \
-    "https://graph.microsoft.com/v1.0/me/messages/$MSG_ID/move"
+  python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages/$MSG_ID/move" "{\"destinationId\": \"$FOLDER_ID\"}"
 done
 ```
 
-Note: Respect throttling limits (max 4 concurrent Outlook requests). See [graph-api-patterns](references/graph-api-patterns.yaml).
+Note: Respect throttling limits (max 4 concurrent Outlook requests). See [graph-api-patterns](../outlook-base/references/graph-api-patterns.yaml).
 
 ## Copy Email (Non-Destructive)
 
 ```bash
-curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"destinationId": "TARGET_FOLDER_ID"}' \
-  "https://graph.microsoft.com/v1.0/me/messages/{messageId}/copy"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages/{messageId}/copy" '{"destinationId": "TARGET_FOLDER_ID"}'
 ```
 
 ## Limitations
@@ -36,7 +31,7 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
 
 ## Error Handling
 
-See [errors](references/errors.yaml) for common HTTP error codes.
+See [errors](../outlook-base/references/errors.yaml) for common HTTP error codes.
 
 | Code | Specific Meaning |
 |---|---|

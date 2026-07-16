@@ -1,6 +1,6 @@
 ---
 name: outlook-base
-description: Shared foundation for all Outlook skills — token management, curl patterns, error handling. Referenced by other skills, not invoked directly.
+description: Shared foundation for all Outlook skills — token management, API call patterns, error handling. Referenced by other skills, not invoked directly.
 ---
 
 # Outlook Base — Shared Foundation
@@ -29,7 +29,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py METHOD "/endpoint" [body] [-
 
 ```bash
 # GET list of emails
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/messages?$select=id,subject&$top=10"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/messages?\$select=id,subject&\$top=10"
 
 # POST to send email
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/sendMail" '{"message":{"subject":"...","body":{...}}}'

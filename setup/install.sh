@@ -21,13 +21,16 @@ _safe_dir="${_safe_dir//|/\\|}"
 for dir in "$ROOT_DIR/skills"/outlook-*/; do
   name=$(basename "$dir")
   dest="$SKILLS_DIR/$name"
-  cp -r "$dir" "$dest/"
-  # Rewrite ${CLAUDE_PLUGIN_ROOT} paths to absolute installed locations
-  find "$dest" -name "*.md" -exec sed -i \
+  rm -rf "$dest"                 # idempotent: avoid nesting outlook-x/outlook-x on re-run
+  cp -r "${dir%/}" "$dest"
+  # Rewrite ${CLAUDE_PLUGIN_ROOT} paths to absolute installed locations.
+  # sed -i.bak is portable across GNU and BSD sed; remove the backups after.
+  find "$dest" -name "*.md" -exec sed -i.bak \
     -e "s|\${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py|$_safe_dir/scripts/graph_call.py|g" \
     -e "s|\${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh|$_safe_dir/outlook-skills/auth.sh|g" \
     -e "s|\${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1|$_safe_dir/outlook-skills/auth.ps1|g" \
     -e "s|\${CLAUDE_PLUGIN_ROOT}/setup/azure-setup-guide.html|$_safe_dir/setup/azure-setup-guide.html|g" {} \;
+  find "$dest" -name "*.bak" -delete
 done
 
 # 3. Bootstrap venv (no-op if already done)

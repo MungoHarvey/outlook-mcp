@@ -5,6 +5,7 @@
 # --- Credentials & Tokens (CRITICAL — never commit) ---
 outlook-skills/.env
 outlook-skills/tokens.json
+outlook-skills/tokens.json*
 outlook-skills/config.json
 *.pem
 *.key

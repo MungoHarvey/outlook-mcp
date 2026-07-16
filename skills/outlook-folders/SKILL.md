@@ -1,6 +1,6 @@
 ---
 name: outlook-folders
-description: Manage Outlook mail folders — list, create, move emails. Use when user mentions mail folders, organizing email, moving emails, creating folders.
+description: Manage Outlook mail folders themselves — list, create, rename, delete folders. Use when the user mentions mail folders, creating a folder, or renaming/deleting a folder. To move emails into a folder, use outlook-email-move.
 user_invocable: true
 ---
 
@@ -13,7 +13,7 @@ Shared patterns: see [outlook-base](../outlook-base/SKILL.md)
 ## List Folders
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders?$select=id,displayName,totalItemCount,unreadItemCount"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders?\$select=id,displayName,totalItemCount,unreadItemCount"
 ```
 
 For child folders and parsing template, see [reference.md](reference.md).

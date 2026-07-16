@@ -14,6 +14,7 @@ Examples:
 
 import sys
 import json
+import re
 import argparse
 import posixpath
 import urllib.parse
@@ -45,8 +46,8 @@ if _site_pkgs and _site_pkgs.exists():
 def _ensure_token_helper():
     """Lazily import token_helper on first actual request."""
     try:
-        from token_helper import get_token, AuthRequiredError
-        return get_token, AuthRequiredError
+        from token_helper import get_token, AuthRequiredError, TokenRefreshError
+        return get_token, AuthRequiredError, TokenRefreshError
     except ImportError:
         _error = {
             "status": 503,
@@ -57,9 +58,67 @@ def _ensure_token_helper():
         sys.exit(1)
 
 
+def _get_missing_scopes():
+    """Return required Graph scopes absent from the stored grant (best-effort)."""
+    try:
+        from token_helper import missing_scopes
+        return missing_scopes()
+    except Exception:
+        return []
+
+
 # ── Constants ──────────────────────────────────────────────────────────────────
 GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
 ALLOWED_METHODS = {"GET", "POST", "PATCH", "DELETE", "PUT"}
+
+
+# ── Endpoint validation (pure, testable seam) ──────────────────────────────────
+
+def validate_endpoint(endpoint):
+    """Self-heal Git-Bash (MSYS) path mangling and validate the endpoint prefix.
+
+    On Windows, Git Bash rewrites an argument starting with "/" into a Windows
+    path (e.g. "/me" -> "C:/.../Git/me"), which would fail validation. Only a
+    drive-letter-prefixed endpoint can be mangled — a real Graph endpoint never
+    starts with "<drive>:". When we detect that shape, recover the "/me..." or
+    "/users/..." tail and use it for both validation and the outgoing URL.
+
+    Validation is defence-in-depth; the delegated token scopes are the primary
+    guard. Returns (healed_endpoint, None) if allowed, or
+    (endpoint, error_dict) if rejected.
+    """
+    _path_only = endpoint.split("?")[0]
+    _query = endpoint[len(_path_only):]  # includes leading "?" if present
+    if re.match(r"^[A-Za-z]:[\\/]", _path_only):
+        # Greedy prefix picks the rightmost /me or /users segment — the mangled
+        # arg is always the tail, so this recovers it even if the install path
+        # happens to contain a similar segment.
+        _heal = re.match(r"^[A-Za-z]:.*(/(?:me|users)(?:/.*)?)$",
+                         _path_only.replace("\\", "/"))
+        if _heal:
+            _path_only = _heal.group(1)
+            endpoint = _path_only + _query
+
+    # Reject encoded path separators (single or double encoded) — the traversal
+    # vector — then require a segment-exact /me or /users/ prefix so lookalikes
+    # like /messages or /memberOf do not slip through a bare startswith check.
+    _bad = {
+        "status": 400,
+        "error": "invalid_endpoint",
+        "message": "Endpoint must start with /me or /users/"
+    }
+    # Reject only DOUBLE-encoding (`%25…`), which a single unquote+normpath
+    # can't collapse. Single-encoded separators (`%2f`/`%5c`) are handled by the
+    # unquote+normpath+segment-exact check below, and blanket-rejecting them
+    # would wrongly reject legitimately percent-encoded Graph item IDs.
+    if "%25" in _path_only.lower():
+        return endpoint, _bad
+    _normalized = posixpath.normpath(urllib.parse.unquote(_path_only))
+    if not (_normalized == "/me"
+            or _normalized.startswith("/me/")
+            or _normalized.startswith("/users/")):
+        return endpoint, _bad
+    return endpoint, None
 
 
 # ── make_request function ──────────────────────────────────────────────────────
@@ -79,29 +138,32 @@ def make_request(method, endpoint, body, headers, _retried=False):
         Dict with keys: status, data (or error, message on failure)
     """
     # ── Get token functions ────────────────────────────────────────────────────
-    get_token, AuthRequiredError = _ensure_token_helper()
+    get_token, AuthRequiredError, TokenRefreshError = _ensure_token_helper()
 
-    # ── Validate endpoint prefix (defence-in-depth — token scopes are the primary guard) ──
-    _path_only = endpoint.split("?")[0]
-    _normalized = posixpath.normpath(urllib.parse.unquote(_path_only))
-    if not (_normalized.startswith("/me") or _normalized.startswith("/users/")):
-        return {
-            "status": 400,
-            "error": "invalid_endpoint",
-            "message": "Endpoint must start with /me or /users/"
-        }
+    # ── Validate + self-heal endpoint (pure seam — see validate_endpoint) ───────
+    endpoint, _err = validate_endpoint(endpoint)
+    if _err:
+        return _err
 
     # ── Build URL ──────────────────────────────────────────────────────────────
     url = GRAPH_BASE_URL + endpoint
 
     # ── Get token (private variable — never printed) ────────────────────────────
+    # On the 401 retry, force a real refresh — the server rejected a token that
+    # still looked unexpired locally, so re-fetching the cached one would loop.
     try:
-        _tok = get_token()
+        _tok = get_token(force_refresh=_retried)
     except AuthRequiredError:
         return {
             "status": 401,
             "error": "auth_required",
             "message": f"Run: {_AUTH_CMD}"
+        }
+    except TokenRefreshError:
+        return {
+            "status": 503,
+            "error": "token_refresh_failed",
+            "message": "Transient token refresh error (network). Please retry."
         }
 
     # ── Build request ──────────────────────────────────────────────────────────
@@ -171,10 +233,29 @@ def make_request(method, endpoint, body, headers, _retried=False):
         except Exception:
             error_data = {}
 
+        # ── Augment 403 with an actionable hint ────────────────────────────────
+        # Two cases: (a) a user-consentable scope is missing → run --reauth;
+        # (b) the grant already covers all requested scopes → the operation
+        # likely needs an admin-consent scope (contacts-write, rules, categories),
+        # which --reauth cannot grant.
+        _message = e.reason
+        if e.code == 403:
+            _missing = _get_missing_scopes()
+            if _missing:
+                _reauth = f"{_AUTH_CMD} -Reauth" if sys.platform == "win32" \
+                    else f"{_AUTH_CMD} --reauth"
+                _message = (f"{e.reason} — your sign-in is missing permissions "
+                            f"({', '.join(_missing)}). Run: {_reauth}")
+            else:
+                _message = (f"{e.reason} — if this is add/update contacts, inbox "
+                            "rules, or categories, it needs Contacts.ReadWrite / "
+                            "MailboxSettings.ReadWrite, which require Azure admin "
+                            "consent (not available via --reauth).")
+
         return {
             "status": e.code,
             "error": "http_error",
-            "message": e.reason,
+            "message": _message,
             "details": error_data if error_data else None
         }
 

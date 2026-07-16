@@ -41,17 +41,13 @@ Note: This replaces the entire attendees list. Include all attendees you want to
 ### Update single occurrence
 Use the occurrence ID (from calendarView), not the series master ID:
 ```bash
-curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"subject": "Modified occurrence"}' \
-  "https://graph.microsoft.com/v1.0/me/events/{occurrenceId}"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py PATCH "/me/events/{occurrenceId}" '{"subject": "Modified occurrence"}'
 ```
 
 ### Update entire series
 Use the series master ID:
 ```bash
-curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"subject": "Updated Series Name"}' \
-  "https://graph.microsoft.com/v1.0/me/events/{seriesMasterId}"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py PATCH "/me/events/{seriesMasterId}" '{"subject": "Updated Series Name"}'
 ```
 
 ### Change recurrence pattern
@@ -59,7 +55,7 @@ For major recurrence changes, it's often safer to cancel the series and create a
 
 ## Error Handling
 
-See [errors](references/errors.yaml) for common HTTP error codes.
+See [errors](../outlook-base/references/errors.yaml) for common HTTP error codes.
 
 | Code | Specific Meaning |
 |---|---|

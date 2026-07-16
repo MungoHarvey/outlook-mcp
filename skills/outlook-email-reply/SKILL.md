@@ -28,6 +28,6 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages/{messageI
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages/{messageId}/forward" '{"comment":"FYI — see below","toRecipients":[{"emailAddress":{"address":"recipient@example.com"}}]}'
 ```
 
-All return HTTP 204 on success: `{"status": 204, "data": null}` (no body).
+All return HTTP 202 on success: `{"status": 202, "data": null}` (no body).
 
 For adding attachments to replies and forwarding to multiple recipients, see [reference.md](reference.md).

@@ -5,7 +5,7 @@
 ```bash
 python3 -c "
 import sys, json
-data = json.load(sys.stdin)
+data = json.load(sys.stdin).get('data', {})
 for i, rule in enumerate(data.get('value', []), 1):
     enabled = 'ON' if rule.get('isEnabled') else 'OFF'
     seq = rule.get('sequence', '?')
@@ -47,7 +47,7 @@ The inbox rules API supports only a subset of the full Outlook desktop client ru
 
 ## Error Handling
 
-See [errors](references/errors.yaml) for common HTTP error codes.
+See [errors](../outlook-base/references/errors.yaml) for common HTTP error codes.
 
 | Code | Meaning | Action |
 |---|---|---|

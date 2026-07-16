@@ -4,25 +4,26 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const SKILLS_DIR = path.join(__dirname, '..', '..', 'skills');
-const SECURITY_TEST_FILE = __filename; // exclude self from scans
 
-function getSkillMdFiles() {
-  // Return all SKILL.md file paths under SKILLS_DIR
-  // Exclude outlook-references (no SKILL.md)
-  const skillDirs = fs.readdirSync(SKILLS_DIR, { withFileTypes: true })
-    .filter(d => d.isDirectory() && d.name.startsWith('outlook-') && d.name !== 'outlook-references')
-    .map(d => d.name);
-
-  return skillDirs
-    .map(dir => path.join(SKILLS_DIR, dir, 'SKILL.md'))
-    .filter(p => fs.existsSync(p));
+// Walk every skill file (SKILL.md, reference.md, params.yaml, references/*.yaml)
+// — advanced patterns live in reference/yaml files, so scanning only SKILL.md
+// missed the raw curl/Bearer examples the security model forbids.
+function walk(dir) {
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...walk(p));
+    else if (/\.(md|ya?ml)$/.test(entry.name)) out.push(p);
+  }
+  return out;
 }
 
 describe('Security — token leak prevention', () => {
-  const skillFiles = getSkillMdFiles();
+  const skillFiles = walk(SKILLS_DIR);
 
   it('should have skill files to scan', () => {
-    assert.ok(skillFiles.length >= 16, `Expected at least 16 SKILL.md files, found ${skillFiles.length}`);
+    assert.ok(skillFiles.length >= 40,
+      `Expected many skill files (md/yaml), found ${skillFiles.length}`);
   });
 
   const FORBIDDEN_PATTERNS = [
@@ -31,10 +32,13 @@ describe('Security — token leak prevention', () => {
     { name: 'legacy token file path', pattern: /outlook-mcp-tokens\.json/ },
     { name: 'shell TOKEN variable', pattern: /\$TOKEN/ },
     { name: 'raw access_token reference', pattern: /access_token/ },
+    { name: 'curl command', pattern: /\bcurl\b/ },
+    { name: 'Authorization Bearer header', pattern: /Bearer/ },
+    { name: 'direct graph.microsoft.com URL', pattern: /graph\.microsoft\.com/ },
   ];
 
   for (const { name, pattern } of FORBIDDEN_PATTERNS) {
-    it(`should not contain "${name}" in any SKILL.md`, () => {
+    it(`should not contain "${name}" in any skill file`, () => {
       const violations = [];
       for (const filePath of skillFiles) {
         const content = fs.readFileSync(filePath, 'utf8');

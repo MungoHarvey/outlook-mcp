@@ -1,0 +1,24 @@
+{
+  "_comment": "Canonical OAuth scope list — single source of truth. auth-server.js requests exactly `scopes` (below); the scope-contract test asserts each skill's verb+endpoint maps to a scope in `scopes` OR `admin_consent_scopes`. The docs (setup/AZURE_SETUP.md, azure-setup-guide.html, skills/outlook-auth/reference.md, skills/outlook-setup/reference.md) must match `scopes`.",
+
+  "_scopes_comment": "These are all delegated and USER-CONSENTABLE — sign-in works without an admin on personal and typical managed tenants. This is the proven-working set; do NOT add admin-gated scopes here (see admin_consent_scopes).",
+  "scopes": [
+    "openid",
+    "profile",
+    "email",
+    "offline_access",
+    "User.Read",
+    "Mail.Read",
+    "Mail.ReadWrite",
+    "Mail.Send",
+    "Calendars.Read",
+    "Calendars.ReadWrite",
+    "Contacts.Read"
+  ],
+
+  "_admin_consent_comment": "These scopes are needed by outlook-contacts-manage (Contacts.ReadWrite) and outlook-rules / outlook-categories (MailboxSettings.ReadWrite), but on many MANAGED tenants (university / enterprise) they fall outside the user-consent policy and trigger the 'Need admin approval' screen. They are deliberately NOT requested by default so ordinary sign-in stays user-consentable. To enable those three skills, an admin must grant these — then add them to `scopes` for your own tenant.",
+  "admin_consent_scopes": [
+    "Contacts.ReadWrite",
+    "MailboxSettings.ReadWrite"
+  ]
+}

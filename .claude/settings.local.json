@@ -19,7 +19,25 @@
       "Bash(bash -n /m/Coding/outlook-mcp/setup/package.sh)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(bash -n /m/Coding/outlook-mcp/outlook-skills/auth.sh)"
+      "Bash(bash -n /m/Coding/outlook-mcp/outlook-skills/auth.sh)",
+      "Bash(git fetch *)",
+      "Bash(python3 *)",
+      "Bash(git checkout *)",
+      "Bash(git merge *)",
+      "Bash(git push *)",
+      "Bash(git stash *)",
+      "Bash(git rm *)",
+      "Bash(bash -n setup/install.sh)",
+      "Bash(bash -n outlook-skills/auth.sh)",
+      "Bash(python -m py_compile outlook-skills/token_helper.py)",
+      "PowerShell(foreach \\($f in @\\('setup/install.ps1','outlook-skills/auth.ps1'\\)\\) { $err=$null; [void][System.Management.Automation.Language.Parser]::ParseFile\\(\\(Resolve-Path $f\\), [ref]$null, [ref]$err\\); if \\($err.Count -eq 0\\) { \"PASS: $f\" } else { \"FAIL: $f\"; $err | ForEach-Object { $_.Message } } })",
+      "Bash(gh pr *)",
+      "Bash(bash -n setup/package.sh)",
+      "PowerShell($err=$null; [void][System.Management.Automation.Language.Parser]::ParseFile\\(\\(Resolve-Path 'setup/install.ps1'\\), [ref]$null, [ref]$err\\); if \\($err.Count -eq 0\\) { \"install.ps1 OK\" } else { $err | ForEach-Object { $_.Message } })",
+      "Bash(git pull *)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "outlook"
+  ]
 }
