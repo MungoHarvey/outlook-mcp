@@ -131,7 +131,7 @@ Use `OUTLOOK_TENANT_ID=common` for personal Microsoft accounts. For a work or sc
 
 ## Next Steps
 
-You're ready to authenticate. Return to the [Quick Start](../README.md#quick-start) and continue from **Step 3: Authenticate**.
+You're ready to authenticate. Return to the [Setup section](../README.md#setup) and continue from **Step 2: Authenticate**.
 
 ```bash
 # macOS / Linux / WSL

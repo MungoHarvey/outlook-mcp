@@ -4,20 +4,25 @@ Microsoft Outlook integration for Claude — email, calendar, contacts, folders,
 
 ## Overview
 
-This plugin gives Claude access to your Microsoft 365 account through two MCP tools:
+This project gives Claude access to your Microsoft 365 account. Each skill teaches
+Claude which Graph API endpoints to call; every call goes through a secure Python
+proxy (`scripts/graph_call.py`) that injects your token internally — so tokens are
+never exposed to the LLM.
 
-- **outlook_auth** — Check authentication status, get login/reauth guidance
-- **outlook_api** — Execute authenticated Graph API requests (email, calendar, contacts)
+Two ways to run it:
 
-Claude uses 19 bundled skills to know which API endpoints to call for each task. The skills are the intelligence layer; the MCP server is the execution layer.
+- **Claude Code (recommended):** load the skills as a plugin (`cc --plugin-dir .`).
+  Skills call `scripts/graph_call.py` directly.
+- **Claude Desktop / Cowork:** a small stdio MCP server (`mcp-server/`) proxies the
+  same Graph calls where skills can't shell out. It's wired via `.mcp.json`.
 
 ## Components
 
 | Component | Count | Purpose |
 |-----------|-------|---------|
-| Skills | 19 | Domain knowledge for email, calendar, contacts, folders, rules |
-| MCP Server | 1 | stdio server proxying authenticated Graph API requests |
-| Commands | 0 | Skills are triggered contextually |
+| Skills | 20 | Domain knowledge for email, calendar, contacts, folders, rules |
+| Graph proxy | 1 | `scripts/graph_call.py` — injects the token, validates endpoints |
+| MCP server | 1 | `mcp-server/` — stdio transport for Claude Desktop / Cowork |
 
 ## Setup
 
@@ -90,23 +95,16 @@ outlook-skills/tokens.json, both of which are gitignored and never leave my mach
 - A Microsoft 365 account (personal or organisational)
 - Azure AD app registration with Graph API permissions
 
-### 1. Set the token file location
+### 1. Create credentials
 
-The MCP server needs to know where your authentication tokens are stored. Set this environment variable:
-
-**Windows (PowerShell):**
-```powershell
-[System.Environment]::SetEnvironmentVariable("OUTLOOK_TOKEN_FILE", "C:\path\to\outlook-skills\tokens.json", "User")
-```
-
-**macOS/Linux:**
 ```bash
-export OUTLOOK_TOKEN_FILE="/path/to/outlook-skills/tokens.json"
+cp outlook-skills/.env.example outlook-skills/.env    # then fill in your Azure app details
 ```
+
+See [`setup/AZURE_SETUP.md`](setup/AZURE_SETUP.md) for the Azure walkthrough. The
+**Web** redirect URI must be `http://localhost:8400/auth/callback`.
 
 ### 2. Authenticate
-
-Run the authentication script to sign in to Microsoft 365:
 
 **Windows:**
 ```powershell
@@ -118,19 +116,16 @@ Run the authentication script to sign in to Microsoft 365:
 bash outlook-skills/auth.sh
 ```
 
-Follow the browser-based sign-in flow. Tokens are saved to `tokens.json` and auto-refresh for 30 days.
+Follow the browser sign-in. Tokens are saved to `outlook-skills/tokens.json`
+(gitignored) and auto-refresh within the 30-day session.
 
-### 3. Install the plugin
+### 3. Load the skills
 
-Drag `outlook-skills.plugin` into a Cowork session, or install via Claude Desktop's plugin manager.
-
-### 4. Install MCP server dependencies
-
-If `node_modules` wasn't bundled in the plugin:
-
-```bash
-cd mcp-server && npm install
-```
+- **Claude Code:** `cc --plugin-dir .`
+- **Claude Desktop / Cowork:** build the import bundle with `bash setup/package.sh`
+  (or `.\setup\package.ps1`) to produce `outlook-skills.zip`, then import it via
+  Settings → Skills. The MCP server's token-file path is set automatically by
+  `.mcp.json` — no manual environment variable needed.
 
 ## Usage
 
@@ -143,11 +138,13 @@ Once installed and authenticated, Claude will automatically use the outlook skil
 
 ## Security
 
-- Tokens are stored locally in `tokens.json` (never bundled in the plugin)
-- The MCP server never exposes tokens in tool output
-- Endpoint validation restricts requests to `/me` and `/users/` paths
+- Tokens are stored locally in `outlook-skills/tokens.json` (gitignored, never bundled)
+- The token is never exposed to the LLM — `graph_call.py` injects it internally
+- The client secret is **not** stored in `tokens.json`; refresh reads it from `.env`
+- Endpoint validation restricts requests to `/me` and `/users/` paths (segment-exact)
+- Token files are created with restrictive permissions (chmod 600 on Unix, a
+  user-only ACL via icacls on Windows) at write time
 - 30-day session limit enforces periodic re-authentication
-- File permissions are restricted after token refresh (icacls on Windows, chmod 600 on Unix)
 
 ## Customisation
 
