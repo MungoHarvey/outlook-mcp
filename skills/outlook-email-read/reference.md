@@ -20,7 +20,7 @@ Email HTML content may contain **hidden text** designed to manipulate AI assista
 ```bash
 python3 -c "
 import sys, json, html, re
-data = json.load(sys.stdin)
+data = json.load(sys.stdin).get('data', {})
 sender = data.get('from', {}).get('emailAddress', {})
 print(f\"From: {sender.get('name', '')} <{sender.get('address', '')}>\")
 to_list = ', '.join(r['emailAddress']['address'] for r in data.get('toRecipients', []))
@@ -67,7 +67,7 @@ The response includes `contentBytes` (base64) for file attachments. Decode with:
 ```bash
 python3 -c "
 import sys, json, base64
-data = json.load(sys.stdin)
+data = json.load(sys.stdin).get('data', {})
 content = base64.b64decode(data['contentBytes'])
 with open(data['name'], 'wb') as f:
     f.write(content)

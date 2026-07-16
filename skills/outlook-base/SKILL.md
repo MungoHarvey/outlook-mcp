@@ -1,6 +1,6 @@
 ---
 name: outlook-base
-description: Shared foundation for all Outlook skills — token management, curl patterns, error handling. Referenced by other skills, not invoked directly.
+description: Shared foundation for all Outlook skills — token management, API call patterns, error handling. Referenced by other skills, not invoked directly.
 ---
 
 # Outlook Base — Shared Foundation

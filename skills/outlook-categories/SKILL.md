@@ -19,7 +19,7 @@ Parse:
 ```bash
 python3 -c "
 import sys, json
-data = json.load(sys.stdin)
+data = json.load(sys.stdin).get('data', {})
 response = json.loads(data) if isinstance(data, str) else data
 for cat in response.get('value', []):
     print(f\"  {cat.get('displayName', '(unnamed)')} — color: {cat.get('color', 'none')}\")

@@ -3,8 +3,7 @@
 ## Event with Attendees
 
 ```bash
-curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/events" '{
     "subject": "Team Standup",
     "start": {"dateTime": "2026-03-15T09:00:00", "timeZone": "Europe/London"},
     "end": {"dateTime": "2026-03-15T09:30:00", "timeZone": "Europe/London"},
@@ -18,8 +17,7 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
     "isReminderOn": true,
     "reminderMinutesBeforeStart": 15,
     "responseRequested": true
-  }' \
-  "https://graph.microsoft.com/v1.0/me/events"
+  }'
 ```
 
 ## Teams Meeting
@@ -37,15 +35,13 @@ The response will include `onlineMeeting.joinUrl` for the Teams link.
 ## All-Day Event
 
 ```bash
-curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/events" '{
     "subject": "Holiday",
     "isAllDay": true,
     "start": {"dateTime": "2026-03-20T00:00:00", "timeZone": "UTC"},
     "end": {"dateTime": "2026-03-21T00:00:00", "timeZone": "UTC"},
     "showAs": "outOfOffice"
-  }' \
-  "https://graph.microsoft.com/v1.0/me/events"
+  }'
 ```
 
 Note: End date is exclusive — a 1-day event needs end = start + 1 day.
@@ -53,8 +49,7 @@ Note: End date is exclusive — a 1-day event needs end = start + 1 day.
 ## Recurring Event
 
 ```bash
-curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/events" '{
     "subject": "Weekly Sync",
     "start": {"dateTime": "2026-03-16T10:00:00", "timeZone": "UTC"},
     "end": {"dateTime": "2026-03-16T10:30:00", "timeZone": "UTC"},
@@ -70,8 +65,7 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
         "endDate": "2026-06-16"
       }
     }
-  }' \
-  "https://graph.microsoft.com/v1.0/me/events"
+  }'
 ```
 
 ## Location Options

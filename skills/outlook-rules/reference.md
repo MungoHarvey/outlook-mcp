@@ -5,7 +5,7 @@
 ```bash
 python3 -c "
 import sys, json
-data = json.load(sys.stdin)
+data = json.load(sys.stdin).get('data', {})
 for i, rule in enumerate(data.get('value', []), 1):
     enabled = 'ON' if rule.get('isEnabled') else 'OFF'
     seq = rule.get('sequence', '?')

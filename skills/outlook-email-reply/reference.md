@@ -31,7 +31,7 @@ To add attachments to a reply or forward, use the two-step pattern:
 ```bash
 # Step 1: Create reply draft
 DRAFT=$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages/{messageId}/createReply" '{"comment":"See attached"}')
-DRAFT_ID=$(echo "$DRAFT" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+DRAFT_ID=$(echo "$DRAFT" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
 
 # Step 2: Add attachment
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages/$DRAFT_ID/attachments" '{

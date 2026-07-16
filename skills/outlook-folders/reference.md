@@ -5,7 +5,7 @@
 ```bash
 python3 -c "
 import sys, json
-data = json.load(sys.stdin)
+data = json.load(sys.stdin).get('data', {})
 for f in data.get('value', []):
     name = f.get('displayName', '(unnamed)')
     total = f.get('totalItemCount', 0)
@@ -28,7 +28,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/{parent
 
 ```bash
 FOLDER_ID=$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders?\$filter=displayName%20eq%20'FolderName'" | \
-  python3 -c "import sys,json; v=json.load(sys.stdin).get('value',[]); print(v[0]['id'] if v else 'NOT_FOUND')")
+  python3 -c "import sys,json; v=json.load(sys.stdin).get('data',{}).get('value',[]); print(v[0]['id'] if v else 'NOT_FOUND')")
 ```
 
 ## Batch Move Emails

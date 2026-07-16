@@ -12,7 +12,7 @@ pagination:
     # Check for next page in response
     python3 -c "
     import sys, json
-    data = json.load(sys.stdin)
+    data = json.load(sys.stdin).get('data', {})
     items = data.get('value', [])
     # ... process items ...
     next_link = data.get('@odata.nextLink')
@@ -66,7 +66,7 @@ batch_requests:
     - "Each request in batch is throttled independently"
     - "If any request gets 429, dependent requests fail with 424"
     - "Max 4 concurrent Outlook requests within a batch"
-  note: "For simple sequential operations, individual curl calls are simpler"
+  note: "For simple sequential operations, individual sequential calls are simpler"
 
 select_fields:
   email_list: "id,subject,from,toRecipients,receivedDateTime,bodyPreview,hasAttachments,importance,isRead"
