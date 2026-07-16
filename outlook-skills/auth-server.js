@@ -59,6 +59,10 @@ const TENANT_ID     = env.OUTLOOK_TENANT_ID     || process.env.OUTLOOK_TENANT_ID
 const PORT          = parseInt(env.OUTLOOK_AUTH_PORT || process.env.OUTLOOK_AUTH_PORT || '8400', 10);
 const REDIRECT_URI  = env.OUTLOOK_REDIRECT_URI  || process.env.OUTLOOK_REDIRECT_URI  || `http://localhost:${PORT}/auth/callback`;
 
+// Self-imposed session cap — keep in sync with token_helper.py MAX_SESSION_AGE.
+const MAX_SESSION_DAYS    = 30;
+const MAX_SESSION_SECONDS = MAX_SESSION_DAYS * 24 * 60 * 60;
+
 // Canonical scope list — single source of truth in outlook-skills/scopes.json.
 // Keep the permission tables in setup/ and skills/outlook-auth in sync with it.
 // Includes OpenID Connect scopes (openid/profile/email) so the token response
@@ -110,7 +114,8 @@ if (isStatus) {
   const now = Date.now() / 1000;
   const sessionAge = now - (tokens.session_started_at || 0);
   const daysUsed = Math.floor(sessionAge / 86400);
-  const daysLeft = Math.max(0, 30 - daysUsed);
+  // Match token_helper's floor((MAX - age)/86400) so both report the same value.
+  const daysLeft = Math.max(0, Math.floor((MAX_SESSION_SECONDS - sessionAge) / 86400));
   const tokenOk = now < (tokens.access_token_expires_at || 0);
 
   console.log(`\n  User:          ${tokens.user_email || 'unknown'}`);
@@ -144,8 +149,8 @@ if (!isReauth && fs.existsSync(TOKEN_FILE)) {
   try {
     const tokens = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
     const age = Date.now() / 1000 - (tokens.session_started_at || 0);
-    if (age < 30 * 24 * 60 * 60) {
-      const daysLeft = Math.floor((30 * 24 * 60 * 60 - age) / 86400);
+    if (age < MAX_SESSION_SECONDS) {
+      const daysLeft = Math.floor((MAX_SESSION_SECONDS - age) / 86400);
       console.log(`\n  Already authenticated as ${tokens.user_email || 'unknown'}`);
       console.log(`  Session valid for ~${daysLeft} more days.`);
       console.log('  Use --reauth to force a new login.\n');
