@@ -9,15 +9,12 @@ a single version across `.claude-plugin/plugin.json` and `package.json`.
 Fixes from a full code review (functional, security, tests, docs). Highlights:
 
 ### Fixed
-- **Scope set kept user-consentable**: `Contacts.ReadWrite` and
-  `MailboxSettings.ReadWrite` are NOT requested by default — on managed
-  tenants they require admin consent and trigger a "Need admin approval"
-  screen at sign-in. They are documented as optional/admin-gated in
-  `scopes.json` (`admin_consent_scopes`). contacts-manage, rules, and
-  categories require an admin to grant these.
-- **Missing OAuth scopes**: `Contacts.ReadWrite` and `MailboxSettings.ReadWrite`
-  are now requested, so contacts-manage, rules, and categories no longer 403.
-  Existing users must run auth with `--reauth` to grant them.
+- **Scopes stay user-consentable**: the requested set is the proven
+  user-consentable scopes (incl. `openid`/`profile`/`email`). `Contacts.ReadWrite`
+  and `MailboxSettings.ReadWrite` are NOT requested by default -- on managed
+  tenants they require admin consent and trigger a "Need admin approval" screen
+  at sign-in. They live in `scopes.json` under `admin_consent_scopes`;
+  contacts-manage, rules, and categories need an admin to grant them.
 - **Windows path mangling**: `graph_call.py` self-heals Git-Bash (MSYS) mangled
   endpoints, so all write operations work on Windows without `MSYS_NO_PATHCONV`.
 - **Endpoint validation** tightened to a segment-exact `/me` or `/users/` check
