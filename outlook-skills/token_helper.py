@@ -39,12 +39,28 @@ MAX_SESSION_AGE = 30 * 24 * 60 * 60   # 30 days
 # response, so they are excluded from scope-drift comparison.
 _OIDC_SCOPES = {"openid", "profile", "email", "offline_access"}
 
-# Load .env so client_secret is available for silent token refresh
-try:
-    from dotenv import load_dotenv
-    load_dotenv(_SCRIPT_DIR / ".env")
-except ImportError:
-    pass  # dotenv not installed yet (first-run before bootstrap); refresh will fail gracefully
+# Load .env so client_secret is available for silent token refresh.
+# Dependency-free parser (mirrors auth-server.js loadEnv) — refresh must not
+# depend on python-dotenv being installed, since the install flow never
+# guarantees it.
+def _load_env_file(path):
+    """Parse KEY=VALUE lines from a .env file into os.environ (no overwrite)."""
+    try:
+        lines = Path(path).read_text().splitlines()
+    except OSError:
+        return
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        key, val = key.strip(), val.strip()
+        if len(val) >= 2 and val[0] == val[-1] and val[0] in ("'", '"'):
+            val = val[1:-1]
+        os.environ.setdefault(key, val)
+
+
+_load_env_file(_SCRIPT_DIR / ".env")
 
 
 # ── Exceptions ────────────────────────────────────────────────────────────────
