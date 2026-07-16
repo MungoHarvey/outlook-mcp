@@ -1,6 +1,6 @@
 ---
 name: outlook-categories
-description: List available Outlook categories and color presets. Use when user mentions categories, labels, color tags, categorizing emails or events.
+description: List the available Outlook category definitions and their colors (read-only). Use when the user asks what categories or color tags exist. To apply a category to an email, use outlook-email-organize.
 ---
 
 # Outlook Categories

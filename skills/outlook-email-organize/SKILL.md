@@ -1,6 +1,6 @@
 ---
 name: outlook-email-organize
-description: Organize Outlook emails — mark read/unread, apply categories, set flags. Use when user wants to mark read, mark unread, categorize, label, flag, or unflag emails.
+description: Change the state of specific Outlook emails — mark read/unread, apply or remove categories on a message, set or clear flags. Use when the user wants to mark an email read/unread, categorize/label an email, or flag/unflag an email.
 user_invocable: true
 ---
 

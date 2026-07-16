@@ -1,6 +1,6 @@
 ---
 name: outlook-calendar-list
-description: List and view Outlook calendar events. Use when the user mentions calendar, schedule, meetings, what's on today, this week, next week, my events, what have I got, availability, free/busy, or asks about any upcoming appointments. Use proactively whenever dates or scheduling come up.
+description: List and view Outlook calendar events. Use when the user asks about their calendar, schedule, meetings, upcoming appointments, what's on today/this week/next week, or their availability (free/busy).
 user_invocable: true
 ---
 
