@@ -81,10 +81,13 @@ try {
 function hardenPerms(file) {
   try {
     if (process.platform === 'win32') {
-      const { execSync } = require('child_process');
+      const { execFileSync } = require('child_process');
       const user = process.env.USERNAME || process.env.USER || '';
       if (user) {
-        execSync(`icacls "${file}" /inheritance:r /grant:r "${user}:(R,W)"`, { stdio: 'ignore' });
+        // Pass args as an array (no shell) so the username is never interpreted
+        // by a command line — mirrors token_helper.py's subprocess.run([...]).
+        execFileSync('icacls', [file, '/inheritance:r', '/grant:r', `${user}:(R,W)`],
+          { stdio: 'ignore' });
       }
     } else {
       fs.chmodSync(file, 0o600);
