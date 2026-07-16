@@ -128,7 +128,9 @@ def _refresh_lock(timeout=10.0, poll=0.1):
         try:
             fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
             break
-        except FileExistsError:
+        except (FileExistsError, PermissionError):
+            # FileExistsError = held; PermissionError = Windows transient during a
+            # concurrent create/unlink of the lock file. Both mean "retry".
             if time.time() >= deadline:
                 break  # contended/stale — proceed best-effort
             time.sleep(poll)
@@ -153,7 +155,16 @@ def _save_tokens(tokens: dict):
         with os.fdopen(fd, "w") as f:
             f.write(json.dumps(tokens, indent=2))
         _harden_perms(tmp)      # tighten before it becomes the live token file
-        tmp.replace(TOKEN_FILE)
+        # On Windows, os.replace can transiently fail (WinError 5) when another
+        # process/thread is replacing the same target — retry briefly.
+        for attempt in range(5):
+            try:
+                tmp.replace(TOKEN_FILE)
+                break
+            except PermissionError:
+                if attempt == 4:
+                    raise
+                time.sleep(0.02)
         _harden_perms(TOKEN_FILE)
     finally:
         if tmp.exists():

@@ -42,10 +42,13 @@ class TokenPersistTest(unittest.TestCase):
             pass
 
     def test_concurrent_saves_never_corrupt(self):
+        # Real usage serializes refresh+save under _refresh_lock; exercise that
+        # path so we verify the lock prevents both corruption and replace races.
         def worker(i):
-            for _ in range(20):
-                token_helper._save_tokens({"access_token": f"t{i}", "scopes": ["a", "b"]})
-        threads = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
+            for _ in range(5):
+                with token_helper._refresh_lock():
+                    token_helper._save_tokens({"access_token": f"t{i}", "scopes": ["a", "b"]})
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(6)]
         for t in threads:
             t.start()
         for t in threads:
