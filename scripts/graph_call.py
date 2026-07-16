@@ -46,8 +46,8 @@ if _site_pkgs and _site_pkgs.exists():
 def _ensure_token_helper():
     """Lazily import token_helper on first actual request."""
     try:
-        from token_helper import get_token, AuthRequiredError
-        return get_token, AuthRequiredError
+        from token_helper import get_token, AuthRequiredError, TokenRefreshError
+        return get_token, AuthRequiredError, TokenRefreshError
     except ImportError:
         _error = {
             "status": 503,
@@ -135,7 +135,7 @@ def make_request(method, endpoint, body, headers, _retried=False):
         Dict with keys: status, data (or error, message on failure)
     """
     # ── Get token functions ────────────────────────────────────────────────────
-    get_token, AuthRequiredError = _ensure_token_helper()
+    get_token, AuthRequiredError, TokenRefreshError = _ensure_token_helper()
 
     # ── Validate + self-heal endpoint (pure seam — see validate_endpoint) ───────
     endpoint, _err = validate_endpoint(endpoint)
@@ -146,13 +146,21 @@ def make_request(method, endpoint, body, headers, _retried=False):
     url = GRAPH_BASE_URL + endpoint
 
     # ── Get token (private variable — never printed) ────────────────────────────
+    # On the 401 retry, force a real refresh — the server rejected a token that
+    # still looked unexpired locally, so re-fetching the cached one would loop.
     try:
-        _tok = get_token()
+        _tok = get_token(force_refresh=_retried)
     except AuthRequiredError:
         return {
             "status": 401,
             "error": "auth_required",
             "message": f"Run: {_AUTH_CMD}"
+        }
+    except TokenRefreshError:
+        return {
+            "status": 503,
+            "error": "token_refresh_failed",
+            "message": "Transient token refresh error (network). Please retry."
         }
 
     # ── Build request ──────────────────────────────────────────────────────────

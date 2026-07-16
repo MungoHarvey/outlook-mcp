@@ -218,6 +218,11 @@ def _refresh_access_token(tokens: dict) -> dict:
                 "Run: bash outlook-skills/auth.sh --reauth"
             )
         raise TokenRefreshError(f"Token refresh failed: {error_code} — {body}")
+    except urllib.error.URLError as e:
+        # Network failure / timeout — transient, not a re-auth condition.
+        raise TokenRefreshError(f"Network error during token refresh: {e.reason}")
+    except TimeoutError as e:
+        raise TokenRefreshError(f"Timeout during token refresh: {e}")
 
     # Update tokens — preserve session_started_at (enforces 30-day limit)
     tokens["access_token"]            = data["access_token"]
@@ -262,7 +267,7 @@ def missing_scopes(tokens: dict = None) -> list:
     return out
 
 
-def get_token() -> str:
+def get_token(force_refresh: bool = False) -> str:
     """
     Return a valid Bearer access token.
 
@@ -270,6 +275,10 @@ def get_token() -> str:
       - Loading from local token store
       - Silent refresh when access token is expired
       - 30-day session enforcement
+
+    force_refresh=True bypasses the local-expiry short-circuit and refreshes
+    unconditionally — used by the 401 retry path, where the server has rejected
+    a token that still looks unexpired locally (revocation, clock skew).
 
     Raises:
       AuthRequiredError  — if setup or re-authentication is needed
@@ -287,13 +296,13 @@ def get_token() -> str:
         )
 
     # ── Access token still valid ──────────────────────────────────────────────
-    if time.time() < tokens.get("access_token_expires_at", 0):
+    if not force_refresh and time.time() < tokens.get("access_token_expires_at", 0):
         return tokens["access_token"]
 
     # ── Silently refresh (locked; re-check expiry after acquiring) ────────────
     with _refresh_lock():
         tokens = _load_tokens()  # another process may have refreshed meanwhile
-        if time.time() < tokens.get("access_token_expires_at", 0):
+        if not force_refresh and time.time() < tokens.get("access_token_expires_at", 0):
             return tokens["access_token"]
         updated = _refresh_access_token(tokens)
         _save_tokens(updated)
