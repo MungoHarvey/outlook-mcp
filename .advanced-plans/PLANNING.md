@@ -1,9 +1,9 @@
 # Planning State — Code-Review Remediation
 
 current_phase: phase-1
-current_loop: ralph-loop-520
+current_loop: DONE
 last_updated: 2026-07-16
-status: phase-4-complete
+status: complete
 branch: fix/review-remediation
 
 ## Phase 1 loops
