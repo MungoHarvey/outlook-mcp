@@ -32,7 +32,12 @@ from pathlib import Path
 # ── Constants ─────────────────────────────────────────────────────────────────
 _SCRIPT_DIR     = Path(__file__).parent
 TOKEN_FILE      = _SCRIPT_DIR / "tokens.json"
+SCOPES_FILE     = _SCRIPT_DIR / "scopes.json"
 MAX_SESSION_AGE = 30 * 24 * 60 * 60   # 30 days
+
+# OIDC + offline_access are not echoed as Graph resource scopes in the token
+# response, so they are excluded from scope-drift comparison.
+_OIDC_SCOPES = {"openid", "profile", "email", "offline_access"}
 
 # Load .env so client_secret is available for silent token refresh
 try:
@@ -161,6 +166,36 @@ def _refresh_access_token(tokens: dict) -> dict:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+def _required_graph_scopes() -> list:
+    """Graph resource scopes (excluding OIDC/offline_access) skills need."""
+    try:
+        data = json.loads(SCOPES_FILE.read_text())
+        return [s for s in data.get("scopes", []) if s.lower() not in _OIDC_SCOPES]
+    except Exception:
+        return []
+
+
+def missing_scopes(tokens: dict = None) -> list:
+    """Return required Graph scopes absent from the stored grant.
+
+    A non-empty result means the token was minted before a scope was added —
+    the user must run auth with --reauth to consent to the new permissions;
+    a silent refresh cannot acquire them.
+    """
+    if tokens is None:
+        try:
+            tokens = _load_tokens()
+        except AuthRequiredError:
+            return []
+    granted = [s.lower() for s in tokens.get("scopes", [])]
+    out = []
+    for req in _required_graph_scopes():
+        rl = req.lower()
+        if not any(g == rl or g.endswith("/" + rl) for g in granted):
+            out.append(req)
+    return out
+
+
 def get_token() -> str:
     """
     Return a valid Bearer access token.
@@ -213,5 +248,6 @@ def get_session_info() -> dict:
         "user_email":     tokens.get("user_email", "unknown"),
         "days_remaining": days_left,
         "scopes":         tokens.get("scopes", []),
+        "missing_scopes": missing_scopes(tokens),
         "token_valid":    time.time() < tokens.get("access_token_expires_at", 0),
     }

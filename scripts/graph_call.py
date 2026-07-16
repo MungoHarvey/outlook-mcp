@@ -58,6 +58,15 @@ def _ensure_token_helper():
         sys.exit(1)
 
 
+def _get_missing_scopes():
+    """Return required Graph scopes absent from the stored grant (best-effort)."""
+    try:
+        from token_helper import missing_scopes
+        return missing_scopes()
+    except Exception:
+        return []
+
+
 # ── Constants ──────────────────────────────────────────────────────────────────
 GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
 ALLOWED_METHODS = {"GET", "POST", "PATCH", "DELETE", "PUT"}
@@ -213,10 +222,22 @@ def make_request(method, endpoint, body, headers, _retried=False):
         except Exception:
             error_data = {}
 
+        # ── Augment 403 with a scope-drift hint (actionable re-auth) ───────────
+        # A 403 is often a missing consented scope after the app added one; turn
+        # the silent forbidden into a "run --reauth for new permissions" prompt.
+        _message = e.reason
+        if e.code == 403:
+            _missing = _get_missing_scopes()
+            if _missing:
+                _reauth = f"{_AUTH_CMD} -Reauth" if sys.platform == "win32" \
+                    else f"{_AUTH_CMD} --reauth"
+                _message = (f"{e.reason} — your sign-in is missing permissions "
+                            f"({', '.join(_missing)}). Run: {_reauth}")
+
         return {
             "status": e.code,
             "error": "http_error",
-            "message": e.reason,
+            "message": _message,
             "details": error_data if error_data else None
         }
 

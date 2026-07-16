@@ -103,6 +103,18 @@ if (isStatus) {
   console.log(`  Session age:   ${daysUsed} days used, ~${daysLeft} days remaining`);
   console.log(`  Access token:  ${tokenOk ? 'valid' : 'expired (will auto-refresh)'}`);
   console.log(`  Scopes:        ${(tokens.scopes || []).join(', ')}`);
+
+  // Scope-drift check — warn if the stored grant predates a scope addition.
+  const oidc = ['openid', 'profile', 'email', 'offline_access'];
+  const granted = (tokens.scopes || []).map(s => s.toLowerCase());
+  const missing = SCOPES
+    .filter(s => !oidc.includes(s))
+    .filter(r => !granted.some(g => g === r.toLowerCase() || g.endsWith('/' + r.toLowerCase())));
+  if (missing.length) {
+    console.log(`  [!] Missing:   ${missing.join(', ')}`);
+    console.log('               Run --reauth to grant the new permissions.');
+  }
+
   console.log(`  Token file:    ${TOKEN_FILE}\n`);
   process.exit(0);
 }
