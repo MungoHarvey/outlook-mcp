@@ -46,7 +46,13 @@ _OIDC_SCOPES = {"openid", "profile", "email", "offline_access"}
 # depend on python-dotenv being installed, since the install flow never
 # guarantees it.
 def _load_env_file(path):
-    """Parse KEY=VALUE lines from a .env file into os.environ (no overwrite)."""
+    """Parse KEY=VALUE lines from a .env file into os.environ.
+
+    .env takes precedence over a pre-set environment variable, matching
+    auth-server.js (`env.X || process.env.X`) so every auth path agrees on the
+    credential source — otherwise a stale exported OUTLOOK_CLIENT_SECRET could
+    make refresh use a different secret than the one auth signed in with.
+    """
     try:
         lines = Path(path).read_text().splitlines()
     except OSError:
@@ -59,7 +65,7 @@ def _load_env_file(path):
         key, val = key.strip(), val.strip()
         if len(val) >= 2 and val[0] == val[-1] and val[0] in ("'", '"'):
             val = val[1:-1]
-        os.environ.setdefault(key, val)
+        os.environ[key] = val
 
 
 _load_env_file(_SCRIPT_DIR / ".env")
@@ -115,6 +121,7 @@ def _harden_perms(path):
 
 
 LOCK_FILE = _SCRIPT_DIR / "tokens.json.lock"
+STALE_LOCK_SECS = 60  # reclaim a lock older than this (> the 30s refresh timeout)
 
 
 @contextlib.contextmanager
@@ -131,8 +138,16 @@ def _refresh_lock(timeout=10.0, poll=0.1):
         except (FileExistsError, PermissionError):
             # FileExistsError = held; PermissionError = Windows transient during a
             # concurrent create/unlink of the lock file. Both mean "retry".
+            # Reclaim an ORPHANED lock (owner crashed mid-refresh) so it can't
+            # impose the full timeout on every subsequent refresh forever.
+            try:
+                if time.time() - os.path.getmtime(str(LOCK_FILE)) > STALE_LOCK_SECS:
+                    os.unlink(str(LOCK_FILE))
+                    continue
+            except OSError:
+                pass
             if time.time() >= deadline:
-                break  # contended/stale — proceed best-effort
+                break  # contended — proceed best-effort
             time.sleep(poll)
     try:
         yield
@@ -163,7 +178,10 @@ def _save_tokens(tokens: dict):
                 break
             except PermissionError:
                 if attempt == 4:
-                    raise
+                    # Transient/contended write — surface as a retryable refresh
+                    # error (→ 503) rather than an opaque 500 internal_error.
+                    raise TokenRefreshError(
+                        "Could not write the token store (file busy). Please retry.")
                 time.sleep(0.02)
         _harden_perms(TOKEN_FILE)
     finally:

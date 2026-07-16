@@ -19,7 +19,7 @@ function get(pathname, headers = {}) {
       (res) => {
         let body = '';
         res.on('data', (c) => (body += c));
-        res.on('end', () => resolve({ status: res.statusCode, body }));
+        res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body }));
       }
     );
     req.on('error', reject);
@@ -63,9 +63,21 @@ test('rejects callback with mismatched/absent state (CSRF guard)', async () => {
   assert.match(r.body, /state/i);
 });
 
-test('does not reflect unescaped script into the error page', async () => {
-  // state check happens first, so this returns the static 400 page — the key
-  // property is that no raw <script> is echoed back.
-  const r = await get('/auth/callback?state=x&error=%3Cscript%3Ealert(1)%3C/script%3E');
-  assert.ok(!r.body.includes('<script>alert(1)</script>'));
+// NOTE: keep this LAST — a state-valid callback error hits the query.error
+// branch, which shuts the server down.
+test('HTML-escapes reflected error content on a state-valid callback', async () => {
+  // Obtain a real state via /auth (302 with state in the Location) so the
+  // callback passes the state check and actually reaches the escaping path.
+  const authResp = await get('/auth');
+  assert.strictEqual(authResp.status, 302);
+  const state = new URL(authResp.headers.location).searchParams.get('state');
+  assert.ok(state, 'expected a state parameter in the /auth redirect');
+
+  const r = await get(
+    `/auth/callback?state=${state}&error=${encodeURIComponent('<script>alert(1)</script>')}`
+  );
+  assert.ok(!r.body.includes('<script>alert(1)</script>'),
+    'reflected error content must be HTML-escaped');
+  assert.match(r.body, /&lt;script&gt;/,
+    'the error WAS reflected (escaped), proving the escaping path ran');
 });

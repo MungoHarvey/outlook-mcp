@@ -15,7 +15,7 @@
  */
 
 import { readFile, writeFile, rename, chmod } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { exec } from "node:child_process";
@@ -29,6 +29,30 @@ const __dirname  = dirname(__filename);
 // fall back to relative path (works when running from source directory)
 const TOKEN_FILE = process.env.OUTLOOK_TOKEN_FILE
   || join(__dirname, "..", "..", "outlook-skills", "tokens.json");
+
+// Dependency-free .env loader. The client secret is no longer stored in
+// tokens.json, so silent refresh must read OUTLOOK_CLIENT_SECRET from
+// outlook-skills/.env (mirrors token_helper.py._load_env_file). .env wins,
+// matching auth-server.js, so all three paths agree on the secret source.
+function loadEnvFile(path) {
+  if (!existsSync(path)) return;
+  for (const line of readFileSync(path, "utf8").split("\n")) {
+    const t = line.trim();
+    if (!t || t.startsWith("#")) continue;
+    const i = t.indexOf("=");
+    if (i === -1) continue;
+    const key = t.slice(0, i).trim();
+    let val = t.slice(i + 1).trim();
+    if ((val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    process.env[key] = val;
+  }
+}
+// Look next to the token file (co-located in Cowork) and in the source tree.
+loadEnvFile(join(dirname(TOKEN_FILE), ".env"));
+loadEnvFile(join(__dirname, "..", "..", "outlook-skills", ".env"));
 
 const MAX_SESSION_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 const TOKEN_ENDPOINT  = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token";

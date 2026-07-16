@@ -43,6 +43,8 @@ describe('Cross-references', () => {
   it('no skill folder duplicates an outlook-base reference file', () => {
     const baseRefsDir = path.join(SKILLS_DIR, 'outlook-base', 'references');
     const baseRefs = new Set(fs.readdirSync(baseRefsDir));
+    assert.ok(baseRefs.size > 0,
+      'outlook-base/references is empty — anti-dup check would pass vacuously');
     const dups = [];
     for (const entry of fs.readdirSync(SKILLS_DIR, { withFileTypes: true })) {
       if (!entry.isDirectory() || entry.name === 'outlook-base') continue;

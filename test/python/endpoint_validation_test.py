@@ -57,6 +57,15 @@ class EndpointValidationTest(unittest.TestCase):
     def test_reject_users_bare(self):
         self._bad("/usersfoo")
 
+    # ── Allowed: legitimately percent-encoded Graph item IDs ────────────────────
+    def test_allow_percent_encoded_item_id(self):
+        # Some Graph IDs contain '/' which must be %2F-encoded in the path; the
+        # guard must allow these and pass the encoding through unchanged.
+        ep = "/me/messages/AAMkAGI2%2FBBB=="
+        healed, err = validate_endpoint(ep)
+        self.assertIsNone(err, "a %2F-encoded item ID must be allowed")
+        self.assertEqual(healed, ep, "the encoded ID must pass through unchanged")
+
     # ── Rejected: encoded-separator traversal ───────────────────────────────────
     def test_reject_double_encoded_traversal(self):
         self._bad("/me/..%252Ffoo")

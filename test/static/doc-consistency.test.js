@@ -36,16 +36,19 @@ describe('Doc consistency', () => {
       });
 
       it('does not contain the wrong redirect URI', () => {
-        // The wrong value is "/callback" without "/auth" — allow the correct
-        // one (which contains "/auth/callback") but reject the bare form.
-        const withoutCorrect = content.split(REDIRECT_URI).join('');
-        assert.ok(!withoutCorrect.includes(WRONG_REDIRECT),
+        // WRONG_REDIRECT ("localhost:8400/callback") is NOT a substring of the
+        // correct "localhost:8400/auth/callback", so a plain includes() check is
+        // exact — the correct URI never trips it.
+        assert.ok(!content.includes(WRONG_REDIRECT),
           `${doc} contains the wrong redirect URI ${WRONG_REDIRECT}`);
       });
 
       for (const scope of scopes) {
         it(`lists the ${scope} scope`, () => {
-          assert.ok(content.includes(scope), `${doc} is missing scope ${scope}`);
+          // Whole-token match: `Mail.Read` must not be satisfied by the substring
+          // inside `Mail.ReadWrite`. Reject a following word char or dot.
+          const re = new RegExp(scope.replace(/\./g, '\\.') + '(?![\\w.])');
+          assert.ok(re.test(content), `${doc} is missing scope ${scope}`);
         });
       }
     });

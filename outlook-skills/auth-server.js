@@ -67,9 +67,15 @@ const MAX_SESSION_SECONDS = MAX_SESSION_DAYS * 24 * 60 * 60;
 // Keep the permission tables in setup/ and skills/outlook-auth in sync with it.
 // Includes OpenID Connect scopes (openid/profile/email) so the token response
 // carries an id_token (used to record user_email in tokens.json).
-const SCOPES = JSON.parse(
-  fs.readFileSync(path.join(SCRIPT_DIR, 'scopes.json'), 'utf8')
-).scopes;
+// Load resiliently: --revoke/--status need no scopes, so a missing/malformed
+// scopes.json must not crash those recovery paths. The auth flow guards on an
+// empty SCOPES below (after credential validation).
+let SCOPES = [];
+try {
+  SCOPES = JSON.parse(fs.readFileSync(path.join(SCRIPT_DIR, 'scopes.json'), 'utf8')).scopes || [];
+} catch (e) {
+  SCOPES = [];
+}
 
 // Restrict the token file to the current user (best-effort; non-fatal).
 function hardenPerms(file) {
@@ -110,7 +116,13 @@ if (isStatus) {
     console.log('\n  Not authenticated. Run: node outlook-skills/auth-server.js\n');
     process.exit(0);
   }
-  const tokens = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
+  let tokens;
+  try {
+    tokens = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
+  } catch (e) {
+    console.log('\n  Token store is unreadable/corrupt. Run --reauth to re-authenticate.\n');
+    process.exit(0);
+  }
   const now = Date.now() / 1000;
   const sessionAge = now - (tokens.session_started_at || 0);
   const daysUsed = Math.floor(sessionAge / 86400);
@@ -141,6 +153,12 @@ if (isStatus) {
 // ── Validate credentials ────────────────────────────────────────────────────
 if (!CLIENT_ID || !CLIENT_SECRET) {
   console.error('[error] OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET must be set in outlook-skills/.env');
+  process.exit(1);
+}
+
+// The auth flow needs the scope list; --status/--revoke above do not.
+if (!SCOPES.length) {
+  console.error('[error] Could not load scopes from outlook-skills/scopes.json (missing or malformed).');
   process.exit(1);
 }
 

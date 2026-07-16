@@ -19,17 +19,21 @@ class ScopeDriftTest(unittest.TestCase):
         for oidc in ("openid", "profile", "email", "offline_access"):
             self.assertNotIn(oidc, self.required)
 
-    def test_required_includes_new_scopes(self):
-        self.assertIn("Contacts.ReadWrite", self.required)
-        self.assertIn("MailboxSettings.ReadWrite", self.required)
+    def test_required_is_user_consentable_only(self):
+        # The admin-gated scopes must NOT be in the requested/required set —
+        # they trigger admin approval and are held in admin_consent_scopes.
+        self.assertNotIn("Contacts.ReadWrite", self.required)
+        self.assertNotIn("MailboxSettings.ReadWrite", self.required)
+        # A core user-consentable scope must be present.
+        self.assertIn("Mail.ReadWrite", self.required)
 
     def test_full_grant_has_no_drift(self):
         tokens = {"scopes": list(self.required) + ["openid", "profile"]}
         self.assertEqual(token_helper.missing_scopes(tokens), [])
 
     def test_missing_scope_detected(self):
-        tokens = {"scopes": [s for s in self.required if s != "Contacts.ReadWrite"]}
-        self.assertEqual(token_helper.missing_scopes(tokens), ["Contacts.ReadWrite"])
+        tokens = {"scopes": [s for s in self.required if s != "Mail.ReadWrite"]}
+        self.assertEqual(token_helper.missing_scopes(tokens), ["Mail.ReadWrite"])
 
     def test_recognizes_full_uri_scopes(self):
         # Some tenants return fully-qualified scope URIs.

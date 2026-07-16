@@ -34,6 +34,11 @@ class _FakeResp:
 
 class EnvRefreshTest(unittest.TestCase):
 
+    def tearDown(self):
+        # Do not leak the secret into os.environ for later test modules
+        # (the whole python tier runs in one `unittest discover` process).
+        os.environ.pop("OUTLOOK_CLIENT_SECRET", None)
+
     def test_env_parser_populates_environ_without_dotenv(self):
         with tempfile.TemporaryDirectory() as d:
             envf = Path(d) / ".env"

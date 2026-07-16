@@ -107,8 +107,11 @@ def validate_endpoint(endpoint):
         "error": "invalid_endpoint",
         "message": "Endpoint must start with /me or /users/"
     }
-    _low = _path_only.lower()
-    if "%2f" in _low or "%5c" in _low or "%25" in _low:
+    # Reject only DOUBLE-encoding (`%25…`), which a single unquote+normpath
+    # can't collapse. Single-encoded separators (`%2f`/`%5c`) are handled by the
+    # unquote+normpath+segment-exact check below, and blanket-rejecting them
+    # would wrongly reject legitimately percent-encoded Graph item IDs.
+    if "%25" in _path_only.lower():
         return endpoint, _bad
     _normalized = posixpath.normpath(urllib.parse.unquote(_path_only))
     if not (_normalized == "/me"
@@ -230,9 +233,11 @@ def make_request(method, endpoint, body, headers, _retried=False):
         except Exception:
             error_data = {}
 
-        # ── Augment 403 with a scope-drift hint (actionable re-auth) ───────────
-        # A 403 is often a missing consented scope after the app added one; turn
-        # the silent forbidden into a "run --reauth for new permissions" prompt.
+        # ── Augment 403 with an actionable hint ────────────────────────────────
+        # Two cases: (a) a user-consentable scope is missing → run --reauth;
+        # (b) the grant already covers all requested scopes → the operation
+        # likely needs an admin-consent scope (contacts-write, rules, categories),
+        # which --reauth cannot grant.
         _message = e.reason
         if e.code == 403:
             _missing = _get_missing_scopes()
@@ -241,6 +246,11 @@ def make_request(method, endpoint, body, headers, _retried=False):
                     else f"{_AUTH_CMD} --reauth"
                 _message = (f"{e.reason} — your sign-in is missing permissions "
                             f"({', '.join(_missing)}). Run: {_reauth}")
+            else:
+                _message = (f"{e.reason} — if this is add/update contacts, inbox "
+                            "rules, or categories, it needs Contacts.ReadWrite / "
+                            "MailboxSettings.ReadWrite, which require Azure admin "
+                            "consent (not available via --reauth).")
 
         return {
             "status": e.code,

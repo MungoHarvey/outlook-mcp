@@ -88,12 +88,16 @@ class ScopeContractTest(unittest.TestCase):
             "scopes.json does not account for required scopes:\n  " + "\n  ".join(sorted(set(missing))),
         )
 
+    # Known admin-consent-required Graph scopes. Hardcoded (not derived from
+    # scopes.json) so the guard still fires if someone MOVES one out of
+    # admin_consent_scopes into the requested set.
+    KNOWN_ADMIN_GATED = {"Contacts.ReadWrite", "MailboxSettings.ReadWrite"}
+
     def test_requested_scopes_stay_user_consentable(self):
-        # Regression guard: the admin-gated scopes (Contacts.ReadWrite,
-        # MailboxSettings.ReadWrite) must NOT be in the requested set — adding
-        # them triggers the "Need admin approval" screen on managed tenants and
-        # breaks ordinary sign-in.
-        leaked = self.requested & self.admin
+        # Regression guard: these scopes must NOT be requested — they trigger the
+        # "Need admin approval" screen on managed tenants and break ordinary
+        # sign-in (this is the exact regression that shipped and was reverted).
+        leaked = self.requested & self.KNOWN_ADMIN_GATED
         self.assertFalse(
             leaked,
             f"Admin-gated scopes leaked into the requested set (breaks user sign-in): {sorted(leaked)}",
