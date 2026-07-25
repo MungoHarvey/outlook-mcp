@@ -1,6 +1,6 @@
 ---
 name: outlook-base
-description: Shared foundation for all Outlook skills — token management, curl patterns, error handling. Referenced by other skills, not invoked directly.
+description: Shared foundation for all Outlook skills — graph_call.py proxy usage, error handling, safety rules. Referenced by other skills, not invoked directly.
 ---
 
 # Outlook Base — Shared Foundation

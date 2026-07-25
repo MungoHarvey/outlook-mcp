@@ -3,9 +3,8 @@
 ## Duplicate Check Before Creating
 
 ```bash
-EXISTING=$(curl -s -H "Authorization: Bearer $TOKEN" \
-  "https://graph.microsoft.com/v1.0/me/contacts?\$filter=emailAddresses/any(e:e/address%20eq%20'jane@example.com')&\$select=id,givenName,surname" | \
-  python3 -c "import sys,json; v=json.load(sys.stdin).get('value',[]); print(v[0]['id'] if v else 'NONE')")
+EXISTING=$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/contacts?\$filter=emailAddresses/any(e:e/address%20eq%20'jane@example.com')&\$select=id,givenName,surname" | \
+  python3 -c "import sys,json; v=(json.load(sys.stdin).get('data') or {}).get('value',[]); print(v[0]['id'] if v else 'NONE')")
 
 if [ "$EXISTING" != "NONE" ]; then
     echo "Contact already exists with ID: $EXISTING"
@@ -15,8 +14,7 @@ fi
 ## Full Contact Creation
 
 ```bash
-curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/contacts" '{
     "givenName": "Jane",
     "surname": "Doe",
     "emailAddresses": [
@@ -45,16 +43,13 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
     },
     "birthday": "1990-06-15",
     "personalNotes": "Met at conference 2025"
-  }' \
-  "https://graph.microsoft.com/v1.0/me/contacts"
+  }'
 ```
 
 ## Create in Specific Folder
 
 ```bash
-curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"givenName": "Jane", "surname": "Doe", "emailAddresses": [{"address": "jane@example.com"}]}' \
-  "https://graph.microsoft.com/v1.0/me/contactFolders/{folderId}/contacts"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/contactFolders/{folderId}/contacts" '{"givenName": "Jane", "surname": "Doe", "emailAddresses": [{"address": "jane@example.com"}]}'
 ```
 
 ## Error Handling

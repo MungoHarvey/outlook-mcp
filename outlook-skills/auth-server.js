@@ -246,7 +246,24 @@ const server = http.createServer((req, res) => {
             client_secret:           CLIENT_SECRET,
           };
 
-          fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2), 'utf8');
+          fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2), { encoding: 'utf8', mode: 0o600 });
+
+          // mode only applies when the file is created — enforce owner-only
+          // access on rewrites too (matches token_helper.py / mcp-server auth.js)
+          if (process.platform === 'win32') {
+            const username = process.env.USERNAME || process.env.USER || '';
+            if (username) {
+              try {
+                require('child_process').execFileSync(
+                  'icacls',
+                  [TOKEN_FILE, '/inheritance:r', '/grant:r', `${username}:(R,W)`],
+                  { stdio: 'ignore' }
+                );
+              } catch (e) { /* non-fatal — ACL failure doesn't break token use */ }
+            }
+          } else {
+            fs.chmodSync(TOKEN_FILE, 0o600);
+          }
 
           console.log(`\n  Authenticated as: ${email}`);
           console.log(`  Scopes granted: ${tokens.scopes.join(', ')}`);

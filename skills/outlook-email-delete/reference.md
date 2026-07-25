@@ -6,9 +6,7 @@ Move multiple emails to Deleted Items:
 
 ```bash
 for MSG_ID in id1 id2 id3; do
-  curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-    -d '{"destinationId": "deleteditems"}' \
-    "https://graph.microsoft.com/v1.0/me/messages/$MSG_ID/move"
+  python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages/$MSG_ID/move" '{"destinationId": "deleteditems"}'
 done
 ```
 
@@ -16,8 +14,7 @@ done
 
 ```bash
 for MSG_ID in id1 id2 id3; do
-  curl -s -X DELETE -H "Authorization: Bearer $TOKEN" \
-    "https://graph.microsoft.com/v1.0/me/messages/$MSG_ID"
+  python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py DELETE "/me/messages/$MSG_ID"
 done
 ```
 

@@ -18,7 +18,7 @@ import { readFile, writeFile, rename, chmod } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -80,7 +80,7 @@ async function loadTokens() {
  */
 async function saveTokens(tokens) {
   const tmpPath = TOKEN_FILE + ".tmp";
-  await writeFile(tmpPath, JSON.stringify(tokens, null, 2), "utf-8");
+  await writeFile(tmpPath, JSON.stringify(tokens, null, 2), { encoding: "utf-8", mode: 0o600 });
   await rename(tmpPath, TOKEN_FILE);
 
   // Restrict file permissions
@@ -88,8 +88,9 @@ async function saveTokens(tokens) {
     // Windows: use icacls to restrict access to current user
     const username = process.env.USERNAME || process.env.USER || "";
     if (username) {
-      exec(
-        `icacls "${TOKEN_FILE}" /inheritance:r /grant:r "${username}:(R,W)"`,
+      execFile(
+        "icacls",
+        [TOKEN_FILE, "/inheritance:r", "/grant:r", `${username}:(R,W)`],
         () => {} // non-fatal — ACL failure doesn't break token use
       );
     }

@@ -12,8 +12,7 @@ flagStatus:
 ## Set Flag with Due Date
 
 ```bash
-curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py PATCH "/me/messages/{messageId}" '{
     "flag": {
       "flagStatus": "flagged",
       "dueDateTime": {
@@ -21,17 +20,14 @@ curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application
         "timeZone": "UTC"
       }
     }
-  }' \
-  "https://graph.microsoft.com/v1.0/me/messages/{messageId}"
+  }'
 ```
 
 ## Batch Update (Mark Multiple Read)
 
 ```bash
 for MSG_ID in id1 id2 id3; do
-  curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-    -d '{"isRead": true}' \
-    "https://graph.microsoft.com/v1.0/me/messages/$MSG_ID"
+  python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py PATCH "/me/messages/$MSG_ID" '{"isRead": true}'
 done
 ```
 
@@ -40,9 +36,7 @@ Note: Respect throttling limits (max 4 concurrent). See [graph-api-patterns](ref
 ## Set Importance
 
 ```bash
-curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"importance": "high"}' \
-  "https://graph.microsoft.com/v1.0/me/messages/{messageId}"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py PATCH "/me/messages/{messageId}" '{"importance": "high"}'
 ```
 
 Values: `low`, `normal`, `high`

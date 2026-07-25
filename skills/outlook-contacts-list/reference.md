@@ -5,7 +5,7 @@
 ```bash
 python3 -c "
 import sys, json
-data = json.load(sys.stdin)
+data = json.load(sys.stdin).get('data') or {}
 for i, c in enumerate(data.get('value', []), 1):
     name = f\"{c.get('givenName', '')} {c.get('surname', '')}\".strip() or '(no name)'
     emails = ', '.join(e.get('address', '') for e in c.get('emailAddresses', []))
@@ -28,8 +28,7 @@ if next_link:
 ## Folder-Specific Listing
 
 ```bash
-curl -s -H "Authorization: Bearer $TOKEN" \
-  "https://graph.microsoft.com/v1.0/me/contactFolders/{folderId}/contacts?\$top=10&\$select=id,givenName,surname,emailAddresses,mobilePhone,businessPhones"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/contactFolders/{folderId}/contacts?\$top=10&\$select=id,givenName,surname,emailAddresses,mobilePhone,businessPhones"
 ```
 
 ## OData Filters

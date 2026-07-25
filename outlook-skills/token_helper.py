@@ -75,9 +75,11 @@ def _load_tokens() -> dict:
 
 
 def _save_tokens(tokens: dict):
-    """Persist updated tokens (atomic write)."""
+    """Persist updated tokens (atomic write; tmp file created owner-only)."""
     tmp = TOKEN_FILE.parent / (TOKEN_FILE.name + ".tmp")
-    tmp.write_text(json.dumps(tokens, indent=2))
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(json.dumps(tokens, indent=2))
     tmp.replace(TOKEN_FILE)
     if sys.platform == "win32":
         import subprocess

@@ -12,7 +12,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/sentite
 ### Named folder resolution
 ```bash
 FOLDER_ID=$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders?\$filter=displayName%20eq%20'FolderName'" | \
-  python3 -c "import sys,json; v=json.load(sys.stdin).get('value',[]); print(v[0]['id'] if v else 'NOT_FOUND')")
+  python3 -c "import sys,json; v=(json.load(sys.stdin).get('data') or {}).get('value',[]); print(v[0]['id'] if v else 'NOT_FOUND')")
 
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/$FOLDER_ID/messages?$top=10&$orderby=receivedDateTime%20desc&$select=id,subject,from,receivedDateTime,bodyPreview,isRead"
 ```
@@ -41,7 +41,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/$FOLDER
 ```bash
 python3 -c "
 import sys, json
-data = json.load(sys.stdin)
+data = json.load(sys.stdin).get('data') or {}
 for i, msg in enumerate(data.get('value', []), 1):
     sender = msg.get('from', {}).get('emailAddress', {})
     read = '' if msg.get('isRead') else '[UNREAD] '

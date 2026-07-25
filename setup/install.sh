@@ -21,7 +21,10 @@ _safe_dir="${_safe_dir//|/\\|}"
 for dir in "$ROOT_DIR/skills"/outlook-*/; do
   name=$(basename "$dir")
   dest="$SKILLS_DIR/$name"
-  cp -r "$dir" "$dest/"
+  # Remove any previous install first — copying into an existing dir would nest
+  # a duplicate skill folder inside it (cp copies INTO an existing destination)
+  rm -rf "$dest"
+  cp -r "$dir" "$dest"
   # Rewrite ${CLAUDE_PLUGIN_ROOT} paths to absolute installed locations
   find "$dest" -name "*.md" -exec sed -i \
     -e "s|\${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py|$_safe_dir/scripts/graph_call.py|g" \
