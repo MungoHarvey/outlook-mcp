@@ -3,16 +3,20 @@
 # ============================================================
 
 # --- Credentials & Tokens (CRITICAL — never commit) ---
-outlook-skills/.env
-outlook-skills/tokens.json
+# Class patterns: cover .env at any location and every backup/temp variant
+# (.env.bak, .env.old, .env.backup, tokens.json.tmp, ...)
+.env
+.env.*
+!.env.example
+tokens.json*
 outlook-skills/config.json
 *.pem
 *.key
 *.cert
 
 # --- Node.js ---
+# package-lock.json is intentionally tracked (reproducible npm test/install)
 node_modules/
-package-lock.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -44,7 +48,6 @@ Thumbs.db
 # These are session-specific and should not be shared
 .claude/settings.local.json
 .claude/state/
-.claude/loop-complete.json
 
 # --- Skill eval workspaces (may contain personal data) ---
 skills/*-workspace/
@@ -60,9 +63,8 @@ logs/
 
 # --- MCP server dependencies ---
 mcp-server/node_modules/
-mcp-server/package-lock.json
 
 # --- Temporary / development debris ---
 New folder/
 outlook-skills/outlook-skills-zip/
-loop-complete.json
+loop-complete*.json
