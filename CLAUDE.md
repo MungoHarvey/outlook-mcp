@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This project is a **Claude Code plugin** providing skills for interacting with Microsoft Outlook (email, calendar, contacts, folders, rules, categories) via the Microsoft Graph API.
 
-All Microsoft Graph API calls go through `scripts/graph_call.py` — a secure Python proxy that injects Bearer tokens internally. Tokens are stored in `outlook-skills/tokens.json` (gitignored) and never exposed to the LLM. Authentication is handled by `outlook-skills/auth-server.js` — a Node.js OAuth 2.0 server on port 8400.
+All Microsoft Graph API calls go through `scripts/graph_call.py` — a secure Python proxy that injects Bearer tokens internally. Tokens are stored in the auth state directory (see Setup; `outlook-skills/tokens.json` in the cloned-repo layout, `~/.outlook-skills/tokens.json` for plugin installs) and never exposed to the LLM. Authentication is handled by `outlook-skills/auth-server.js` — a Node.js OAuth 2.0 server on port 8400.
 
 **Progressive loading**: Each `SKILL.md` is lean (~40-60 lines) with only the core operation. Adjacent `reference.md` files contain parsing templates, advanced patterns, and error handling. `params.yaml` files provide YAML-formatted parameter options (showAs, importance, recurrence, etc.). Each skill carries reference YAML files (timezones, colors, errors, graph-api-patterns) in its own `references/` subdirectory.
 
@@ -55,8 +55,17 @@ OUTLOOK_INTEGRATION_TEST=true npm run test:integration  # live API smoke tests (
 
 ### As a Claude Code plugin (recommended)
 
+From the marketplace (the repo is its own marketplace via `.claude-plugin/marketplace.json`):
+
+```
+/plugin marketplace add MungoHarvey/outlook-mcp
+/plugin install outlook-skills@outlook-mcp
+```
+
+Or from a local clone:
+
 ```bash
-cc --plugin-dir /path/to/outlook-mcp-skills
+claude --plugin-dir /path/to/outlook-mcp
 ```
 
 Skills are auto-discovered from `skills/` and paths resolve via `${CLAUDE_PLUGIN_ROOT}`.
@@ -72,7 +81,7 @@ Produces `outlook-skills.zip` — import via Settings → Skills. Auth must be c
 
 ## Setup
 
-Auth data (.env, venv, tokens) lives entirely within the cloned repo. `uv` is used for the Python environment (falls back to pip if uv is not installed).
+Auth state (.env, tokens, optional venv) is resolved by every component in this order: `$OUTLOOK_SKILLS_HOME` (explicit override) → the repo's `outlook-skills/` directory when it already holds `.env`/`tokens.json` (cloned-repo layout) → `~/.outlook-skills` (default for plugin installs; survives plugin cache updates). `$OUTLOOK_TOKEN_FILE` additionally overrides just the token file path. The commands below show the cloned-repo layout.
 
 ### macOS / Linux / WSL / Git Bash
 ```bash
@@ -132,8 +141,8 @@ Skills reference the API proxy via `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_
 
 - All API calls use `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py METHOD "/endpoint" [body] [--header "K:V"]`
 - Endpoints must start with `/me` or `/users/` — `graph_call.py` rejects anything else with a 400
-- `graph_call.py` bootstraps its Python dependencies from `outlook-skills/.venv` (created by `auth.sh`); if missing, it returns a 500 with instructions to run `auth.sh`
-- Tokens are stored in `outlook-skills/tokens.json` (gitignored) — never exposed to the LLM
+- `graph_call.py` optionally loads Python dependencies from a `.venv` in the auth state directory; without one it falls back to the standard library
+- Tokens are stored in the auth state directory (`tokens.json`, owner-only permissions) — never exposed to the LLM
 - Response format: `{"status": N, "data": {...}}` — parse the `.data` field for the API response body
 - **Destructive operations** (send email, delete, cancel event, create rules) always require explicit user confirmation before executing
 - Always use `$select` to limit response fields; use `@odata.nextLink` for pagination (never `$skip`)
@@ -166,7 +175,7 @@ Skills reference the API proxy via `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_
 
 ## Environment Variables
 
-All credentials are set in `outlook-skills/.env` (gitignored). Copy `.env.example` as a starting template.
+All credentials are set in the state directory's `.env` (never committed). Copy `.env.example` as a starting template.
 
 | Variable | Required | Description |
 |---|---|---|
@@ -174,6 +183,13 @@ All credentials are set in `outlook-skills/.env` (gitignored). Copy `.env.exampl
 | `OUTLOOK_CLIENT_SECRET` | Yes | Azure AD application client secret |
 | `OUTLOOK_TENANT_ID` | No | Tenant ID (defaults to `common` for personal accounts) |
 | `OUTLOOK_REDIRECT_URI` | No | OAuth redirect (default: `http://localhost:8400/auth/callback`) |
+
+Process-level overrides (not set in `.env`):
+
+| Variable | Description |
+|---|---|
+| `OUTLOOK_SKILLS_HOME` | Override the auth state directory (`.env`, `tokens.json`, `.venv`) |
+| `OUTLOOK_TOKEN_FILE` | Override just the token file path |
 
 ## Security Architecture
 

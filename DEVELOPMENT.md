@@ -121,7 +121,7 @@ Goal: Make the same skills work in Claude Desktop and Cowork, where the network 
 | Path | Purpose | Ships in plugin? | Ships in config? |
 |------|---------|:-:|:-:|
 | `.claude-plugin/plugin.json` | Plugin manifest | Yes | — |
-| `skills/outlook-*/SKILL.md` | 19 skill definitions | Yes | — |
+| `skills/outlook-*/SKILL.md` | 20 skill definitions | Yes | — |
 | `skills/outlook-*/reference.md` | Extended patterns | Yes | — |
 | `skills/outlook-*/params.yaml` | Parameter options | Yes | — |
 | `skills/outlook-*/references/*.yaml` | Shared reference data | Yes | — |
@@ -129,7 +129,7 @@ Goal: Make the same skills work in Claude Desktop and Cowork, where the network 
 | `mcp-server/src/auth.js` | Token management | — | Yes |
 | `mcp-server/src/graph.js` | Graph API proxy | — | Yes |
 | `mcp-server/package.json` | Server dependencies | — | Yes |
-| `.mcp.json` | Claude Code MCP config | Yes | — |
+| `.mcp.json` | (removed in 2.0.0 — MCP server is configured host-side only) | — | — |
 
 ### Auth system (required on host, not in plugin)
 

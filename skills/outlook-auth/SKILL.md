@@ -24,7 +24,7 @@ Returns `VALID`, `EXPIRED`, or `NO_TOKEN`.
 bash ${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh
 ```
 
-Opens your default browser to authenticate with Microsoft Outlook. Tokens are stored in `outlook-skills/tokens.json` (gitignored).
+Opens your default browser to authenticate with Microsoft Outlook. Tokens are stored in the auth state directory (`$OUTLOOK_SKILLS_HOME`, the repo's `outlook-skills/` if it already holds state, or `~/.outlook-skills`) — never committed, never shown.
 
 If you need to force a new login:
 ```bash

@@ -55,7 +55,7 @@ secret or any authentication token.
 8. Verify access:
        python3 scripts/graph_call.py GET "/me"
    A 200 response with my profile means setup is complete. Then tell me I can load the
-   plugin with:  cc --plugin-dir ./outlook-mcp
+   plugin with:  claude --plugin-dir ./outlook-mcp
    and try "/outlook-email-list" or just ask you to "check my inbox".
 
 All Microsoft Graph calls must go through scripts/graph_call.py — never read token files

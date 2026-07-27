@@ -1,0 +1,34 @@
+{
+  "name": "outlook-mcp",
+  "owner": {
+    "name": "MungoHarvey",
+    "url": "https://github.com/MungoHarvey"
+  },
+  "metadata": {
+    "description": "Marketplace for the outlook-skills plugin — Microsoft Outlook email, calendar, contacts, folders, and rules via the Microsoft Graph API",
+    "version": "2.0.0"
+  },
+  "plugins": [
+    {
+      "name": "outlook-skills",
+      "source": "./",
+      "description": "Microsoft Outlook integration — email, calendar, contacts, folders, and inbox rules via the Microsoft Graph API. 20 skills with a secure token proxy: credentials never reach the model.",
+      "version": "2.0.0",
+      "author": {
+        "name": "MungoHarvey"
+      },
+      "homepage": "https://github.com/MungoHarvey/outlook-mcp",
+      "repository": "https://github.com/MungoHarvey/outlook-mcp",
+      "license": "MIT",
+      "keywords": [
+        "outlook",
+        "email",
+        "calendar",
+        "contacts",
+        "microsoft-graph",
+        "productivity"
+      ],
+      "category": "productivity"
+    }
+  ]
+}

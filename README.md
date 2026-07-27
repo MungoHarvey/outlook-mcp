@@ -4,24 +4,48 @@ Microsoft Outlook integration for Claude — email, calendar, contacts, folders,
 
 ## Overview
 
-This plugin gives Claude access to your Microsoft 365 account through two MCP tools:
+This is a **Claude Code plugin** built around 20 skills and a secure token proxy:
 
-- **outlook_auth** — Check authentication status, get login/reauth guidance
-- **outlook_api** — Execute authenticated Graph API requests (email, calendar, contacts)
-
-Claude uses 19 bundled skills to know which API endpoints to call for each task. The skills are the intelligence layer; the MCP server is the execution layer.
-
-## Components
+- **Skills** are the intelligence layer — each one teaches Claude the right Graph API calls for a task (list inbox, send mail, book meetings, manage contacts, create rules, …).
+- **`scripts/graph_call.py`** is the execution layer — a proxy that injects the Bearer token internally and returns only the JSON response. Tokens and credentials never reach the model.
+- **`outlook-skills/`** holds the auth system — a Node.js OAuth 2.0 server plus entry scripts (`auth.sh` / `auth.ps1`) that store tokens locally with a 30-day session limit.
 
 | Component | Count | Purpose |
 |-----------|-------|---------|
-| Skills | 19 | Domain knowledge for email, calendar, contacts, folders, rules |
-| MCP Server | 1 | stdio server proxying authenticated Graph API requests |
-| Commands | 0 | Skills are triggered contextually |
+| Skills | 20 | Email, calendar, contacts, folders, rules, categories, setup, auth |
+| Graph proxy | 1 | `graph_call.py` — authenticated API calls, tokens never exposed |
+| MCP server | 1 (optional) | Only for Claude Desktop / Cowork; not used by Claude Code |
 
-## Setup
+## Install
 
-### Fastest path — let Claude set it up
+### As a Claude Code plugin (recommended)
+
+```
+/plugin marketplace add MungoHarvey/outlook-mcp
+/plugin install outlook-skills@outlook-mcp
+```
+
+Then run `/outlook-setup` inside Claude Code — it walks you through the Azure app registration (with a visual guide) and authentication. Your credentials live in `~/.outlook-skills/` (or `$OUTLOOK_SKILLS_HOME`), so they survive plugin updates.
+
+### From a local clone (development)
+
+```bash
+git clone https://github.com/MungoHarvey/outlook-mcp.git
+claude --plugin-dir ./outlook-mcp
+```
+
+With a clone, auth state can live inside the repo at `outlook-skills/` (`.env`, `tokens.json` — both gitignored) and is picked up automatically.
+
+### Claude Desktop / Cowork (zip import)
+
+```bash
+bash setup/package.sh          # macOS/Linux
+.\setup\package.ps1            # Windows
+```
+
+Produces `outlook-skills.zip` — import via Settings → Skills. Complete authentication in the repo first.
+
+## Fastest path — let Claude set it up
 
 Copy the prompt below and paste it into a fresh **Claude Code** session (run `claude` in a terminal where you want the project cloned). Claude clones the repo, installs dependencies, prepares the project, then opens the visual Azure guide ([`setup/azure-setup-guide.html`](setup/azure-setup-guide.html)) in your browser and finishes by authenticating you. You only supply three Azure values (~5 min).
 
@@ -74,7 +98,7 @@ secret or any authentication token.
 8. Verify access:
        python3 scripts/graph_call.py GET "/me"
    A 200 response with my profile means setup is complete. Then tell me I can load the
-   plugin with:  cc --plugin-dir ./outlook-mcp
+   plugin with:  claude --plugin-dir ./outlook-mcp
    and try "/outlook-email-list" or just ask you to "check my inbox".
 
 All Microsoft Graph calls must go through scripts/graph_call.py — never read token files
@@ -82,73 +106,73 @@ directly. My credentials stay in outlook-skills/.env and tokens in
 outlook-skills/tokens.json, both of which are gitignored and never leave my machine.
 ```
 
-> Already have the plugin loaded? Just run **`/outlook-setup`** (or say "set up Outlook") for the same flow. A standalone copy of this prompt also lives in [`setup/SETUP-PROMPT.md`](setup/SETUP-PROMPT.md). The manual steps below are for reference.
+> Already have the plugin loaded? Just run **`/outlook-setup`** (or say "set up Outlook") for the same flow. A standalone copy of this prompt also lives in [`setup/SETUP-PROMPT.md`](setup/SETUP-PROMPT.md).
 
-### Prerequisites
+## Prerequisites
 
 - Node.js >= 18.0.0
+- Python 3.10+
 - A Microsoft 365 account (personal or organisational)
-- Azure AD app registration with Graph API permissions
+- Azure AD app registration with Graph API permissions (the setup flow walks you through this)
 
-### 1. Set the token file location
+## Where auth state lives
 
-The MCP server needs to know where your authentication tokens are stored. Set this environment variable:
+`.env` (credentials) and `tokens.json` (tokens) are resolved in this order by every component:
 
-**Windows (PowerShell):**
-```powershell
-[System.Environment]::SetEnvironmentVariable("OUTLOOK_TOKEN_FILE", "C:\path\to\outlook-skills\tokens.json", "User")
-```
+1. `$OUTLOOK_SKILLS_HOME` — explicit override
+2. The repo's `outlook-skills/` directory, when it already holds state (cloned-repo layout)
+3. `~/.outlook-skills` — default for plugin installs; survives plugin cache updates
 
-**macOS/Linux:**
-```bash
-export OUTLOOK_TOKEN_FILE="/path/to/outlook-skills/tokens.json"
-```
+`$OUTLOOK_TOKEN_FILE` additionally overrides just the token file path.
 
-### 2. Authenticate
-
-Run the authentication script to sign in to Microsoft 365:
-
-**Windows:**
-```powershell
-.\outlook-skills\auth.ps1
-```
-
-**macOS/Linux:**
-```bash
-bash outlook-skills/auth.sh
-```
-
-Follow the browser-based sign-in flow. Tokens are saved to `tokens.json` and auto-refresh for 30 days.
-
-### 3. Install the plugin
-
-Drag `outlook-skills.plugin` into a Cowork session, or install via Claude Desktop's plugin manager.
-
-### 4. Install MCP server dependencies
-
-If `node_modules` wasn't bundled in the plugin:
+Auth management (from a clone; for a plugin install, prefix with the plugin path shown by `/outlook-setup`):
 
 ```bash
-cd mcp-server && npm install
+bash outlook-skills/auth.sh --status   # check token validity
+bash outlook-skills/auth.sh --reauth   # force re-authentication
+bash outlook-skills/auth.sh --revoke   # revoke and delete all tokens
 ```
 
 ## Usage
 
-Once installed and authenticated, Claude will automatically use the outlook skills when you ask about email, calendar, or contacts. Examples:
+Once installed and authenticated, Claude automatically uses the Outlook skills when you ask about email, calendar, or contacts:
 
 - "Check my recent emails"
 - "What's on my calendar this week?"
 - "Send a reply to the message from Sarah"
 - "Create a meeting for tomorrow at 2pm"
 
+Destructive operations (sending, deleting, cancelling, creating rules) always ask for your confirmation first.
+
+## Optional: MCP server for Claude Desktop / Cowork
+
+`mcp-server/` contains a small stdio MCP server exposing `outlook_auth` and `outlook_api` tools. It is **not** part of the Claude Code plugin. To use it with Claude Desktop, install its dependencies and register it explicitly:
+
+```bash
+cd mcp-server && npm install
+```
+
+```json
+{
+  "mcpServers": {
+    "outlook": {
+      "command": "node",
+      "args": ["/path/to/outlook-mcp/mcp-server/src/index.js"]
+    }
+  }
+}
+```
+
+It shares the same token store as the skills (same resolution order as above).
+
 ## Security
 
-- Tokens are stored locally in `tokens.json` (never bundled in the plugin)
-- The MCP server never exposes tokens in tool output
+- Tokens are stored locally (`tokens.json`, mode 0600 / icacls-restricted) and never bundled, committed, or shown to the model
+- All Graph calls go through `graph_call.py`, which injects the token internally
 - Endpoint validation restricts requests to `/me` and `/users/` paths
 - 30-day session limit enforces periodic re-authentication
-- File permissions are restricted after token refresh (icacls on Windows, chmod 600 on Unix)
+- `test/static/security.test.js` fails CI if any skill file ever references tokens or raw Authorization headers
 
-## Customisation
+## License
 
-This plugin uses Microsoft Graph API directly. No `~~` placeholders are needed — it's specific to Microsoft 365.
+[MIT](LICENSE)

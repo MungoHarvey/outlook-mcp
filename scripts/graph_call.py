@@ -13,6 +13,7 @@ Examples:
 """
 
 import sys
+import os
 import json
 import argparse
 import posixpath
@@ -22,23 +23,39 @@ import urllib.error
 import glob
 from pathlib import Path
 
-_AUTH_CMD = r".\outlook-skills\auth.ps1" if sys.platform == "win32" else "bash outlook-skills/auth.sh"
-
 # ── Bootstrap: add outlook-skills to sys.path ─────────────────────────────────
 _skills_dir = Path(__file__).parent.parent / "outlook-skills"
 if str(_skills_dir) not in sys.path:
     sys.path.insert(0, str(_skills_dir))
 
-# ── Bootstrap: optionally add venv site-packages (for dotenv if installed) ────
-_venv_base = _skills_dir / ".venv"
-if sys.platform == "win32":
-    _site_pkgs = _venv_base / "Lib" / "site-packages"
-else:
-    _matches = glob.glob(str(_venv_base / "lib" / "python3.*" / "site-packages"))
-    _site_pkgs = Path(_matches[0]) if _matches else None
+# Absolute auth-command hint — repo-relative paths are meaningless when this
+# runs from a plugin cache directory
+_AUTH_CMD = (
+    f'powershell -File "{_skills_dir / "auth.ps1"}"'
+    if sys.platform == "win32"
+    else f'bash "{_skills_dir / "auth.sh"}"'
+)
 
-if _site_pkgs and _site_pkgs.exists():
-    sys.path.insert(0, str(_site_pkgs))
+# ── Bootstrap: optionally add venv site-packages (for dotenv if installed) ────
+# The venv is auth state, so it may live outside the plugin tree. Check the
+# same candidate locations token_helper uses for its state dir:
+# OUTLOOK_SKILLS_HOME override, the in-tree outlook-skills/ dir (cloned-repo
+# layout), then ~/.outlook-skills.
+_venv_candidates = []
+if os.environ.get("OUTLOOK_SKILLS_HOME"):
+    _venv_candidates.append(Path(os.environ["OUTLOOK_SKILLS_HOME"]).expanduser() / ".venv")
+_venv_candidates.append(_skills_dir / ".venv")
+_venv_candidates.append(Path.home() / ".outlook-skills" / ".venv")
+
+for _venv_base in _venv_candidates:
+    if sys.platform == "win32":
+        _site_pkgs = _venv_base / "Lib" / "site-packages"
+    else:
+        _matches = glob.glob(str(_venv_base / "lib" / "python3.*" / "site-packages"))
+        _site_pkgs = Path(_matches[0]) if _matches else None
+    if _site_pkgs and _site_pkgs.exists():
+        sys.path.insert(0, str(_site_pkgs))
+        break
 
 
 # ── Lazy-import token helper (deferred to allow --help without auth deps) ──────
@@ -51,7 +68,7 @@ def _ensure_token_helper():
         _error = {
             "status": 503,
             "error": "import_error",
-            "message": "Could not import token_helper. Run: pip install -r outlook-skills/requirements.txt"
+            "message": f"Could not import token_helper. Run: {_AUTH_CMD}"
         }
         print(json.dumps(_error))
         sys.exit(1)

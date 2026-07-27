@@ -30,14 +30,43 @@ from pathlib import Path
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-_SCRIPT_DIR     = Path(__file__).parent
-TOKEN_FILE      = _SCRIPT_DIR / "tokens.json"
+_SCRIPT_DIR = Path(__file__).parent
+
+
+def _resolve_state_dir() -> Path:
+    """
+    Where auth state (.env, tokens.json, .venv) lives.
+
+    Resolution order:
+      1. OUTLOOK_SKILLS_HOME env var (explicit override)
+      2. This script's own directory, when it already holds state
+         (cloned-repo layout — preserves existing installs)
+      3. ~/.outlook-skills — stable default that survives plugin cache updates
+    """
+    env_home = os.environ.get("OUTLOOK_SKILLS_HOME")
+    if env_home:
+        return Path(env_home).expanduser()
+    if (_SCRIPT_DIR / "tokens.json").exists() or (_SCRIPT_DIR / ".env").exists():
+        return _SCRIPT_DIR
+    return Path.home() / ".outlook-skills"
+
+
+STATE_DIR = _resolve_state_dir()
+TOKEN_FILE = (
+    Path(os.environ["OUTLOOK_TOKEN_FILE"]).expanduser()
+    if os.environ.get("OUTLOOK_TOKEN_FILE")
+    else STATE_DIR / "tokens.json"
+)
 MAX_SESSION_AGE = 30 * 24 * 60 * 60   # 30 days
+
+# Absolute auth-command hint for error messages — repo-relative paths are
+# meaningless when this runs from a plugin cache directory
+_AUTH_CMD = f'bash "{_SCRIPT_DIR / "auth.sh"}"'
 
 # Load .env so client_secret is available for silent token refresh
 try:
     from dotenv import load_dotenv
-    load_dotenv(_SCRIPT_DIR / ".env")
+    load_dotenv(STATE_DIR / ".env")
 except ImportError:
     pass  # dotenv not installed yet (first-run before bootstrap); refresh will fail gracefully
 
@@ -63,14 +92,14 @@ def _load_tokens() -> dict:
     """Load tokens from disk."""
     if not TOKEN_FILE.exists():
         raise AuthRequiredError(
-            "No token file found. Run: bash outlook-skills/auth.sh"
+            f"No token file found at {TOKEN_FILE}. Run: {_AUTH_CMD}"
         )
     try:
         return json.loads(TOKEN_FILE.read_text())
     except Exception as e:
         raise AuthRequiredError(
             f"Could not read token store ({e}). "
-            "Run: bash outlook-skills/auth.sh --reauth"
+            f"Run: {_AUTH_CMD} --reauth"
         )
 
 
@@ -109,14 +138,14 @@ def _refresh_access_token(tokens: dict) -> dict:
     if not client_secret:
         raise AuthRequiredError(
             "client_secret not found in token store or environment. "
-            "Run: bash outlook-skills/auth.sh --reauth"
+            f"Run: {_AUTH_CMD} --reauth"
         )
 
     refresh_token = tokens.get("refresh_token")
     if not refresh_token:
         raise AuthRequiredError(
             "No refresh_token found in token store. "
-            "Run: bash outlook-skills/auth.sh --reauth"
+            f"Run: {_AUTH_CMD} --reauth"
         )
 
     url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
@@ -146,7 +175,7 @@ def _refresh_access_token(tokens: dict) -> dict:
         if error_code in ("invalid_grant", "interaction_required", "consent_required"):
             raise AuthRequiredError(
                 f"Refresh token rejected ({error_code}). "
-                "Run: bash outlook-skills/auth.sh --reauth"
+                f"Run: {_AUTH_CMD} --reauth"
             )
         raise TokenRefreshError(f"Token refresh failed: {error_code} — {body}")
 
@@ -184,7 +213,7 @@ def get_token() -> str:
         _save_tokens({})
         raise AuthRequiredError(
             "Session has expired (30-day limit). "
-            "Run: bash outlook-skills/auth.sh --reauth"
+            f"Run: {_AUTH_CMD} --reauth"
         )
 
     # ── Access token still valid ──────────────────────────────────────────────

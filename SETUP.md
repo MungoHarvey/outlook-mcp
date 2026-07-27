@@ -4,7 +4,7 @@
 
 This project provides Microsoft Outlook integration for Claude via two cooperating layers:
 
-1. **Skills Plugin** (`.plugin` file) — Contains 19 skill definitions that teach Claude *how* to interact with the Microsoft Graph API (which endpoints to call, what parameters to use, how to interpret responses). Installed by drag-and-drop into Claude Desktop / Cowork.
+1. **Skills Plugin** (`.plugin` file) — Contains 20 skill definitions that teach Claude *how* to interact with the Microsoft Graph API (which endpoints to call, what parameters to use, how to interpret responses). Installed by drag-and-drop into Claude Desktop / Cowork.
 
 2. **MCP Server** (`claude_desktop_config.json`) — A lightweight Node.js stdio server running on the host machine that provides two tools: `outlook_auth` (authentication management) and `outlook_api` (Graph API proxy). Registered in Claude Desktop's configuration file alongside other local MCP servers.
 
@@ -35,7 +35,7 @@ User request
 - **npm** (bundled with Node.js)
 - **Claude Desktop** installed
 - **Microsoft 365 account** with appropriate permissions
-- The outlook-mcp-skills repository cloned/downloaded to a known location
+- The outlook-mcp repository cloned/downloaded to a known location
 
 ---
 
@@ -44,7 +44,7 @@ User request
 The MCP server lives at `mcp-server/` within the project. It needs its npm dependencies installed on the host machine.
 
 ```bash
-cd <path-to-outlook-mcp-skills>/mcp-server
+cd <path-to-outlook-mcp>/mcp-server
 npm install
 ```
 
@@ -62,7 +62,7 @@ The server should start silently (no output, no errors) and wait for MCP message
 
 ## Step 2: Install the Skills Plugin
 
-The skills-only plugin (`.plugin` file) contains 19 outlook skill definitions, the `plugin.json` manifest, and a `README.md`. It does **not** contain `node_modules` or the MCP server code.
+The skills-only plugin (`.plugin` file) contains 20 outlook skill definitions, the `plugin.json` manifest, and a `README.md`. It does **not** contain `node_modules` or the MCP server code.
 
 ### Building the Plugin
 
@@ -71,7 +71,7 @@ The plugin must be built with **forward-slash path separators** (POSIX). PowerSh
 **Option A — Linux/macOS `zip` command** (recommended):
 
 ```bash
-cd /path/to/outlook-mcp-skills
+cd /path/to/outlook-mcp
 zip -r outlook-skills.plugin .claude-plugin/ skills/ README.md
 ```
 
@@ -88,7 +88,7 @@ zip -r /path/to/output/outlook-skills.plugin .claude-plugin/ skills/ README.md
 ```python
 import zipfile, os
 
-src = r"<path-to-outlook-mcp-skills>"   # e.g. r"C:\Users\you\Documents\outlook-mcp-skills"
+src = r"<path-to-outlook-mcp>"   # e.g. r"C:\Users\you\Documents\outlook-mcp"
 out = r"<output-path>\outlook-skills.plugin"  # e.g. r"C:\Users\you\Documents\outlook-skills.plugin"
 
 include_dirs = {".claude-plugin", "skills"}
@@ -112,7 +112,7 @@ with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
 
 1. Open Claude Desktop
 2. Drag and drop the `.plugin` file onto the Claude Desktop window, or use Settings > Plugins > "My Uploads" > upload
-3. All 19 outlook skills should appear in the skill list
+3. All 20 outlook skills should appear in the skill list
 
 ### What the Plugin Contains
 
@@ -120,7 +120,8 @@ with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
 |-----------|----------|
 | `.claude-plugin/plugin.json` | Plugin metadata (name, version, description, author) |
 | `skills/outlook-auth/` | Authentication skill |
-| `skills/outlook-base/` | Shared foundation (token patterns, curl, error handling) |
+| `skills/outlook-base/` | Shared foundation (graph_call.py proxy usage, error handling) |
+| `skills/outlook-setup/` | Guided first-time setup |
 | `skills/outlook-email-list/` | List and search emails |
 | `skills/outlook-email-read/` | Read specific email by ID |
 | `skills/outlook-email-send/` | Compose and send emails |
@@ -208,7 +209,7 @@ Find the last entry inside `"mcpServers": { ... }`, add a trailing comma after i
     }
 ```
 
-Replace `<absolute-path-to>` with the full path to your `outlook-mcp-skills` directory. On Windows, use double backslashes in JSON strings (e.g. `C:\\Users\\you\\Documents\\...`). On macOS/Linux, use forward slashes.
+Replace `<absolute-path-to>` with the full path to your `outlook-mcp` directory. On Windows, use double backslashes in JSON strings (e.g. `C:\\Users\\you\\Documents\\...`). On macOS/Linux, use forward slashes.
 
 Save the file. That's it.
 
@@ -221,8 +222,8 @@ If you prefer a script, `jq` is safe for JSON manipulation (unlike PowerShell). 
 CONFIG="$HOME/Library/Application Support/Claude/claude_desktop_config.json"
 # Linux: CONFIG="$HOME/.config/Claude/claude_desktop_config.json"
 
-MCP_INDEX="$HOME/Documents/Agents/MCPs/outlook-agent/outlook-mcp-skills/mcp-server/src/index.js"
-TOKEN_FILE="$HOME/Documents/Agents/MCPs/outlook-agent/outlook-mcp-skills/outlook-skills/tokens.json"
+MCP_INDEX="$HOME/Documents/Agents/MCPs/outlook-agent/outlook-mcp/mcp-server/src/index.js"
+TOKEN_FILE="$HOME/Documents/Agents/MCPs/outlook-agent/outlook-mcp/outlook-skills/tokens.json"
 
 # Backup first
 cp "$CONFIG" "$CONFIG.backup.$(date +%Y%m%d-%H%M%S)"
@@ -352,7 +353,7 @@ Proxies authenticated requests to Microsoft Graph API.
 ## Project Structure
 
 ```
-outlook-mcp-skills/
+outlook-mcp/
 ├── .claude-plugin/
 │   └── plugin.json              # Plugin manifest
 ├── skills/
@@ -371,19 +372,13 @@ outlook-mcp-skills/
 │   ├── tokens.json              # OAuth tokens (NEVER commit this)
 │   ├── token_helper.py          # Python token helper (CLI use)
 │   └── ...
-├── .mcp.json                    # Plugin MCP config (for Claude Code CLI)
 ├── README.md
 └── SETUP.md                     # This file
 ```
 
-### Key Distinction: `.mcp.json` vs `claude_desktop_config.json`
+### MCP server registration
 
-| File | Used By | Purpose |
-|------|---------|---------|
-| `.mcp.json` (in project root) | Claude Code CLI | Plugin-bundled MCP config using `${CLAUDE_PLUGIN_ROOT}` |
-| `claude_desktop_config.json` | Claude Desktop / Cowork | Host-level MCP server registration with absolute paths |
-
-The `.mcp.json` in the project uses portable `${CLAUDE_PLUGIN_ROOT}` paths and works when the plugin is used with Claude Code directly. For Claude Desktop and Cowork, the MCP server must be registered in `claude_desktop_config.json` because uploaded plugins cannot launch stdio processes from the sandbox.
+The MCP server is **not** part of the Claude Code plugin — Claude Code uses the skills plus `scripts/graph_call.py` directly and needs no MCP server. For Claude Desktop and Cowork, register the server in `claude_desktop_config.json` with absolute paths (uploaded plugins cannot launch stdio processes from the sandbox); see the configuration examples above.
 
 ---
 

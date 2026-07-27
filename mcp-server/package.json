@@ -1,6 +1,6 @@
 {
   "name": "outlook-mcp-server",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Minimal MCP server for Outlook Graph API authentication and proxying",
   "main": "src/index.js",
   "type": "module",
@@ -11,6 +11,9 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "zod": "^3.23.0"
+  },
+  "overrides": {
+    "@hono/node-server": ">=2.0.5"
   },
   "engines": {
     "node": ">=18.0.0"

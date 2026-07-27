@@ -17,9 +17,9 @@ The auth flow (`auth.sh` / `auth.ps1`) bootstraps a local Python `.venv` under `
 
 | Action | macOS / Linux / WSL / Git Bash | Windows PowerShell |
 |---|---|---|
-| Copy env template | `cp outlook-skills/.env.example outlook-skills/.env` | `Copy-Item outlook-skills\.env.example outlook-skills\.env` |
+| Copy env template | `cp "${CLAUDE_PLUGIN_ROOT}/outlook-skills/.env.example" STATE_DIR/.env` | `Copy-Item "${CLAUDE_PLUGIN_ROOT}\outlook-skills\.env.example" STATE_DIR\.env` |
 | Open HTML guide | `open …/setup/azure-setup-guide.html` (macOS) · `xdg-open …` (Linux/WSL) | `Start-Process "…\setup\azure-setup-guide.html"` |
-| Authenticate | `bash ${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh` | `.\outlook-skills\auth.ps1` |
+| Authenticate | `bash "${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh"` | `powershell -File "${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1"` |
 | Check status | `bash …/auth.sh --status` | `.\outlook-skills\auth.ps1 -Status` |
 | Re-authenticate | `bash …/auth.sh --reauth` | `.\outlook-skills\auth.ps1 -Reauth` |
 | Revoke tokens | `bash …/auth.sh --revoke` | `.\outlook-skills\auth.ps1 -Revoke` |
@@ -50,6 +50,6 @@ Full visual version: `setup/azure-setup-guide.html` (also `setup/AZURE_SETUP.md`
 
 ## Security boundary
 
-- Credentials are only in `outlook-skills/.env`; tokens only in `outlook-skills/tokens.json`. Both are gitignored.
+- Credentials are only in `STATE_DIR/.env`; tokens only in `STATE_DIR/tokens.json` (STATE_DIR: `$OUTLOOK_SKILLS_HOME`, the repo's `outlook-skills/` when it already holds state, or `~/.outlook-skills`). Never committed, never shown.
 - Never display, log, or echo the client secret or any token back to the user.
 - All Graph calls go through `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py` — never read token files directly.

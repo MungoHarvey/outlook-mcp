@@ -21,16 +21,35 @@ const url = require('url');
 const querystring = require('querystring');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
+
+// ── State directory (.env + tokens.json) ────────────────────────────────────
+// Resolution order:
+//   1. OUTLOOK_SKILLS_HOME env var (explicit override)
+//   2. This script's own directory, when it already holds state
+//      (cloned-repo layout — preserves existing installs)
+//   3. ~/.outlook-skills — stable default that survives plugin cache updates
+const SCRIPT_DIR = __dirname;
+
+function resolveStateDir() {
+  if (process.env.OUTLOOK_SKILLS_HOME) return process.env.OUTLOOK_SKILLS_HOME;
+  if (fs.existsSync(path.join(SCRIPT_DIR, '.env')) ||
+      fs.existsSync(path.join(SCRIPT_DIR, 'tokens.json'))) {
+    return SCRIPT_DIR;
+  }
+  return path.join(os.homedir(), '.outlook-skills');
+}
+
+const STATE_DIR = resolveStateDir();
+const ENV_FILE = path.join(STATE_DIR, '.env');
+const TOKEN_FILE = process.env.OUTLOOK_TOKEN_FILE || path.join(STATE_DIR, 'tokens.json');
 
 // ── Load .env manually (no dependencies needed) ────────────────────────────
-const SCRIPT_DIR = __dirname;
-const ENV_FILE = path.join(SCRIPT_DIR, '.env');
-const TOKEN_FILE = path.join(SCRIPT_DIR, 'tokens.json');
-
 function loadEnv() {
   if (!fs.existsSync(ENV_FILE)) {
     console.error(`[error] No .env file found at ${ENV_FILE}`);
-    console.error('        Copy .env.example to .env and add your Azure credentials.');
+    console.error(`        Create the directory if needed, then copy the template and add your Azure credentials:`);
+    console.error(`          cp "${path.join(SCRIPT_DIR, '.env.example')}" "${ENV_FILE}"`);
     process.exit(1);
   }
   const lines = fs.readFileSync(ENV_FILE, 'utf8').split('\n');
@@ -113,7 +132,7 @@ if (isStatus) {
 
 // ── Validate credentials ────────────────────────────────────────────────────
 if (!CLIENT_ID || !CLIENT_SECRET) {
-  console.error('[error] OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET must be set in outlook-skills/.env');
+  console.error(`[error] OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET must be set in ${ENV_FILE}`);
   process.exit(1);
 }
 
@@ -246,6 +265,7 @@ const server = http.createServer((req, res) => {
             client_secret:           CLIENT_SECRET,
           };
 
+          fs.mkdirSync(path.dirname(TOKEN_FILE), { recursive: true });
           fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2), { encoding: 'utf8', mode: 0o600 });
 
           // mode only applies when the file is created — enforce owner-only

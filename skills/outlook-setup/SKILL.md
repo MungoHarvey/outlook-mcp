@@ -13,18 +13,25 @@ Detailed per-OS commands, prerequisite installs, and troubleshooting: see [refer
 ## Step 0 — Detect environment
 Determine the OS and confirm prerequisites are installed: **Node.js** (`node --version`), **Python 3** (`python3 --version` or `python --version`), and **git**. If any is missing, point the user to the install links in reference.md and stop until resolved.
 
-## Step 1 — Get the repository
-If you are already running inside the cloned repo (this skill is loaded), skip to Step 2. Otherwise have the user clone it and load it as a plugin:
+## Step 1 — Get the plugin
+If this skill is loaded, the plugin is already installed — skip to Step 2. Otherwise the user can install it one of two ways:
+```
+/plugin marketplace add MungoHarvey/outlook-mcp
+/plugin install outlook-skills@outlook-mcp
+```
+or clone and load it directly:
 ```bash
 git clone https://github.com/MungoHarvey/outlook-mcp.git
-cc --plugin-dir ./outlook-mcp
+claude --plugin-dir ./outlook-mcp
 ```
 
-## Step 2 — Install dependencies
-From the repo root:
-```bash
-npm install
-```
+## Step 2 — Choose where auth state lives
+Credentials (`.env`) and tokens (`tokens.json`) are looked up in this order: `$OUTLOOK_SKILLS_HOME` → `${CLAUDE_PLUGIN_ROOT}/outlook-skills/` if it already holds state (cloned repo) → `~/.outlook-skills`.
+
+- **Cloned repo:** use `outlook-skills/` inside the repo (the historic layout) — nothing to create.
+- **Marketplace/plugin install:** use `~/.outlook-skills` so state survives plugin updates. Create it now: `mkdir -p ~/.outlook-skills` (PowerShell: `New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills"`).
+
+Call the chosen directory **STATE_DIR** in the steps below.
 
 ## Step 3 — Open the Azure setup guide
 Azure App Registration is required so the plugin can talk to Microsoft Graph. **Open the visual HTML guide in the user's browser** — it has the 6 annotated screenshots:
@@ -37,19 +44,19 @@ Then summarise the 8 Azure steps inline (see reference.md → "Azure steps") so 
 `OUTLOOK_CLIENT_ID`, `OUTLOOK_TENANT_ID` (use `common` for personal accounts), and the **client secret VALUE** (not the Secret ID — that causes `AADSTS7000215`).
 
 ## Step 4 — Write credentials to `.env`
-Create the gitignored credentials file from the template, then fill in the three values:
+Create the credentials file in STATE_DIR from the bundled template, then fill in the three values:
 ```bash
-cp outlook-skills/.env.example outlook-skills/.env       # bash
-Copy-Item outlook-skills\.env.example outlook-skills\.env # PowerShell
+cp "${CLAUDE_PLUGIN_ROOT}/outlook-skills/.env.example" STATE_DIR/.env                  # bash
+Copy-Item "${CLAUDE_PLUGIN_ROOT}\outlook-skills\.env.example" STATE_DIR\.env           # PowerShell
 ```
-Ask the user for the three values and write them into `outlook-skills/.env`. **Do not echo the client secret back into the chat** — confirm only that it was written. `.env` is gitignored.
+Ask the user for the three values and write them into `STATE_DIR/.env`. **Do not echo the client secret back into the chat** — confirm only that it was written. `.env` is never committed (gitignored in the repo layout).
 
 ## Step 5 — Authenticate
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh        # macOS/Linux/WSL
-.\outlook-skills\auth.ps1                                # Windows PowerShell
+bash "${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh"                       # macOS/Linux/WSL
+powershell -File "${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1"          # Windows PowerShell
 ```
-A browser opens for Microsoft sign-in. On success, tokens are stored in `outlook-skills/tokens.json` (gitignored, never shown).
+A browser opens for Microsoft sign-in. On success, tokens are stored in `STATE_DIR/tokens.json` (owner-only permissions, never shown).
 
 ## Step 6 — Verify
 ```bash
@@ -59,5 +66,5 @@ A `200` with the user's profile means setup is complete. Then tell them they can
 
 ## Safety
 - Never display, log, or echo the client secret or any token.
-- Credentials live only in `outlook-skills/.env`; tokens only in `outlook-skills/tokens.json` — both gitignored.
-- If the user is uneasy entering the secret via chat, have them paste it directly into `outlook-skills/.env` in their editor instead.
+- Credentials live only in `STATE_DIR/.env`; tokens only in `STATE_DIR/tokens.json` — never committed, never shown.
+- If the user is uneasy entering the secret via chat, have them paste it directly into `STATE_DIR/.env` in their editor instead.

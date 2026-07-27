@@ -6,8 +6,10 @@
  * (Claude Code) and Node.js (Cowork MCP) paths share auth state.
  *
  * Token file location (checked in order):
- *   1. OUTLOOK_TOKEN_FILE env var  (set in .mcp.json for Cowork)
- *   2. Relative path: ../../outlook-skills/tokens.json (dev/source)
+ *   1. OUTLOOK_TOKEN_FILE env var    (explicit file override)
+ *   2. OUTLOOK_SKILLS_HOME env var   (state dir override → <dir>/tokens.json)
+ *   3. ../../outlook-skills/tokens.json when it exists (cloned-repo layout)
+ *   4. ~/.outlook-skills/tokens.json (stable default, survives plugin updates)
  *
  * Exports:
  *   getToken()       → valid Bearer access token (string)
@@ -17,6 +19,7 @@
 import { readFile, writeFile, rename, chmod } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";
+import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 
@@ -25,10 +28,19 @@ import { execFile } from "node:child_process";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
 
-// Token file: prefer env var (essential when running from plugin cache),
-// fall back to relative path (works when running from source directory)
-const TOKEN_FILE = process.env.OUTLOOK_TOKEN_FILE
-  || join(__dirname, "..", "..", "outlook-skills", "tokens.json");
+// Must mirror the resolution in outlook-skills/token_helper.py — the Python
+// (Claude Code) and Node.js (Cowork MCP) paths share the same auth state.
+function resolveTokenFile() {
+  if (process.env.OUTLOOK_TOKEN_FILE) return process.env.OUTLOOK_TOKEN_FILE;
+  if (process.env.OUTLOOK_SKILLS_HOME) {
+    return join(process.env.OUTLOOK_SKILLS_HOME, "tokens.json");
+  }
+  const legacy = join(__dirname, "..", "..", "outlook-skills", "tokens.json");
+  if (existsSync(legacy)) return legacy;
+  return join(homedir(), ".outlook-skills", "tokens.json");
+}
+
+const TOKEN_FILE = resolveTokenFile();
 
 const MAX_SESSION_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 const TOKEN_ENDPOINT  = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token";
