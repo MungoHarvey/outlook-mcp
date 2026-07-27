@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const SKILLS_DIR = path.join(__dirname, '..', '..', '.claude', 'skills');
+const SKILLS_DIR = path.join(__dirname, '..', '..', 'skills');
 
 function findMarkdownFiles(dir) {
   const results = [];

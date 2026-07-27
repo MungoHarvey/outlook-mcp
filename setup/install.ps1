@@ -24,19 +24,26 @@ if (-not $InstallDir) { $InstallDir = $RootDir }
 # 1. Create skills directory
 New-Item -ItemType Directory -Force -Path $SkillsDir | Out-Null
 
-# 2. Copy skill folders and rewrite paths to point to this repo
-$proxy = ($InstallDir + "\scripts\graph_call.py") -replace '\\', '/'
-$auth  = ($InstallDir + "\outlook-skills\auth.sh")  -replace '\\', '/'
+# 2. Copy skill folders and rewrite ${CLAUDE_PLUGIN_ROOT} paths to this repo
+$proxy  = ($InstallDir + "\scripts\graph_call.py")          -replace '\\', '/'
+$authSh = ($InstallDir + "\outlook-skills\auth.sh")         -replace '\\', '/'
+$authPs = ($InstallDir + "\outlook-skills\auth.ps1")        -replace '\\', '/'
+$guide  = ($InstallDir + "\setup\azure-setup-guide.html")   -replace '\\', '/'
 
-Get-ChildItem "$RootDir\.claude\skills" -Directory |
+Get-ChildItem "$RootDir\skills" -Directory |
     Where-Object { $_.Name -like "outlook-*" } |
     ForEach-Object {
         $dest = Join-Path $SkillsDir $_.Name
+        # Remove any previous install first — copying onto an existing dir would
+        # nest a duplicate skill folder inside it
+        if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
         Copy-Item -Recurse -Force $_.FullName $dest
         Get-ChildItem $dest -Recurse -Filter "*.md" | ForEach-Object {
             (Get-Content $_.FullName -Raw).
-                Replace('python3 scripts/graph_call.py', "python3 $proxy").
-                Replace('bash outlook-skills/auth.sh', "bash $auth") |
+                Replace('${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py', $proxy).
+                Replace('${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh', $authSh).
+                Replace('${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1', $authPs).
+                Replace('${CLAUDE_PLUGIN_ROOT}/setup/azure-setup-guide.html', $guide) |
             Set-Content $_.FullName -Encoding UTF8 -NoNewline
         }
     }

@@ -1,59 +1,70 @@
-# Dependency directories
+# ============================================================
+# Outlook MCP Skills — .gitignore
+# ============================================================
+
+# --- Credentials & Tokens (CRITICAL — never commit) ---
+# Class patterns: cover .env at any location and every backup/temp variant
+# (.env.bak, .env.old, .env.backup, tokens.json.tmp, ...)
+.env
+.env.*
+!.env.example
+tokens.json*
+outlook-skills/config.json
+*.pem
+*.key
+*.cert
+
+# --- Node.js ---
+# package-lock.json is intentionally tracked (reproducible npm test/install)
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Tokens and credentials
-*.pem
-*.key
-*.cert
-*.token.json
-.outlook-mcp-tokens.json
-
-# Editor directories and files
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# OS specific files
-.DS_Store
-Thumbs.db
-
-# Logs
-logs
-*.log
-
-# Folders
-research/
-
-# Skill eval workspaces and raw API output (may contain personal data)
-skills/*-workspace/
-*_raw.json
-
-# Python cache
+# --- Python ---
 __pycache__/
 *.pyc
 *.pyo
-
-# Virtual environments and token/credential files
 outlook-skills/.venv/
-outlook-skills/.env
-outlook-skills/tokens.json
-outlook-skills/config.json
 
-# Packaged distribution zips
+# --- Build artefacts ---
+*.plugin
 outlook-skills.zip
 outlook-skills-*.zip
 
-# Source PowerPoint files and Office temp files
+# --- Editor / IDE ---
+.idea/
+.vscode/
+.cursor/
+*.swp
+*.swo
+*~
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Claude Code local state ---
+# These are session-specific and should not be shared
+.claude/settings.local.json
+.claude/state/
+
+# --- Skill eval workspaces (may contain personal data) ---
+skills/*-workspace/
+*_raw.json
+
+# --- Setup source assets ---
 setup/AzureGuide.pptx
 setup/~$*
+
+# --- Logs ---
+logs/
+*.log
+
+# --- MCP server dependencies ---
+mcp-server/node_modules/
+
+# --- Temporary / development debris ---
+New folder/
+outlook-skills/outlook-skills-zip/
+loop-complete*.json

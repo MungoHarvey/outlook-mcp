@@ -9,19 +9,28 @@ These skills connect Claude to your Microsoft Outlook account — email, calenda
 
 ## Prerequisites
 
-The auth system must be installed before these skills will work. From the [outlook-mcp](https://github.com/MungoHarvey/outlook-mcp) project:
+The auth system must be set up before these skills will work. From the cloned [outlook-mcp](https://github.com/MungoHarvey/outlook-mcp) repository (outlook-skills branch):
 
-```bash
-# macOS / Linux / WSL
-bash setup/install.sh
-bash ~/.skills/outlook-mcp/outlook-skills/auth.sh
+1. Copy the credentials template and fill in your Azure app details:
+   ```bash
+   # macOS / Linux / WSL
+   cp outlook-skills/.env.example outlook-skills/.env
 
-# Windows (PowerShell)
-.\setup\install.ps1
-bash $env:USERPROFILE/.skills/outlook-mcp/outlook-skills/auth.sh
-```
+   # Windows (PowerShell)
+   Copy-Item outlook-skills\.env.example outlook-skills\.env
+   ```
 
-This installs the secure Python proxy and OAuth token system. Tokens are encrypted with AES-256 and stored in the OS keychain — never in plain text.
+2. Authenticate:
+   ```bash
+   # macOS / Linux / WSL
+   bash outlook-skills/auth.sh
+
+   # Windows (PowerShell)
+   .\outlook-skills\auth.ps1
+   ```
+   This opens a browser tab for Microsoft login and saves tokens locally.
+
+See the [README](https://github.com/MungoHarvey/outlook-mcp/tree/outlook-skills) for Azure App Registration setup.
 
 ---
 
@@ -33,7 +42,8 @@ This installs the secure Python proxy and OAuth token system. Tokens are encrypt
 |---|---|---|
 | `outlook-email-list` | check inbox, unread emails, search email, find message | List, filter, and search emails across folders |
 | `outlook-email-read` | read email, open message, show email, view email | Read full email content and attachments |
-| `outlook-email-send` | send email, compose, write to, draft email | Compose and send new emails with CC/BCC |
+| `outlook-email-draft` | draft email, save draft, compose later | Create and save draft emails |
+| `outlook-email-send` | send email, compose, write to | Compose and send new emails with CC/BCC |
 | `outlook-email-reply` | reply, reply all, forward, respond to | Reply or forward existing emails |
 | `outlook-email-move` | move email, file email, put in folder | Move emails between folders |
 | `outlook-email-delete` | delete email, trash, remove message | Soft delete or permanently delete emails |
@@ -43,7 +53,7 @@ This installs the secure Python proxy and OAuth token system. Tokens are encrypt
 
 | Skill folder | Trigger phrases | What it does |
 |---|---|---|
-| `outlook-calendar-list` | calendar, schedule, meetings today, what's on | View events by date range or day |
+| `outlook-calendar-list` | calendar, schedule, meetings today, what's on, am I free | View events by date range, check availability |
 | `outlook-calendar-create` | schedule meeting, create event, book, add to calendar | Create single, recurring, all-day, or Teams events |
 | `outlook-calendar-update` | reschedule, change meeting, update event, move to | Edit time, title, location, or attendees |
 | `outlook-calendar-respond` | accept, decline, tentative, cancel meeting, RSVP | Respond to meeting invitations |
@@ -65,9 +75,7 @@ This installs the secure Python proxy and OAuth token system. Tokens are encrypt
 
 ---
 
-## Authentication
-
-Use the `outlook-auth` skill to manage your connection:
+## Authentication Management
 
 ```
 /outlook-auth           — check status or re-authenticate
@@ -76,22 +84,6 @@ Use the `outlook-auth` skill to manage your connection:
 ```
 
 Tokens refresh automatically. Re-authentication is only needed after 30 days or if the refresh token is revoked.
-
----
-
-## Skill Structure
-
-Each skill folder uses progressive loading to stay lean:
-
-```
-outlook-email-list/
-  SKILL.md        — core operation (~40-60 lines, always loaded)
-  reference.md    — parsing templates, advanced filters, error handling
-```
-
-Skills with complex parameters also include `params.yaml` (calendar create, email send, contacts manage).
-
-Each skill carries its own reference data in a `references/` subdirectory — only the files it actually uses.
 
 ---
 

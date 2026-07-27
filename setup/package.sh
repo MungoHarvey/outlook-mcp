@@ -48,15 +48,17 @@ echo ""
 # ── SKILLS.md overview ────────────────────────────────────────────────────────
 cp "$SCRIPT_DIR/SKILLS.md" "$PKG_DIR/SKILLS.md"
 
-# ── Skill folders (flat — no .claude/skills/ nesting) ────────────────────────
-for dir in "$ROOT_DIR/.claude/skills"/outlook-*/; do
+# ── Skill folders (flat — skills/ at repo root) ──────────────────────────────
+for dir in "$ROOT_DIR/skills"/outlook-*/; do
     name=$(basename "$dir")
     dest="$PKG_DIR/$name"
     cp -r "$dir" "$dest"
-    # Rewrite proxy and auth paths to default installed locations
+    # Rewrite ${CLAUDE_PLUGIN_ROOT} paths to absolute installed locations
     find "$dest" -name "*.md" -exec sed -i \
-        -e "s|python3 scripts/graph_call.py|python3 $_safe_dir/scripts/graph_call.py|g" \
-        -e "s|bash outlook-skills/auth.sh|bash $_safe_dir/outlook-skills/auth.sh|g" {} \;
+        -e "s|\${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py|$_safe_dir/scripts/graph_call.py|g" \
+        -e "s|\${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh|$_safe_dir/outlook-skills/auth.sh|g" \
+        -e "s|\${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1|$_safe_dir/outlook-skills/auth.ps1|g" \
+        -e "s|\${CLAUDE_PLUGIN_ROOT}/setup/azure-setup-guide.html|$_safe_dir/setup/azure-setup-guide.html|g" {} \;
 done
 
 # ── Create zip ────────────────────────────────────────────────────────────────
