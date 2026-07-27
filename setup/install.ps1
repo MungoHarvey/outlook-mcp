@@ -34,9 +34,7 @@ Get-ChildItem "$RootDir\skills" -Directory |
     Where-Object { $_.Name -like "outlook-*" } |
     ForEach-Object {
         $dest = Join-Path $SkillsDir $_.Name
-        # Remove any previous install first — copying onto an existing dir would
-        # nest a duplicate skill folder inside it
-        if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+        if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }  # idempotent: avoid nesting on re-run
         Copy-Item -Recurse -Force $_.FullName $dest
         Get-ChildItem $dest -Recurse -Filter "*.md" | ForEach-Object {
             (Get-Content $_.FullName -Raw).
@@ -54,4 +52,4 @@ Write-Host "  Proxy:  $InstallDir\scripts\graph_call.py"
 Write-Host ""
 Write-Host "Next step -- authenticate. Choose one:"
 Write-Host "  PowerShell:             .\outlook-skills\auth.ps1"
-Write-Host "  Git Bash / MSYS2 / WSL: bash $auth"
+Write-Host "  Git Bash / MSYS2 / WSL: bash $authSh"

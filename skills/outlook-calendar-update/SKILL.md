@@ -24,16 +24,16 @@ Response: `.data` contains the updated event.
 
 Reschedule:
 ```bash
--d '{"start": {"dateTime": "2026-03-16T14:00:00", "timeZone": "UTC"}, "end": {"dateTime": "2026-03-16T15:00:00", "timeZone": "UTC"}}'
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py PATCH "/me/events/{eventId}" '{"start": {"dateTime": "2026-03-16T14:00:00", "timeZone": "UTC"}, "end": {"dateTime": "2026-03-16T15:00:00", "timeZone": "UTC"}}'
 ```
 
 Change location:
 ```bash
--d '{"location": {"displayName": "New Room"}}'
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py PATCH "/me/events/{eventId}" '{"location": {"displayName": "New Room"}}'
 ```
 
 For updatable fields reference and recurring event changes, see [reference.md](reference.md).
 
-For parameter values (showAs, importance, etc.), see [calendar-create params](params.yaml).
+For parameter values (showAs, importance, etc.), see [calendar-create params](../outlook-calendar-create/params.yaml).
 
-For timezone values, see [timezones](references/timezones.yaml).
+For timezone values, see [timezones](../outlook-base/references/timezones.yaml).

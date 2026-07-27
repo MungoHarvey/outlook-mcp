@@ -36,7 +36,7 @@ Call the chosen directory **STATE_DIR** in the steps below.
 ## Step 3 — Open the Azure setup guide
 Azure App Registration is required so the plugin can talk to Microsoft Graph. **Open the visual HTML guide in the user's browser** — it has the 6 annotated screenshots:
 
-- **Windows:** `Start-Process "${CLAUDE_PLUGIN_ROOT}/setup/azure-setup-guide.html"`
+- **Windows:** `Start-Process "$env:CLAUDE_PLUGIN_ROOT/setup/azure-setup-guide.html"`
 - **macOS:** `open "${CLAUDE_PLUGIN_ROOT}/setup/azure-setup-guide.html"`
 - **Linux / WSL:** `xdg-open "${CLAUDE_PLUGIN_ROOT}/setup/azure-setup-guide.html"`
 

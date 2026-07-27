@@ -40,6 +40,24 @@ describe('Cross-references', () => {
     assert.ok(mdFiles.length >= 30, `Expected at least 30 markdown files, found ${mdFiles.length}`);
   });
 
+  it('no skill folder duplicates an outlook-base reference file', () => {
+    const baseRefsDir = path.join(SKILLS_DIR, 'outlook-base', 'references');
+    const baseRefs = new Set(fs.readdirSync(baseRefsDir));
+    assert.ok(baseRefs.size > 0,
+      'outlook-base/references is empty — anti-dup check would pass vacuously');
+    const dups = [];
+    for (const entry of fs.readdirSync(SKILLS_DIR, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name === 'outlook-base') continue;
+      const refDir = path.join(SKILLS_DIR, entry.name, 'references');
+      if (!fs.existsSync(refDir)) continue;
+      for (const f of fs.readdirSync(refDir)) {
+        if (baseRefs.has(f)) dups.push(`${entry.name}/references/${f}`);
+      }
+    }
+    assert.deepStrictEqual(dups, [],
+      `Reference files duplicated from outlook-base (link to ../outlook-base/references/ instead): ${dups.join(', ')}`);
+  });
+
   for (const filePath of mdFiles) {
     const relPath = path.relative(SKILLS_DIR, filePath);
     const content = fs.readFileSync(filePath, 'utf8');

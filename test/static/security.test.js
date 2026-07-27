@@ -4,41 +4,26 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const SKILLS_DIR = path.join(__dirname, '..', '..', 'skills');
-const SECURITY_TEST_FILE = __filename; // exclude self from scans
 
-function getScannableFiles() {
-  // Scan every prompt-visible skill file — SKILL.md, reference.md, params.yaml,
-  // and the reference YAMLs under references/ — not just the SKILL.md entrypoints.
-  // Exclude outlook-references (no SKILL.md)
-  const skillDirs = fs.readdirSync(SKILLS_DIR, { withFileTypes: true })
-    .filter(d => d.isDirectory() && d.name.startsWith('outlook-') && d.name !== 'outlook-references')
-    .map(d => d.name);
-
-  const files = [];
-  for (const dirName of skillDirs) {
-    const dirPath = path.join(SKILLS_DIR, dirName);
-    for (const name of ['SKILL.md', 'reference.md', 'params.yaml']) {
-      const filePath = path.join(dirPath, name);
-      if (fs.existsSync(filePath)) files.push(filePath);
-    }
-    const refsDir = path.join(dirPath, 'references');
-    if (fs.existsSync(refsDir)) {
-      for (const entry of fs.readdirSync(refsDir)) {
-        if (/\.(ya?ml|md)$/.test(entry)) files.push(path.join(refsDir, entry));
-      }
-    }
+// Walk every skill file (SKILL.md, reference.md, params.yaml, references/*.yaml)
+// — advanced patterns live in reference/yaml files, so scanning only SKILL.md
+// missed the raw curl/Bearer examples the security model forbids.
+function walk(dir) {
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...walk(p));
+    else if (/\.(md|ya?ml)$/.test(entry.name)) out.push(p);
   }
-  return files;
+  return out;
 }
 
 describe('Security — token leak prevention', () => {
-  const skillFiles = getScannableFiles();
-  const skillMdCount = skillFiles.filter(p => path.basename(p) === 'SKILL.md').length;
-  const referenceMdCount = skillFiles.filter(p => path.basename(p) === 'reference.md').length;
+  const skillFiles = walk(SKILLS_DIR);
 
   it('should have skill files to scan', () => {
-    assert.ok(skillMdCount >= 16, `Expected at least 16 SKILL.md files, found ${skillMdCount}`);
-    assert.ok(referenceMdCount >= 16, `Expected at least 16 reference.md files, found ${referenceMdCount}`);
+    assert.ok(skillFiles.length >= 40,
+      `Expected many skill files (md/yaml), found ${skillFiles.length}`);
   });
 
   const FORBIDDEN_PATTERNS = [
@@ -47,7 +32,9 @@ describe('Security — token leak prevention', () => {
     { name: 'legacy token file path', pattern: /outlook-mcp-tokens\.json/ },
     { name: 'shell TOKEN variable', pattern: /\$TOKEN/ },
     { name: 'raw access_token reference', pattern: /access_token/ },
-    { name: 'raw Authorization header', pattern: /Authorization:\s*Bearer/i },
+    { name: 'curl command', pattern: /\bcurl\b/ },
+    { name: 'Authorization Bearer header', pattern: /Bearer/ },
+    { name: 'direct graph.microsoft.com URL', pattern: /graph\.microsoft\.com/ },
   ];
 
   for (const { name, pattern } of FORBIDDEN_PATTERNS) {

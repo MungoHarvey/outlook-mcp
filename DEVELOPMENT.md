@@ -166,7 +166,7 @@ Goal: Make the same skills work in Claude Desktop and Cowork, where the network 
 
 | Path | Purpose |
 |------|---------|
-| `research/` | API endpoint research, roadmap (gitignored) |
+| `archive/research/` | MCP-era API endpoint research, roadmap (historical) |
 
 ### Candidates for Removal
 

@@ -6,7 +6,7 @@
 `inbox`, `drafts`, `sentitems`, `deleteditems`, `junkemail`, `archive`, `outbox`
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/sentitems/messages?$top=10&$orderby=receivedDateTime%20desc&$select=id,subject,from,receivedDateTime,bodyPreview,isRead"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/sentitems/messages?\$top=10&\$orderby=receivedDateTime%20desc&\$select=id,subject,from,receivedDateTime,bodyPreview,isRead"
 ```
 
 ### Named folder resolution
@@ -14,7 +14,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/sentite
 FOLDER_ID=$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders?\$filter=displayName%20eq%20'FolderName'" | \
   python3 -c "import sys,json; v=(json.load(sys.stdin).get('data') or {}).get('value',[]); print(v[0]['id'] if v else 'NOT_FOUND')")
 
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/$FOLDER_ID/messages?$top=10&$orderby=receivedDateTime%20desc&$select=id,subject,from,receivedDateTime,bodyPreview,isRead"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/$FOLDER_ID/messages?\$top=10&\$orderby=receivedDateTime%20desc&\$select=id,subject,from,receivedDateTime,bodyPreview,isRead"
 ```
 
 ## OData Filters
@@ -60,4 +60,4 @@ if next_link:
 
 ## Error Handling
 
-See [errors](references/errors.yaml) for common HTTP error codes.
+See [errors](../outlook-base/references/errors.yaml) for common HTTP error codes.

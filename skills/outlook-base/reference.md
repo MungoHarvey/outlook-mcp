@@ -4,7 +4,7 @@
 
 ### GET
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/messages?$select=id,subject&$top=10"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/messages?\$select=id,subject&\$top=10"
 ```
 
 ### POST
@@ -53,7 +53,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/calendar/calendarVi
 Always parse the `.data` field for the actual response body:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/messages?$top=5" | python3 -c "
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/messages?\$top=5" | python3 -c "
 import sys, json
 response = json.load(sys.stdin)
 data = response.get('data', {})
@@ -103,7 +103,7 @@ See [graph-api-patterns](references/graph-api-patterns.yaml) for detailed thrott
 For calendar GET requests, use the `Prefer` header to get times in user's timezone:
 
 ```bash
--H "Prefer: outlook.timezone=\"America/New_York\""
+--header "Prefer: outlook.timezone=\"America/New_York\""
 ```
 
 See [timezones](references/timezones.yaml) for IANA timezone values.

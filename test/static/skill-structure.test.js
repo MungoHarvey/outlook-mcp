@@ -82,7 +82,8 @@ describe('Skill structure', () => {
 
   // Verify only expected skills have params.yaml
   describe('params.yaml presence', () => {
-    const expectedWithParams = ['outlook-email-send', 'outlook-email-draft', 'outlook-calendar-create', 'outlook-contacts-manage', 'outlook-calendar-update'];
+    // outlook-calendar-update links to outlook-calendar-create/params.yaml (deduped) rather than carrying its own copy.
+    const expectedWithParams = ['outlook-email-send', 'outlook-email-draft', 'outlook-calendar-create', 'outlook-contacts-manage'];
 
     for (const dir of skillDirsWithSkillMd) {
       const paramsPath = path.join(SKILLS_DIR, dir, 'params.yaml');

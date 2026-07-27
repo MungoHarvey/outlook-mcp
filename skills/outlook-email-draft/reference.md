@@ -44,7 +44,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages" '{
 
 ## Large Attachments (3MB–150MB)
 
-Use an upload session on the draft. See [graph-api-patterns](references/graph-api-patterns.yaml).
+Use an upload session on the draft. See [graph-api-patterns](../outlook-base/references/graph-api-patterns.yaml).
 
 1. Create draft (POST `/me/messages`)
 2. Create upload session on the draft attachment
@@ -54,7 +54,7 @@ Use an upload session on the draft. See [graph-api-patterns](references/graph-ap
 ## List Drafts
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/drafts/messages?$select=id,subject,toRecipients,createdDateTime,bodyPreview&$top=10&$orderby=createdDateTime desc"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/drafts/messages?\$select=id,subject,toRecipients,createdDateTime,bodyPreview&\$top=10&\$orderby=createdDateTime%20desc"
 ```
 
 ## Delete a Draft
@@ -67,7 +67,7 @@ Returns HTTP 204 on success.
 
 ## Error Handling
 
-See [errors](references/errors.yaml) for common HTTP error codes.
+See [errors](../outlook-base/references/errors.yaml) for common HTTP error codes.
 
 | Code | Specific Meaning |
 |---|---|

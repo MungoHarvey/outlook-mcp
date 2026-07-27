@@ -52,13 +52,15 @@ cp "$SCRIPT_DIR/SKILLS.md" "$PKG_DIR/SKILLS.md"
 for dir in "$ROOT_DIR/skills"/outlook-*/; do
     name=$(basename "$dir")
     dest="$PKG_DIR/$name"
-    cp -r "$dir" "$dest"
-    # Rewrite ${CLAUDE_PLUGIN_ROOT} paths to absolute installed locations
-    find "$dest" -name "*.md" -exec sed -i \
+    rm -rf "$dest"                 # idempotent rebuild
+    cp -r "${dir%/}" "$dest"
+    # Rewrite ${CLAUDE_PLUGIN_ROOT} paths. sed -i.bak is portable (GNU + BSD).
+    find "$dest" -name "*.md" -exec sed -i.bak \
         -e "s|\${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py|$_safe_dir/scripts/graph_call.py|g" \
         -e "s|\${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh|$_safe_dir/outlook-skills/auth.sh|g" \
         -e "s|\${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1|$_safe_dir/outlook-skills/auth.ps1|g" \
         -e "s|\${CLAUDE_PLUGIN_ROOT}/setup/azure-setup-guide.html|$_safe_dir/setup/azure-setup-guide.html|g" {} \;
+    find "$dest" -name "*.bak" -delete
 done
 
 # ── Create zip ────────────────────────────────────────────────────────────────

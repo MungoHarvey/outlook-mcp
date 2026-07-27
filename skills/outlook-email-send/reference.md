@@ -50,7 +50,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/sendMail" '{
 
 ## Large Attachments (3MB–150MB)
 
-Use an upload session. See [graph-api-patterns](references/graph-api-patterns.yaml) for the upload session pattern.
+Use an upload session. See [graph-api-patterns](../outlook-base/references/graph-api-patterns.yaml) for the upload session pattern.
 
 1. First create a draft message (POST `/me/messages`)
 2. Create upload session on the draft
@@ -59,7 +59,7 @@ Use an upload session. See [graph-api-patterns](references/graph-api-patterns.ya
 
 ## Error Handling
 
-See [errors](references/errors.yaml) for common HTTP error codes.
+See [errors](../outlook-base/references/errors.yaml) for common HTTP error codes.
 
 | Code | Specific Meaning |
 |---|---|

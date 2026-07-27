@@ -34,6 +34,6 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/events/{eventId}/t
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/events/{eventId}/cancel" '{"comment": "Meeting cancelled — will reschedule"}'
 ```
 
-All responses return 204 on success: `{"status": 204, "data": null}`.
+All responses return 202 on success: `{"status": 202, "data": null}`.
 
 For cancel vs delete guidance and response options, see [reference.md](reference.md).

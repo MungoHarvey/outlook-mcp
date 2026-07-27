@@ -95,6 +95,13 @@ Search for and add each of the following delegated permissions:
 | `Calendars.ReadWrite` | Create and update events |
 | `Contacts.Read` | Read contacts |
 
+**Optional (do NOT add unless you need them):** `Contacts.ReadWrite` (add/update
+contacts) and `MailboxSettings.ReadWrite` (inbox rules and categories) enable the
+contacts-manage, rules, and categories skills. On many managed tenants
+(university / enterprise) these require **admin consent** and will trigger a
+"Need admin approval" screen at sign-in — so they are left out of the default set
+above. Add them only if you have admin consent, or ask your Azure admin to grant them.
+
 Click **Add permissions** after selecting each one.
 
 > No admin consent is required — all permissions are delegated (user-level).
@@ -129,7 +136,7 @@ Use `OUTLOOK_TENANT_ID=common` for personal Microsoft accounts. For a work or sc
 
 ## Next Steps
 
-You're ready to authenticate. Return to the [Quick Start](../README.md#quick-start) and continue from **Step 3: Authenticate**.
+You're ready to authenticate. Return to the [Setup section](../README.md#setup) and continue from **Step 2: Authenticate**.
 
 ```bash
 # macOS / Linux / WSL

@@ -39,6 +39,7 @@ New-Item -ItemType Directory -Force -Path $PkgDir | Out-Null
 $ProxyPath   = ($InstallDir + "\scripts\graph_call.py") -replace '\\', '/'
 $AuthPathSh  = ($InstallDir + "\outlook-skills\auth.sh")  -replace '\\', '/'
 $AuthPathPs1 = ($InstallDir + "\outlook-skills\auth.ps1") -replace '\\', '/'
+$GuidePath   = ($InstallDir + "\setup\azure-setup-guide.html") -replace '\\', '/'
 
 Write-Host "Packaging Outlook skills..."
 Write-Host "  Output:    $Output"
@@ -58,7 +59,8 @@ Get-ChildItem "$RootDir\skills" -Directory |
             (Get-Content $_.FullName -Raw).
                 Replace('${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py', "$ProxyPath").
                 Replace('${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh', "$AuthPathSh").
-                Replace('${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1', "$AuthPathPs1") |
+                Replace('${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1', "$AuthPathPs1").
+                Replace('${CLAUDE_PLUGIN_ROOT}/setup/azure-setup-guide.html', "$GuidePath") |
             Set-Content $_.FullName -Encoding UTF8 -NoNewline
         }
     }

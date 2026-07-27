@@ -7,7 +7,7 @@ Microsoft Outlook integration for Claude — email, calendar, contacts, folders,
 This is a **Claude Code plugin** built around 20 skills and a secure token proxy:
 
 - **Skills** are the intelligence layer — each one teaches Claude the right Graph API calls for a task (list inbox, send mail, book meetings, manage contacts, create rules, …).
-- **`scripts/graph_call.py`** is the execution layer — a proxy that injects the Bearer token internally and returns only the JSON response. Tokens and credentials never reach the model.
+- **`scripts/graph_call.py`** is the execution layer — a proxy that injects the token internally and returns only the JSON response. Tokens and credentials never reach the model.
 - **`outlook-skills/`** holds the auth system — a Node.js OAuth 2.0 server plus entry scripts (`auth.sh` / `auth.ps1`) that store tokens locally with a 30-day session limit.
 
 | Component | Count | Purpose |
@@ -115,6 +115,8 @@ outlook-skills/tokens.json, both of which are gitignored and never leave my mach
 - A Microsoft 365 account (personal or organisational)
 - Azure AD app registration with Graph API permissions (the setup flow walks you through this)
 
+Prefer a manual setup? [`setup/AZURE_SETUP.md`](setup/AZURE_SETUP.md) has the full Azure walkthrough. The **Web** redirect URI must be `http://localhost:8400/auth/callback`.
+
 ## Where auth state lives
 
 `.env` (credentials) and `tokens.json` (tokens) are resolved in this order by every component:
@@ -167,11 +169,14 @@ It shares the same token store as the skills (same resolution order as above).
 
 ## Security
 
-- Tokens are stored locally (`tokens.json`, mode 0600 / icacls-restricted) and never bundled, committed, or shown to the model
-- All Graph calls go through `graph_call.py`, which injects the token internally
-- Endpoint validation restricts requests to `/me` and `/users/` paths
+- Tokens are stored locally in `tokens.json` (gitignored, never bundled or committed)
+- The token is never exposed to the LLM — `graph_call.py` injects it internally
+- The client secret is **not** stored in `tokens.json`; refresh reads it from `.env`
+- Endpoint validation restricts requests to `/me` and `/users/` paths (segment-exact)
+- Token files are created with restrictive permissions (chmod 600 on Unix, a
+  user-only ACL via icacls on Windows) at write time
 - 30-day session limit enforces periodic re-authentication
-- `test/static/security.test.js` fails CI if any skill file ever references tokens or raw Authorization headers
+- `test/static/security.test.js` fails CI if any skill file ever references tokens, curl, or raw Authorization headers
 
 ## License
 
