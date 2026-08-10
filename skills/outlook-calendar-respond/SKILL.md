@@ -1,7 +1,6 @@
 ---
 name: outlook-calendar-respond
 description: Respond to Outlook calendar invitations — accept, decline, tentatively accept, or cancel events. Use when user wants to accept, decline, RSVP, cancel a meeting, or respond to an invitation.
-user_invocable: true
 ---
 
 # Respond to Calendar Events

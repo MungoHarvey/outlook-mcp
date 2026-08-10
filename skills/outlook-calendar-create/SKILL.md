@@ -1,7 +1,6 @@
 ---
 name: outlook-calendar-create
 description: Create Outlook calendar events — single, recurring, all-day, Teams meetings, with attendees. Use when user wants to schedule, book, create a meeting, set up an event, or add to calendar.
-user_invocable: true
 ---
 
 # Create Calendar Event

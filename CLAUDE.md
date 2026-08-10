@@ -138,9 +138,10 @@ Every skill folder under `skills/` must contain:
 ---
 name: outlook-skill-name        # kebab-case, matches folder name
 description: "..."              # must include trigger words Claude uses for auto-selection
-user_invocable: true            # omit (or false) only for outlook-base and outlook-categories
 ---
 ```
+
+Only `name` and `description` are used — Claude Code has no user-invocability frontmatter key. Skills not meant for direct invocation (`outlook-base`, `outlook-categories`) say so in their `description`; `test/static/skill-structure.test.js` guards against the legacy `user_invocable` key reappearing.
 
 Skills with complex parameter sets also have `params.yaml` (currently: `outlook-email-send`, `outlook-calendar-create`, `outlook-contacts-manage`).
 

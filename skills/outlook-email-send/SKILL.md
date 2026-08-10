@@ -1,7 +1,6 @@
 ---
 name: outlook-email-send
 description: "Compose and send Outlook emails immediately. Use when user wants to send an email, compose and send, write and send a message, email someone, fire off a quick email, or reply with a new message. If the user says 'draft' or 'don't send yet', use outlook-email-draft instead."
-user_invocable: true
 ---
 
 # Send Email

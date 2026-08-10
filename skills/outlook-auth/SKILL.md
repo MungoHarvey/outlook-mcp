@@ -1,7 +1,6 @@
 ---
 name: outlook-auth
 description: Authenticate with Microsoft Outlook. Use when user says "connect to Outlook", "sign in to email", "authenticate", or runs /outlook-auth.
-user_invocable: true
 ---
 
 # Outlook Authentication

@@ -1,7 +1,6 @@
 ---
 name: outlook-contacts-manage
 description: Create and update Outlook contacts. Use when user wants to add, create, update, or edit a contact.
-user_invocable: true
 ---
 
 # Create & Update Contacts

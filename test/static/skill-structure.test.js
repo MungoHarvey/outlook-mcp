@@ -55,16 +55,15 @@ describe('Skill structure', () => {
     });
   }
 
-  // Verify user_invocable is set correctly
-  const nonInvocableSkills = ['outlook-base', 'outlook-categories'];
-  const invocableSkills = skillDirsWithSkillMd.filter(d => !nonInvocableSkills.includes(d));
-
-  for (const dir of invocableSkills) {
-    it(`${dir} should be user_invocable`, () => {
+  // The legacy `user_invocable` key is not part of Claude Code's SKILL.md
+  // schema — invocability is conveyed by the description (outlook-base and
+  // outlook-categories say so there). Guard against the key creeping back.
+  for (const dir of skillDirsWithSkillMd) {
+    it(`${dir} should not use the legacy user_invocable key`, () => {
       const content = fs.readFileSync(path.join(SKILLS_DIR, dir, 'SKILL.md'), 'utf8');
       const fm = parseFrontmatter(content);
-      assert.strictEqual(fm.user_invocable, true,
-        `${dir} should have user_invocable: true`);
+      assert.ok(!(fm && 'user_invocable' in fm),
+        `${dir}/SKILL.md still has the legacy user_invocable frontmatter key`);
     });
   }
 

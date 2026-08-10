@@ -1,7 +1,6 @@
 ---
 name: outlook-email-list
 description: List and search Outlook emails. Use when user mentions inbox, emails, unread messages, check mail, search email, find email.
-user_invocable: true
 ---
 
 # List & Search Emails

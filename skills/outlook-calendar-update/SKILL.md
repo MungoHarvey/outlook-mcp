@@ -1,7 +1,6 @@
 ---
 name: outlook-calendar-update
 description: Update existing Outlook calendar events — reschedule, change details, modify attendees. Use when user wants to reschedule, change, update, edit, or modify a meeting or event.
-user_invocable: true
 ---
 
 # Update Calendar Event

@@ -1,7 +1,6 @@
 ---
 name: outlook-folders
 description: Manage Outlook mail folders themselves — list, create, rename, delete folders. Use when the user mentions mail folders, creating a folder, or renaming/deleting a folder. To move emails into a folder, use outlook-email-move.
-user_invocable: true
 ---
 
 # Outlook Mail Folders

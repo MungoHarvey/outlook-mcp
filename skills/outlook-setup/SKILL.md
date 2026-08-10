@@ -1,7 +1,6 @@
 ---
 name: outlook-setup
 description: First-time setup of the Outlook Skills plugin on a new PC or Mac. Use when the user says "set up Outlook", "install Outlook skills", "configure Outlook", "get started with Outlook", "first time setup", "help me set this up", or runs /outlook-setup. Walks through prerequisites, install, Azure app registration (opens a visual HTML guide), credentials, and authentication.
-user_invocable: true
 ---
 
 # Outlook Skills — Guided Setup

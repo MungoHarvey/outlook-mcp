@@ -1,7 +1,6 @@
 ---
 name: outlook-email-move
 description: Move Outlook emails between folders. Use when user wants to move, file, or sort emails into folders.
-user_invocable: true
 ---
 
 # Move Emails

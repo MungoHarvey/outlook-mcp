@@ -1,7 +1,6 @@
 ---
 name: outlook-email-reply
 description: Reply to, reply-all, or forward Outlook emails. Use when user wants to reply, reply all, forward, or respond to an email.
-user_invocable: true
 ---
 
 # Reply & Forward Emails

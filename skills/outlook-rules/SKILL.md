@@ -1,7 +1,6 @@
 ---
 name: outlook-rules
 description: Manage Outlook inbox rules — list, create, modify priority. Use when user mentions inbox rules, email automation, auto-sorting, email filters.
-user_invocable: true
 ---
 
 # Outlook Inbox Rules

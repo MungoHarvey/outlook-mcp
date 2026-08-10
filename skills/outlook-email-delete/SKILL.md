@@ -1,7 +1,6 @@
 ---
 name: outlook-email-delete
 description: Delete Outlook emails. Use when user wants to delete, trash, or remove an email message.
-user_invocable: true
 ---
 
 # Delete Emails

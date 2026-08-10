@@ -25,6 +25,8 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py METHOD "/endpoint" [body] [-
 
 **Response format:** `{"status": N, "data": {...}}` — parse the `.data` field for the actual response.
 
+**Windows note:** if `python3` is not found (common on Windows), substitute `python` — every example in these skills works with either.
+
 ### Examples
 
 ```bash

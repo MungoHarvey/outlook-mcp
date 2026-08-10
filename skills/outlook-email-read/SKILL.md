@@ -1,7 +1,6 @@
 ---
 name: outlook-email-read
 description: "Read a specific Outlook email by ID, view full body and attachments. Use when user wants to read, open, view, show, or display an email message, check what an email says, see the full content of a message, or download attachments from an email."
-user_invocable: true
 ---
 
 # Read Email

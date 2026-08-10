@@ -1,7 +1,6 @@
 ---
 name: outlook-contacts-list
 description: List and search Outlook contacts. Use when user mentions contacts, address book, find contact, phone number, look up someone's email.
-user_invocable: true
 ---
 
 # List & Search Contacts
