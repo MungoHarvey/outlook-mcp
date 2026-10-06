@@ -149,7 +149,7 @@ def validate_endpoint(endpoint):
     }
 
     # ── 1. Absolute URLs: only Graph v1.0 (pagination / delta links) ──────────
-    if re.match(r"^[A-Za-z][A-Za-z0-9+.\-]*://", endpoint) or endpoint.startswith("//"):
+    if is_absolute(endpoint):
         if endpoint.lower().startswith(GRAPH_BASE_URL.lower() + "/"):
             endpoint = endpoint[len(GRAPH_BASE_URL):]
         else:
@@ -192,18 +192,31 @@ def validate_endpoint(endpoint):
     return endpoint, None
 
 
-def encode_endpoint(endpoint):
+def encode_endpoint(endpoint, keep_plus=False):
     """Percent-encode characters that are not valid in a URL.
 
     Existing %XX escapes are preserved (so nextLinks and encoded IDs pass
-    through unchanged); a bare '%' that is not an escape becomes %25.
+    through unchanged); a bare '%' that is not an escape becomes %25. A '+'
+    in the query is encoded as %2B — Graph would otherwise read it as a space
+    (breaking `+01:00` offsets and `"C++"`) — except in links Graph itself
+    produced (keep_plus=True), which are already correctly encoded.
     """
     endpoint = re.sub(r"%(?![0-9A-Fa-f]{2})", "%25", endpoint)
-    return urllib.parse.quote(endpoint, safe=_URL_SAFE)
+    encoded = urllib.parse.quote(endpoint, safe=_URL_SAFE)
+    if not keep_plus and "?" in encoded:
+        path, query = encoded.split("?", 1)
+        encoded = path + "?" + query.replace("+", "%2B")
+    return encoded
+
+
+def is_absolute(endpoint):
+    """True for an absolute URL (e.g. an @odata.nextLink)."""
+    return bool(re.match(r"^[A-Za-z][A-Za-z0-9+.\-]*://", endpoint)) or endpoint.startswith("//")
 
 
 # ── Output helpers ─────────────────────────────────────────────────────────────
 
+_SUPERSCRIPTS = str.maketrans("\u00b9\u00b2\u00b3", "123")
 _WIN_RESERVED = {"CON", "PRN", "AUX", "NUL",
                  *(f"COM{i}" for i in range(1, 10)),
                  *(f"LPT{i}" for i in range(1, 10))}
@@ -221,15 +234,21 @@ def safe_filename(name):
     name = name.strip(" .")
     if not name:
         name = "attachment"
-    stem, dot, ext = name.rpartition(".")
-    if not dot:
-        stem, ext = name, ""
-    if stem.split(".")[0].upper() in _WIN_RESERVED:
+    # Windows ignores trailing spaces/dots in the device-name part and treats
+    # superscript digits as digits ("CON .txt", "COM¹.txt" are devices).
+    device = name.split(".")[0].rstrip(" .").upper().translate(_SUPERSCRIPTS)
+    if device in _WIN_RESERVED:
         name = "_" + name
-    if len(name) > 200:
-        ext = ("." + ext[:20]) if dot else ""
-        name = name[:200 - len(ext)] + ext
-    return name
+    # Limit by UTF-8 bytes (filesystems count bytes), keeping the extension.
+    stem, dot, ext = name.rpartition(".")
+    if not dot or len(ext) > 20:
+        stem, ext = name, ""
+    else:
+        ext = "." + ext
+    limit = 200 - len(ext.encode("utf-8"))
+    while len(stem.encode("utf-8")) > limit:
+        stem = stem[:-1]
+    return stem + ext
 
 
 def write_output_file(out_dir, out_name, content):
@@ -269,7 +288,7 @@ def elide_content_bytes(data):
     return data
 
 
-def build_success(status, raw, content_type, out=None, sanitize=True):
+def build_success(status, raw, content_type, out=None, sanitize=True, inline_text=True):
     """Turn a 2xx response into the proxy's {status, data} result.
 
     - out=(dir, name): save the payload to disk instead of returning it. A
@@ -315,7 +334,7 @@ def build_success(status, raw, content_type, out=None, sanitize=True):
                 data = sanitize_response(data)
             return {"status": status, "data": elide_content_bytes(data)}
 
-    if ctype == "text/plain":
+    if ctype == "text/plain" and inline_text:
         text = raw.decode("utf-8", errors="replace")
         result = {"status": status, "data": text[:TEXT_INLINE_LIMIT]}
         if len(text) > TEXT_INLINE_LIMIT:
@@ -331,8 +350,9 @@ def build_success(status, raw, content_type, out=None, sanitize=True):
         "data": None,
         "content_type": ctype or None,
         "bytes": len(raw),
-        "message": ("Non-JSON response not shown. Re-run with "
-                    "--out-dir DIR --out-name NAME to save it to a file.")
+        "message": ("Response not shown (binary or raw content). Re-run with "
+                    "--out-dir DIR to save it to a file (add --out-name NAME "
+                    "unless it is an attachment).")
     }
 
 
@@ -349,7 +369,11 @@ class _SameHostAuthRedirect(urllib.request.HTTPRedirectHandler):
             old_host = urllib.parse.urlsplit(req.full_url).netloc.lower()
             new_host = urllib.parse.urlsplit(newurl).netloc.lower()
             auth = req.unredirected_hdrs.get("Authorization")
-            if auth and old_host == new_host:
+            new_scheme = urllib.parse.urlsplit(newurl).scheme.lower()
+            old_scheme = urllib.parse.urlsplit(req.full_url).scheme.lower()
+            # Never downgrade: the token is only re-sent on the same scheme
+            # (https in production) and host.
+            if auth and old_host == new_host and new_scheme == old_scheme:
                 new.add_unredirected_header("Authorization", auth)
         return new
 
@@ -360,7 +384,7 @@ _OPENER = urllib.request.build_opener(_SameHostAuthRedirect)
 # ── make_request function ──────────────────────────────────────────────────────
 
 def make_request(method, endpoint, body, headers, _retried=False,
-                 out=None, sanitize=True):
+                 out=None, sanitize=True, _retried_from_link=False):
     """
     Execute a Microsoft Graph API request.
 
@@ -382,12 +406,16 @@ def make_request(method, endpoint, body, headers, _retried=False,
      NotAuthenticatedError, AuthConfigError) = _ensure_token_helper()
 
     # ── Validate + self-heal endpoint (pure seam — see validate_endpoint) ───────
+    _graph_link = is_absolute(endpoint) or _retried_from_link
     endpoint, _err = validate_endpoint(endpoint)
     if _err:
         return _err
 
     # ── Build URL ──────────────────────────────────────────────────────────────
-    url = GRAPH_BASE_URL + encode_endpoint(endpoint)
+    url = GRAPH_BASE_URL + encode_endpoint(endpoint, keep_plus=_graph_link)
+    # Raw `/$value` content (MIME source, attachment bytes) is never printed:
+    # it bypasses the HTML sanitiser, so it must be saved with --out-dir.
+    _inline_ok = not endpoint.split("?")[0].lower().endswith("/$value")
 
     # ── Get token (private variable — never printed) ────────────────────────────
     # On the 401 retry, force a real refresh — the server rejected a token that
@@ -454,14 +482,16 @@ def make_request(method, endpoint, body, headers, _retried=False,
             status_code = resp.status
             content_type = resp.headers.get("Content-Type", "")
             raw = resp.read()
-        return build_success(status_code, raw, content_type, out=out, sanitize=sanitize)
+        return build_success(status_code, raw, content_type, out=out,
+                             sanitize=sanitize, inline_text=_inline_ok)
 
     except urllib.error.HTTPError as e:
         # ── Handle 401 with auto-retry ────────────────────────────────────────
         if e.code == 401 and not _retried:
             # Retry once with a forced token refresh
             return make_request(method, endpoint, body, headers, _retried=True,
-                                out=out, sanitize=sanitize)
+                                out=out, sanitize=sanitize,
+                                _retried_from_link=_graph_link)
         elif e.code == 401:
             return {
                 "status": 401,
@@ -600,9 +630,11 @@ def read_body_arg(body):
         return sys.stdin.buffer.read().decode("utf-8")
     if body and body.startswith("@"):
         path = Path(body[1:]).expanduser()
-        # Defence in depth: never let auth state be read into a request body.
-        if path.name.lower() in _AUTH_STATE_NAMES or path.name.lower().startswith("tokens.json"):
-            raise PermissionError(f"Refusing to read auth state file as a request body: {path.name}")
+        # Defence in depth: never let auth state be read into a request body
+        # (checked on the given name and on the symlink-resolved target).
+        for name in (path.name, path.resolve().name):
+            if name.lower() in _AUTH_STATE_NAMES or name.lower().startswith("tokens.json"):
+                raise PermissionError(f"Refusing to read auth state file as a request body: {path.name}")
         return path.read_text(encoding="utf-8")
     return body
 
@@ -668,8 +700,8 @@ Examples:
         parser.add_argument(
             "--raw-body",
             action="store_true",
-            help="Return message bodies unsanitised (only for your OWN drafts; "
-                 "never for received mail)"
+            help="Return message bodies unsanitised (only for a draft written from "
+                 "scratch; never for received mail or reply/forward drafts)"
         )
 
         args = parser.parse_args()

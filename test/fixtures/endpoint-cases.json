@@ -112,6 +112,10 @@
   [
    "/me/messages/%E0%A4%A",
    true
+  ],
+  [
+   "/me/%2e%2e%2f%2e%2e%2f%ff/beta",
+   false
   ]
  ]
 }

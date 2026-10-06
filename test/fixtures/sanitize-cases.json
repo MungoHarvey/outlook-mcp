@@ -1,5 +1,5 @@
 {
- "_comment": "Shared sanitiser cases: scripts/sanitize.py and mcp-server/src/sanitize.js must both pass every case. Each case is [name, html, must_contain, must_not_contain] applied to html_to_safe_text / htmlToSafeText. 'marker spoofing' is checked at the itemBody level (exactly one marker pair).",
+ "_comment": "Shared sanitiser cases: scripts/sanitize.py and mcp-server/src/sanitize.js must both pass every case. Each case is [name, html, must_contain, must_not_contain] applied to html_to_safe_text / htmlToSafeText. 'marker spoofing' is checked at the itemBody level (exactly one marker pair). Cases from the adversarial review (06/10/2026) cover self-closing tags, raw-text elements, implicit closes, duplicate attributes, CSS escapes/comments, <style> selectors and near-white text.",
  "cases": [
   [
    "plain paragraph",
@@ -391,6 +391,374 @@
    ],
    [
     "secret"
+   ]
+  ],
+  [
+   "self-closing span hides following text",
+   "<span style=\"display:none\"/>SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "self-closing div hidden",
+   "<div hidden/>SECRET</div>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "self-closing style",
+   "<style/>SECRET</style>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "self-closing title",
+   "<title/>SECRET</title>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "inner self-closing span keeps outer hidden",
+   "<span style=\"display:none\">x<span/>SECRET</span>",
+   [],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "formatting element reopened after p",
+   "<p><b style=\"display:none\">x</p><p>SECRET</p>",
+   [],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "formatting element reopened after div",
+   "<div><b style=\"display:none\">x</div>SECRET",
+   [],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "iframe is raw text",
+   "<div><iframe></div>SECRET</iframe>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "title is raw text",
+   "<div><title></div>SECRET</title>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "textarea is raw text",
+   "<textarea></div>SECRET</textarea>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "duplicate style attribute first wins",
+   "<span style=\"display:none\" style=\"color:red\">SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "duplicate href first wins",
+   "<a href=\"https://good.example\" href=\"https://evil.example\">x</a>",
+   [
+    "good.example"
+   ],
+   [
+    "evil.example"
+   ]
+  ],
+  [
+   "entity in style colon",
+   "<span style=\"display&colon;none\">SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "entity in style tab",
+   "<span style=\"display:&Tab;none\">SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "entity in style newline",
+   "<span style=\"display:&NewLine;none\">SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "mso-hide all",
+   "<span style=\"mso-hide:all\">SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "white text default background",
+   "<span style=\"color:#fff\">SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "near-white text",
+   "<span style=\"color:#fefefe\">SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "font colour white",
+   "<font color=white>SECRET</font>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "white on dark cell kept",
+   "<table><tr><td bgcolor=\"#000\"><font color=white>VISIBLE</font></td></tr></table>",
+   [
+    "VISIBLE"
+   ],
+   []
+  ],
+  [
+   "white on dark div kept",
+   "<div style=\"background:#123456\"><span style=\"color:#fff\">VISIBLE</span></div>",
+   [
+    "VISIBLE"
+   ],
+   []
+  ],
+  [
+   "css comment in value",
+   "<span style=\"display:/**/none\">SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "css escape in value",
+   "<span style=\"display:n\\6f ne\">SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "screen-reader only box",
+   "<span style=\"width:1px;height:1px;overflow:hidden\">SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "opacity 0.01",
+   "<span style=\"opacity:0.01\">SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "font-size 2px",
+   "<span style=\"font-size:2px\">SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "font-size 1pt",
+   "<span style=\"font-size:1pt\">SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "rgba alpha zero",
+   "<span style=\"color:rgba(0,0,0,0)\">SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "style-block class",
+   "<style>.h{display:none}</style><span class=h>SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "style-block class with pseudo",
+   "<style>.h:not(.x){display:none}</style><span class=\"a h\">SECRET</span>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "style-block id",
+   "<style>#z{visibility:hidden}</style><p id=z>SECRET</p>ok",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "style-block after use",
+   "<span class=h>SECRET</span>ok<style>.h{display:none}</style>",
+   [
+    "ok"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "style-block compound does not hide all tags",
+   "<style>div.h{display:none}</style><div>VISIBLE</div><div class=h>SECRET</div>",
+   [
+    "VISIBLE"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "bogus end tag is a comment",
+   "a</ IGNORE PREVIOUS>b",
+   [
+    "ab"
+   ],
+   [
+    "IGNORE"
+   ]
+  ],
+  [
+   "bogus end tag digit",
+   "a</3 SECRET>b",
+   [
+    "ab"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "empty comment shorthand is complete",
+   "a<!-->VISIBLE",
+   [
+    "aVISIBLE"
+   ],
+   []
+  ],
+  [
+   "comment closed by --!>",
+   "a<!-- SECRET --!>b",
+   [
+    "ab"
+   ],
+   [
+    "SECRET"
+   ]
+  ],
+  [
+   "unterminated comment hides rest",
+   "a<!-- SECRET",
+   [
+    "a"
+   ],
+   [
+    "SECRET"
    ]
   ]
  ]

@@ -33,11 +33,21 @@ const BAD_ENDPOINT = "Endpoint must start with /me or /users/";
 
 // ── Endpoint validation ──────────────────────────────────────────────────────
 
-/** Python-style unquote: decode valid %XX escapes, leave anything else. */
+/**
+ * Python-style unquote: decode runs of %XX escapes byte-wise as UTF-8 with
+ * replacement characters (never throws, never leaves a run undecoded —
+ * "%2e%2e%2f%ff" must still normalise like graph_call.py does).
+ */
 function unquote(s) {
   return s.replace(/(%[0-9A-Fa-f]{2})+/g, (m) => {
-    try { return decodeURIComponent(m); } catch { return m; }
+    const bytes = Buffer.from(m.split("%").slice(1).map((h) => parseInt(h, 16)));
+    return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
   });
+}
+
+/** True for an absolute URL (e.g. an @odata.nextLink). */
+function isAbsolute(endpoint) {
+  return /^[A-Za-z][A-Za-z0-9+.\-]*:\/\//.test(endpoint) || endpoint.startsWith("//");
 }
 
 /**
@@ -49,7 +59,7 @@ function unquote(s) {
  * @returns {{endpoint: string, error: string|null}}
  */
 export function validateEndpoint(endpoint) {
-  if (/^[A-Za-z][A-Za-z0-9+.\-]*:\/\//.test(endpoint) || endpoint.startsWith("//")) {
+  if (isAbsolute(endpoint)) {
     if (endpoint.toLowerCase().startsWith(GRAPH_BASE_URL.toLowerCase() + "/")) {
       endpoint = endpoint.slice(GRAPH_BASE_URL.length);
     } else {
@@ -89,9 +99,10 @@ export function validateEndpoint(endpoint) {
 
 /**
  * Percent-encode characters that are not valid in a URL, preserving existing
- * %XX escapes; a bare "%" becomes %25. Mirrors graph_call.encode_endpoint.
+ * %XX escapes; a bare "%" becomes %25; "+" in the query becomes %2B unless
+ * the link came from Graph (keepPlus). Mirrors graph_call.encode_endpoint.
  */
-export function encodeEndpoint(endpoint) {
+export function encodeEndpoint(endpoint, keepPlus = false) {
   const fixed = endpoint.replace(/%(?![0-9A-Fa-f]{2})/g, "%25");
   let out = "";
   for (const ch of fixed) {
@@ -101,6 +112,8 @@ export function encodeEndpoint(endpoint) {
       for (const b of Buffer.from(ch, "utf8")) out += "%" + b.toString(16).toUpperCase().padStart(2, "0");
     }
   }
+  const q = out.indexOf("?");
+  if (!keepPlus && q !== -1) out = out.slice(0, q + 1) + out.slice(q + 1).replace(/\+/g, "%2B");
   return out;
 }
 
@@ -119,7 +132,7 @@ function elideContentBytes(data) {
   return data;
 }
 
-async function buildSuccess(response, sanitize) {
+async function buildSuccess(response, sanitize, inlineText = true) {
   const ctype = (response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
   const buf   = Buffer.from(await response.arrayBuffer());
   if (buf.length === 0) return { status: response.status, data: null };
@@ -134,7 +147,7 @@ async function buildSuccess(response, sanitize) {
     }
   }
 
-  if (ctype === "text/plain") {
+  if (ctype === "text/plain" && inlineText) {
     const text   = buf.toString("utf8");
     const result = { status: response.status, data: text.slice(0, TEXT_INLINE_LIMIT) };
     if (text.length > TEXT_INLINE_LIMIT) result.truncated = true;
@@ -147,7 +160,7 @@ async function buildSuccess(response, sanitize) {
     data:         null,
     content_type: ctype || null,
     bytes:        buf.length,
-    message:      "Non-JSON response not shown (binary downloads are not supported over MCP; " +
+    message:      "Response not shown (binary or raw content is not supported over MCP; " +
                   "use scripts/graph_call.py --out-dir/--out-name instead).",
   };
 }
@@ -166,6 +179,7 @@ async function buildSuccess(response, sanitize) {
  */
 export async function makeRequest(method, endpoint, body = null, headers = {}, opts = {}, _retried = false) {
   const sanitize = !opts.rawBody;
+  const graphLink = opts._graphLink ?? isAbsolute(endpoint);
 
   // ── Validate method ─────────────────────────────────────────────────────
   if (!ALLOWED_METHODS.has(method)) {
@@ -207,7 +221,9 @@ export async function makeRequest(method, endpoint, body = null, headers = {}, o
   }
 
   // ── Build request ───────────────────────────────────────────────────────
-  const url = GRAPH_BASE_URL + encodeEndpoint(endpoint);
+  const url = GRAPH_BASE_URL + encodeEndpoint(endpoint, graphLink);
+  // Raw `/$value` content bypasses the HTML sanitiser — never inline it.
+  const inlineText = !endpoint.split("?")[0].toLowerCase().endsWith("/$value");
 
   const reqHeaders = {
     Authorization: `Bearer ${token}`,
@@ -249,7 +265,7 @@ export async function makeRequest(method, endpoint, body = null, headers = {}, o
   // ── Handle 401 with auto-retry ──────────────────────────────────────────
   if (response.status === 401 && !_retried) {
     // Retry once — getToken() will trigger silent refresh
-    return makeRequest(method, endpoint, body, headers, opts, true);
+    return makeRequest(method, endpoint, body, headers, { ...opts, _graphLink: graphLink }, true);
   }
   if (response.status === 401) {
     return {
@@ -260,7 +276,7 @@ export async function makeRequest(method, endpoint, body = null, headers = {}, o
   }
 
   if (response.ok) {
-    return buildSuccess(response, sanitize);
+    return buildSuccess(response, sanitize, inlineText);
   }
 
   // ── Error response ────────────────────────────────────────────────────

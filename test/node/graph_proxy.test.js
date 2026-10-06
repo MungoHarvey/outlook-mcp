@@ -110,3 +110,20 @@ test('large contentBytes are elided', async () => {
   assert.ok(r.data.value[0].contentBytes.startsWith('<omitted'));
   assert.strictEqual(r.data.value[1].contentBytes, 'aGk=');
 });
+
+test('plus is encoded in model queries but preserved in Graph links', async () => {
+  await graph.makeRequest('GET', "/me/events?$filter=start/dateTime ge '2026-10-06T00:00:00+01:00'");
+  assert.ok(calls[0].url.endsWith("%2B01:00'"), calls[0].url);
+  await graph.makeRequest('GET', `${G}/me/messages?$skiptoken=a+b`);
+  assert.ok(calls[1].url.endsWith('$skiptoken=a+b'), calls[1].url);
+});
+
+test('invalid UTF-8 in an escape run still normalises (parity with Python)', () => {
+  assert.notStrictEqual(graph.validateEndpoint('/me/%2e%2e%2f%2e%2e%2f%ff/beta').error, null);
+});
+
+test('/$value text is never inlined', async () => {
+  responder = () => new Response("<div style='display:none'>evil</div>", { status: 200, headers: { 'content-type': 'text/plain' } });
+  const r = await graph.makeRequest('GET', '/me/messages/1/$value');
+  assert.strictEqual(r.data, null);
+});

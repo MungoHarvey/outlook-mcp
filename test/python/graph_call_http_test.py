@@ -148,6 +148,16 @@ class GraphCallHttpTest(unittest.TestCase):
         r = self.call("GET", '/me/messages/AA%2FBB?$search="50%"')
         self.assertEqual(r["status"], 200, r)
 
+    def test_plus_encoded_in_model_query(self):
+        self.route("/me/events?$filter=start/dateTime%20ge%20'2026-10-06T00:00:00%2B01:00'", body={"value": []})
+        r = self.call("GET", "/me/events?$filter=start/dateTime ge '2026-10-06T00:00:00+01:00'")
+        self.assertEqual(r["status"], 200, r)
+
+    def test_plus_preserved_in_graph_link(self):
+        self.route("/me/messages?$skiptoken=a+b", body={"value": []})
+        r = self.call("GET", self.base + "/v1.0/me/messages?$skiptoken=a+b")
+        self.assertEqual(r["status"], 200, r)
+
     # ── Pagination ──────────────────────────────────────────────────────────────
     def test_absolute_nextlink_is_followed(self):
         self.route("/me/messages?$skiptoken=abc", body={"value": [{"id": "2"}]})
@@ -192,6 +202,15 @@ class GraphCallHttpTest(unittest.TestCase):
                    body=b"Subject: hi\r\n\r\n<div style='display:none'>evil</div>")
         r = self.call("GET", "/me/messages/1/$value")
         self.assertIsNone(r["data"])
+
+    def test_value_text_plain_not_inlined(self):
+        # GET /me/messages/{id}/$value is MIME served as text/plain: raw HTML
+        # parts would bypass the sanitiser, so it must be saved, not printed.
+        self.route("/me/messages/1/$value", headers={"Content-Type": "text/plain"},
+                   body=b"<div style='display:none'>evil</div>")
+        r = self.call("GET", "/me/messages/1/$value")
+        self.assertIsNone(r["data"])
+        self.assertIn("--out-dir", r["message"])
 
     def test_text_plain_inlined_and_wrapped(self):
         self.route("/me/x", headers={"Content-Type": "text/plain; charset=utf-8"},
@@ -331,6 +350,18 @@ class GraphCallHttpTest(unittest.TestCase):
         self.assertEqual(_Handler.seen[-1][2], "Bearer tok-cached")
 
 
+class RedirectSchemeTest(unittest.TestCase):
+
+    def test_no_token_on_scheme_downgrade(self):
+        h = graph_call._SameHostAuthRedirect()
+        req = urllib.request.Request("https://graph.example/v1.0/me/a")
+        req.add_unredirected_header("Authorization", "Bearer t")
+        down = h.redirect_request(req, None, 302, "Found", {}, "http://graph.example/v1.0/me/b")
+        same = h.redirect_request(req, None, 302, "Found", {}, "https://graph.example/v1.0/me/b")
+        self.assertNotIn("Authorization", down.unredirected_hdrs)
+        self.assertEqual(same.unredirected_hdrs.get("Authorization"), "Bearer t")
+
+
 class BodyArgTest(unittest.TestCase):
 
     def test_stdin(self):
@@ -351,6 +382,15 @@ class BodyArgTest(unittest.TestCase):
             with self.subTest(name), self.assertRaises(PermissionError):
                 graph_call.read_body_arg("@/some/dir/" + name)
 
+    def test_symlink_to_auth_state_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            target = Path(d) / "tokens.json"
+            target.write_text("{}")
+            link = Path(d) / "innocent.json"
+            link.symlink_to(target)
+            with self.assertRaises(PermissionError):
+                graph_call.read_body_arg("@" + str(link))
+
     def test_inline_unchanged(self):
         self.assertEqual(graph_call.read_body_arg('{"c":2}'), '{"c":2}')
         self.assertIsNone(graph_call.read_body_arg(None))
@@ -369,6 +409,11 @@ class SafeFilenameTest(unittest.TestCase):
         self.assertEqual(f("re‮port.exe"), "report.exe")
         self.assertLessEqual(len(f("x" * 500 + ".pdf")), 200)
         self.assertTrue(f("x" * 500 + ".pdf").endswith(".pdf"))
+        cjk = f("\u6587" * 250 + ".pdf")
+        self.assertLessEqual(len(cjk.encode("utf-8")), 200)
+        self.assertTrue(cjk.endswith(".pdf"))
+        self.assertEqual(f("CON .txt"), "_CON .txt")
+        self.assertEqual(f("COM\u00b9.txt"), "_COM\u00b9.txt")
 
 
 if __name__ == "__main__":

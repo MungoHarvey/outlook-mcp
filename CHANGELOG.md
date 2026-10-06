@@ -46,6 +46,24 @@ Phases 1–2 of `.advanced-plans/master-plan-v2.1-review-and-roadmap.md`.
   Python/Node fixtures for the sanitiser and endpoint guard, a per-command
   SAFETY-marker check, and anchor-aware link checking.
 
+### Security (adversarial review of this release)
+- Sanitiser hardened against bypasses found in review: self-closing non-void
+  tags (`<span hidden/>`), implicitly closed hidden elements, raw-text
+  elements (`<iframe>`, `<title>`, `<textarea>`…), duplicate attributes,
+  CSS comments/escapes, `mso-hide:all`, near-white text, sub-3px fonts,
+  near-zero opacity, `<style>`-block class/id rules, spoofed markers in any
+  case/spacing, and bogus end tags. Comments are stripped with browser rules
+  before parsing so results no longer depend on the Python patch level.
+  Node now uses the full HTML5 entity table; a 3,000-document differential
+  fuzz shows identical Python/Node output.
+- `bodyPreview` is wrapped in untrusted-content markers; raw `/$value`
+  content is never printed.
+- `+` in model-written queries is sent as `%2B` (Graph reads `+` as a
+  space); Graph-issued links are left untouched.
+- The token is never re-sent on a redirect that changes scheme; `@FILE`
+  refuses auth-state files even via symlinks; file names are limited by
+  UTF-8 bytes and catch more reserved Windows device names.
+
 ### Changed
 - Large attachments (over ~3 MB) are documented as not yet supported: the
   upload-session PUT goes to a host the proxy deliberately refuses.

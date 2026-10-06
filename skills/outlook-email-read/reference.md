@@ -31,6 +31,8 @@ print(body.get('content', ''))
 
 Email HTML can hide text from the human reader that a model would still read — `display:none`, zero-size or same-colour text, off-screen positioning, HTML comments, and invisible Unicode (zero-width, bidi overrides, "tag" characters). `graph_call.py` runs every response through `scripts/sanitize.py` (a real HTML parser, not regex) **before** printing it, so the raw HTML never enters the conversation. `--raw-body` disables this and must not be used for received mail.
 
+The sanitiser errs towards hiding: it also drops near-white text with no dark background behind it, anything a `<style>` block hides (including rules for other screen sizes), and text after an unclosed hidden element. If a body looks incomplete, say so to the user rather than re-reading it with `--raw-body`.
+
 ## Attachment Types
 
 | `@odata.type` | What it is | How to get it |
