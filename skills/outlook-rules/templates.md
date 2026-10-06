@@ -2,6 +2,8 @@
 
 ## Move and Mark Read from Specific Senders
 
+**SAFETY: Show the rule summary and confirm before creating.**
+
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/mailFolders/inbox/messageRules" '{
     "displayName": "Team notifications",
@@ -22,6 +24,8 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/mailFolders/inbox/
 
 ## Auto-Read by Subject Keyword
 
+**SAFETY: Show the rule summary and confirm before creating.**
+
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/mailFolders/inbox/messageRules" '{
     "displayName": "Auto-read notifications",
@@ -37,6 +41,8 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/mailFolders/inbox/
 ```
 
 ## Forward and Stop Processing
+
+**SAFETY: Forwarding rule — see the warning in [SKILL.md](SKILL.md#create-rule). Confirm the destination address with the user; flag external domains.**
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/mailFolders/inbox/messageRules" '{

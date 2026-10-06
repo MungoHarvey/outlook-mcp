@@ -14,7 +14,9 @@ Use this skill when the user wants to **prepare** an email without sending it im
 ## Create Draft
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages" '{"subject":"SUBJECT","body":{"contentType":"text","content":"BODY"},"toRecipients":[{"emailAddress":{"address":"to@example.com"}}]}'
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages" - <<'JSON'
+{"subject":"SUBJECT","body":{"contentType":"text","content":"BODY"},"toRecipients":[{"emailAddress":{"address":"to@example.com"}}]}
+JSON
 ```
 
 Returns `{"status": 201, "data": {"id": "...", ...}}`. Save `.data.id` — this is the draft ID needed to update, send, or delete the draft later.
@@ -22,10 +24,14 @@ Returns `{"status": 201, "data": {"id": "...", ...}}`. Save `.data.id` — this 
 ## Update a Draft
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py PATCH "/me/messages/{draftId}" '{"subject":"Updated Subject","body":{"contentType":"text","content":"Updated body"}}'
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py PATCH "/me/messages/{draftId}" - <<'JSON'
+{"subject":"Updated Subject","body":{"contentType":"text","content":"Updated body"}}
+JSON
 ```
 
 Any message field can be updated: subject, body, toRecipients, ccRecipients, bccRecipients, importance.
+
+To re-read **your own** draft before editing it, add `--raw-body` so the body comes back unchanged (by default bodies are sanitised and wrapped in untrusted-content markers, which must not be written back into the draft).
 
 ## Send a Draft
 

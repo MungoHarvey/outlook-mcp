@@ -19,7 +19,7 @@ http_codes:
     action: Check request body format and field values
   401:
     meaning: Unauthorized / Token expired
-    action: "`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py` handles token refresh and retry automatically — no manual action needed"
+    action: "`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py` refreshes and retries automatically. If it still returns 401, show the user the command in `message` (error auth_required — sign in, or --reauth for an expired/revoked session; error auth_config — the Azure client secret has expired: update OUTLOOK_CLIENT_SECRET in .env, re-authenticating will not help)"
   403:
     meaning: Insufficient permissions
     action: User must re-authenticate with broader scopes
@@ -31,10 +31,13 @@ http_codes:
     action: Resource was modified by another client or name already exists
   429:
     meaning: Too Many Requests (throttled)
-    action: Wait per Retry-After header (seconds), then retry
+    action: Wait `retry_after` seconds (from the graph_call.py result), then retry; slow down bulk loops
   500:
     meaning: Internal Server Error
     action: Retry once after 2-second wait
   503:
-    meaning: Service Unavailable
-    action: Retry with exponential backoff (2s, 4s, 8s)
+    meaning: Service Unavailable (or a transient network / token-refresh failure from graph_call.py)
+    action: Wait `retry_after` seconds if present, otherwise retry with exponential backoff (2s, 4s, 8s)
+  504:
+    meaning: Timeout (graph_call.py got no response within 30s)
+    action: Retry once; for large listings reduce $top or $select fewer fields

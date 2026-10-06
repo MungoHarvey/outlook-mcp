@@ -7,14 +7,23 @@
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/messages?\$select=id,subject&\$top=10"
 ```
 
-### POST
+### POST (body on stdin — see [SKILL.md](SKILL.md#request-bodies-always-use-stdin))
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/sendMail" '{"message":{"subject":"...","body":{"contentType":"HTML","content":"..."}}}'
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/sendMail" - <<'JSON'
+{"message":{"subject":"...","body":{"contentType":"HTML","content":"..."}}}
+JSON
 ```
 
 ### PATCH
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py PATCH "/me/messages/{id}" '{"isRead":true}'
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py PATCH "/me/messages/{id}" - <<'JSON'
+{"isRead":true}
+JSON
+```
+
+### Save a response to a file
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/messages/{id}/attachments/{attachmentId}/\$value" --out-dir ~/Downloads
 ```
 
 ### DELETE
@@ -36,7 +45,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/calendar/calendarVi
 | 401 | Token expired | Refresh token, retry once |
 | 403 | Insufficient permissions | Re-authenticate with broader scopes |
 | 404 | Resource not found | Report to user |
-| 429 | Rate limited | Wait (`Retry-After` header), retry |
+| 429 | Rate limited | Wait `retry_after` seconds (in the result), retry |
 | 500-599 | Server error | Retry once after brief wait |
 
 ### Auto-Retry on 401
@@ -78,7 +87,7 @@ URL-encode `$` as `\$` in bash, spaces as `%20`.
 
 ## Pagination
 
-Always use `@odata.nextLink` for multi-page results. Never manually construct `$skip` or `$skipToken`.
+Always use `@odata.nextLink` for multi-page results: pass it back to `graph_call.py` unchanged, in single quotes. Never manually construct `$skip` or `$skipToken`.
 
 ```bash
 # Check response for next page
@@ -92,7 +101,7 @@ See [graph-api-patterns](references/graph-api-patterns.yaml) for full pagination
 ## Throttling
 
 - Max 4 concurrent requests to Outlook endpoints
-- Respect `Retry-After` header on 429 responses
+- Respect `retry_after` (from the `Retry-After` header) on 429/503 responses
 - Use exponential backoff: 2s, 4s, 8s, 16s
 - Always use `$select` to reduce payload size
 

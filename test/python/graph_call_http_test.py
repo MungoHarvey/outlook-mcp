@@ -221,6 +221,25 @@ class GraphCallHttpTest(unittest.TestCase):
         r = self.call("GET", "/me/messages/1/attachments/2", out=(self.tmp.name, "a.txt"))
         self.assertEqual(Path(r["data"]["saved_to"]).read_bytes(), b"hello")
 
+    def test_attachment_name_looked_up_not_passed_through_shell(self):
+        self.route("/me/messages/1/attachments/2?$select=name",
+                   body={"name": "$(rm -rf ~)/../evil.pdf"})
+        name, err = graph_call.attachment_name("/me/messages/1/attachments/2/$value")
+        self.assertIsNone(err)
+        self.assertEqual(name, "$(rm -rf ~)/../evil.pdf")   # raw, sanitised at write time
+        self.assertEqual(graph_call.safe_filename(name), "evil.pdf")
+
+    def test_attachment_name_rejects_non_attachment_endpoint(self):
+        name, err = graph_call.attachment_name("/me/messages/1/$value")
+        self.assertIsNone(name)
+        self.assertEqual(err["error"], "invalid_arguments")
+
+    def test_mime_saved_with_eml_extension(self):
+        self.route("/me/messages/1/attachments/3/$value",
+                   headers={"Content-Type": "message/rfc822"}, body=b"Subject: x\r\n\r\nhi")
+        r = self.call("GET", "/me/messages/1/attachments/3/$value", out=(self.tmp.name, "Fwd: note"))
+        self.assertTrue(r["data"]["saved_to"].endswith(".eml"), r)
+
     def test_large_content_bytes_elided(self):
         big = base64.b64encode(b"x" * 10_000).decode()
         self.route("/me/messages/1/attachments", body={"value": [
@@ -326,6 +345,11 @@ class BodyArgTest(unittest.TestCase):
             self.assertEqual(graph_call.read_body_arg("@" + f.name), '{"b":1}')
         finally:
             os.unlink(f.name)
+
+    def test_auth_state_files_refused(self):
+        for name in ("tokens.json", ".env", "TOKENS.JSON", "tokens.json.tmp"):
+            with self.subTest(name), self.assertRaises(PermissionError):
+                graph_call.read_body_arg("@/some/dir/" + name)
 
     def test_inline_unchanged(self):
         self.assertEqual(graph_call.read_body_arg('{"c":2}'), '{"c":2}')

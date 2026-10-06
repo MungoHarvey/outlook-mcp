@@ -10,7 +10,9 @@ for MSG_ID in id1 id2 id3; do
 done
 ```
 
-## Batch Permanent Delete
+## Batch Hard Delete
+
+**SAFETY: Confirm the full list with the user first.**
 
 ```bash
 for MSG_ID in id1 id2 id3; do
@@ -20,12 +22,15 @@ done
 
 Note: Respect throttling limits (max 4 concurrent). See [graph-api-patterns](../outlook-base/references/graph-api-patterns.yaml).
 
-## Soft vs Permanent Delete
+## Soft vs Hard vs Permanent Delete
 
-| Method | Recoverable | Notifies | Use When |
+| Method | Where it goes | User can recover? | Use When |
 |---|---|---|---|
-| Move to deleteditems | Yes (until emptied) | No | Default — safe option |
-| DELETE endpoint | No | No | Only when user explicitly wants permanent removal |
+| `POST …/move` to `deleteditems` | Deleted Items | Yes, until emptied | Default — safe option |
+| `DELETE /me/messages/{id}` | Recoverable Items | Usually, via "Recover deleted items" within the retention period | User wants it gone from Deleted Items too |
+| `POST …/permanentDelete` | Purges (hidden) | No | Only on an explicit, double-confirmed request to purge |
+
+Source: Microsoft Graph v1.0 docs for `message: permanentDelete` and `Delete message` (the latter notes deleted items land in Recoverable Items). Retention periods are set by the mailbox administrator.
 
 ## Error Handling
 

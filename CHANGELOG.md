@@ -5,6 +5,51 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Phases 1–2 of `.advanced-plans/master-plan-v2.1-review-and-roadmap.md`.
+
+### Fixed
+- Pagination: `graph_call.py` and the MCP proxy now accept `@odata.nextLink`
+  (absolute Graph v1.0 URLs); previously every second page failed with 400.
+- Queries containing spaces or quotes (`$search="two words"`,
+  `displayName eq 'My Projects'`) are percent-encoded instead of failing
+  with an opaque 500.
+- MCP endpoint guard is segment-exact and rejects backslash traversal
+  (`/me\..\..\beta\users` previously reached `/beta/users`); both proxies
+  reject `\` and `%5c`.
+- The access token is no longer forwarded when Graph redirects to another host.
+- A revoked session now suggests `--reauth`; an expired client secret is
+  reported as a configuration error instead of a "transient network error".
+- Docs: plain `DELETE` on a message is not irreversible (it goes to
+  Recoverable Items); deleting a meeting as organiser **does** notify
+  attendees. Both corrected against Microsoft Graph v1.0 documentation.
+
+### Added
+- Message content is sanitised inside the proxy by default
+  (`scripts/sanitize.py`, mirrored in `mcp-server/src/sanitize.js`): HTML is
+  reduced to visible text (hidden CSS, comments, scripts, invisible Unicode
+  removed) and wrapped in untrusted-content markers. `--raw-body` /
+  `raw_body` opts out for the user's own drafts.
+- Request bodies via stdin (`-`) or file (`@FILE`); skills now use quoted
+  heredocs, so apostrophes and email text cannot break or inject into the
+  shell command.
+- `--out-dir [--out-name]` saves responses (attachments, `.eml`) with
+  sanitised, never-overwriting file names; attachment names are looked up
+  by the proxy so sender-chosen names never touch the shell. Binary
+  responses are never printed; large `contentBytes` are elided.
+- `retry_after` on throttled responses; 504 on timeouts.
+- `POST …/permanentDelete` (true purge, double-confirmed); event delete with
+  SAFETY guidance; forwarding-rule exfiltration warning; SAFETY markers for
+  draft delete, contact overwrite, reply-all and forward.
+- Tests: HTTP-level proxy tests against a local mock Graph server, shared
+  Python/Node fixtures for the sanitiser and endpoint guard, a per-command
+  SAFETY-marker check, and anchor-aware link checking.
+
+### Changed
+- Large attachments (over ~3 MB) are documented as not yet supported: the
+  upload-session PUT goes to a host the proxy deliberately refuses.
+
 ## [2.0.0] — 2026-07-27
 
 First fully downloadable release: installable as a Claude Code plugin straight

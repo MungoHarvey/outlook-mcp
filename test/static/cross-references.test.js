@@ -68,9 +68,19 @@ describe('Cross-references', () => {
     describe(relPath, () => {
       for (const link of links) {
         it(`link to "${link.href}" should resolve`, () => {
-          const resolved = path.resolve(path.dirname(filePath), link.href);
+          const [target, anchor] = link.href.split('#');
+          const resolved = path.resolve(path.dirname(filePath), target);
           assert.ok(fs.existsSync(resolved),
             `Broken link in ${relPath}: [${link.text}](${link.href}) → ${resolved}`);
+          if (anchor) {
+            // GitHub-style heading slugs: lowercase, drop punctuation, spaces → "-".
+            const slugs = fs.readFileSync(resolved, 'utf8').split('\n')
+              .filter((l) => /^#{1,6}\s/.test(l))
+              .map((l) => l.replace(/^#+\s*/, '').trim().toLowerCase()
+                .replace(/[^\p{L}\p{N}\s-]/gu, '').replace(/\s/g, '-'));
+            assert.ok(slugs.includes(anchor),
+              `Broken anchor in ${relPath}: #${anchor} not found in ${target}`);
+          }
         });
       }
     });

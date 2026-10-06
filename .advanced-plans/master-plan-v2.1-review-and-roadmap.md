@@ -22,7 +22,7 @@ and auth gaps, then add the capabilities users most often ask for.
 
 ---
 
-## Phase 1 — Proxy correctness (`graph_call.py` ⇄ `mcp-server/src/graph.js` parity)
+## Phase 1 — Proxy correctness (`graph_call.py` ⇄ `mcp-server/src/graph.js` parity) — ✅ done
 
 The single highest-leverage phase: several skills are broken *at the proxy*, not in their docs.
 
@@ -64,7 +64,7 @@ give the same `{status, error}` for a shared table of endpoints.
 
 ---
 
-## Phase 2 — Untrusted content and destructive-action safety
+## Phase 2 — Untrusted content and destructive-action safety — ✅ done
 
 **2.1 Server-side text bodies** — add `Prefer: outlook.body-content-type="text"` to read/reply/forward
 flows so raw HTML never reaches the model.
@@ -180,6 +180,18 @@ mapping so GET `masterCategories` needs `MailboxSettings.Read`, not `.ReadWrite`
 
 Already covered in ours (no action): draft emails, tenant-specific endpoints, refresh wiring, CSRF state,
 XSS escaping, 0600 token files, `calendarView` for recurring instances, empty-response parse.
+
+## Progress log
+
+- **Phases 1–2 done** (branch `claude/sweet-ptolemy-s60dxc`). Deviations from the plan, and why:
+  - 2.1/2.2 merged: sanitisation is **on by default** in the proxy (not opt-in), with `--raw-body` to opt out,
+    so `Prefer: outlook.body-content-type="text"` was unnecessary — Graph's own HTML→text conversion would
+    keep hidden text, which is the attack.
+  - 2.4: attachment names are looked up by the proxy (`--out-dir` alone), because passing a sender-chosen name
+    on a command line is itself a shell-injection route.
+  - 1.5: large-attachment upload sessions stay unsupported (documented); deferred to Phase 6a.
+  - 1.7: MCP `getToken({forceRefresh})` and platform-correct hints left to Phase 4.2/4.4 as planned.
+  - Teams features split out as a separate suggested task (not part of this branch).
 
 ## Recommended order
 

@@ -12,6 +12,8 @@ destructive_skills:
   - outlook-calendar-respond
   - outlook-rules
   - outlook-folders
+  - outlook-email-draft
+  - outlook-contacts-manage
 
 # Skills that should NOT require confirmation (read-only)
 safe_skills:

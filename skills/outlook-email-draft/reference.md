@@ -3,7 +3,8 @@
 ## Create Draft with CC, BCC, and Importance
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages" '{
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages" - <<'JSON'
+{
     "subject": "SUBJECT",
     "body": {
       "contentType": "html",
@@ -19,37 +20,29 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages" '{
       {"emailAddress": {"address": "bcc@example.com"}}
     ],
     "importance": "high"
-  }'
+}
+JSON
 ```
 
 ## Draft with Attachments (under 3MB)
 
-Inline base64 in the message JSON:
+Build the body in a file and pass it with `@FILE` — never paste base64 into the command. Use the script in [outlook-email-send reference](../outlook-email-send/reference.md#small-attachments-under-3mb), dropping the outer `"message"` wrapper and `saveToSentItems`, then:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages" '{
-    "subject": "SUBJECT",
-    "body": {"contentType": "text", "content": "See attached."},
-    "toRecipients": [{"emailAddress": {"address": "to@example.com"}}],
-    "attachments": [
-      {
-        "@odata.type": "#microsoft.graph.fileAttachment",
-        "name": "filename.pdf",
-        "contentType": "application/pdf",
-        "contentBytes": "BASE64_ENCODED_CONTENT"
-      }
-    ]
-  }'
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages" @/tmp/outlook-body.json
 ```
+
+Or add a file to an existing draft:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages/{draftId}/attachments" @/tmp/outlook-attachment.json
+```
+
+where the file holds one `{"@odata.type":"#microsoft.graph.fileAttachment","name":…,"contentBytes":…}` object.
 
 ## Large Attachments (3MB–150MB)
 
-Use an upload session on the draft. See [graph-api-patterns](../outlook-base/references/graph-api-patterns.yaml).
-
-1. Create draft (POST `/me/messages`)
-2. Create upload session on the draft attachment
-3. Upload file in chunks via PUT
-4. Send when ready (POST `/me/messages/{draftId}/send`)
+**Not yet supported** — see [outlook-email-send reference](../outlook-email-send/reference.md#large-attachments-3mb150mb).
 
 ## List Drafts
 
@@ -58,6 +51,8 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py GET "/me/mailFolders/drafts/
 ```
 
 ## Delete a Draft
+
+**SAFETY: Confirm before deleting** — show the draft's subject and recipients. The draft is removed from Drafts (it goes to Recoverable Items, not Deleted Items).
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py DELETE "/me/messages/{draftId}"

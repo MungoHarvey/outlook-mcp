@@ -26,6 +26,8 @@ Response: `.data` contains the created contact with its `id`.
 
 ## Update Contact
 
+**SAFETY: Show the current and new values and confirm before updating** — PATCH replaces each field you send. Collection fields such as `emailAddresses`, `businessPhones` and `homePhones` are replaced **whole**, so first GET the contact and send the complete updated list, or existing entries are lost.
+
 Only include fields to change:
 
 ```bash

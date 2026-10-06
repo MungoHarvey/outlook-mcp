@@ -5,7 +5,8 @@ pagination:
   description: "Always use @odata.nextLink for multi-page results"
   rules:
     - "Never manually construct $skip or $skipToken parameters"
-    - "Use the complete @odata.nextLink URL as-is for the next page"
+    - "Pass the complete @odata.nextLink URL back to graph_call.py unchanged, in single quotes (it contains $skiptoken)"
+    - "graph_call.py accepts only Microsoft Graph v1.0 absolute links; other hosts are refused"
     - "Don't reuse tokens from retry operations — they may become invalid"
     - "Check for @odata.nextLink in response to know if more pages exist"
   pattern: |
@@ -27,7 +28,7 @@ throttling:
     max_requests_per_10min: 10000  # per app per mailbox
     recommended_rate: "4-10 requests per second"
   rules:
-    - "Always respect Retry-After header on 429 responses"
+    - "Always respect Retry-After on 429/503 — graph_call.py returns it as retry_after (seconds)"
     - "Use exponential backoff: 2s, 4s, 8s, 16s"
     - "Never exceed 4 concurrent requests to Outlook endpoints"
     - "Prefer $select to reduce response payload size"
@@ -51,12 +52,8 @@ large_attachments:
   threshold: "3MB"
   max_size: "150MB"
   rules:
-    - "Under 3MB: Inline base64 in the message JSON"
-    - "3MB-150MB: Create upload session, then iterative PUT requests"
-  upload_session_pattern: |
-    # Step 1: Create upload session
-    python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/messages/{messageId}/attachments/createUploadSession" '{"AttachmentItem": {"attachmentType": "file", "name": "large-file.pdf", "size": FILE_SIZE_BYTES}}'
-    # Step 2: PUT file chunks to the uploadUrl returned in step 1
+    - "Under 3MB: inline base64 in the message JSON, built in a file and passed with @FILE (never pasted into the command)"
+    - "3MB-150MB: NOT YET SUPPORTED — needs chunked PUTs to a pre-authenticated uploadUrl on another host, which graph_call.py refuses by design (it only talks to Microsoft Graph)"
 
 batch_requests:
   description: "Combine multiple operations in one HTTP call"

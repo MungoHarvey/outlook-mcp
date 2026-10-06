@@ -293,7 +293,10 @@ def build_success(status, raw, content_type, out=None, sanitize=True):
                     payload = base64.b64decode(obj["contentBytes"])
             except Exception:
                 pass
-        path = write_output_file(out[0], out[1], payload)
+        name = out[1]
+        if ctype == "message/rfc822" and not name.lower().endswith(".eml"):
+            name += ".eml"   # item attachments / $value exports are MIME
+        path = write_output_file(out[0], name, payload)
         return {"status": status,
                 "data": {"saved_to": str(path), "bytes": len(payload),
                          "content_type": ctype or None}}
@@ -535,6 +538,28 @@ def make_request(method, endpoint, body, headers, _retried=False,
         }
 
 
+# ── Attachment file names ──────────────────────────────────────────────────────
+
+_ATTACHMENT_RE = re.compile(r"^(?P<base>.*/attachments/[^/?]+)(?:/\$value)?(?:\?.*)?$")
+
+
+def attachment_name(endpoint):
+    """Look up an attachment's (untrusted) name for --out-dir without --out-name.
+
+    Returns (name, None) or (None, error_dict). The name is sanitised later by
+    write_output_file; it never appears on a command line.
+    """
+    m = _ATTACHMENT_RE.match(endpoint)
+    if not m:
+        return None, {"status": 400, "error": "invalid_arguments",
+                      "message": "--out-dir without --out-name only works for "
+                                 ".../attachments/{id}/$value endpoints"}
+    meta = make_request("GET", m.group("base") + "?$select=name", None, {})
+    if meta.get("status") != 200 or not isinstance(meta.get("data"), dict):
+        return None, meta
+    return meta["data"].get("name") or "attachment", None
+
+
 # ── Parse --header arguments ──────────────────────────────────────────────────
 
 def parse_headers(header_list):
@@ -561,6 +586,9 @@ def parse_headers(header_list):
     return headers
 
 
+_AUTH_STATE_NAMES = {".env", "tokens.json", "tokens.json.lock", "tokens.json.tmp"}
+
+
 def read_body_arg(body):
     """Resolve the body argument: '-' reads stdin, '@path' reads a file.
 
@@ -571,7 +599,11 @@ def read_body_arg(body):
     if body == "-":
         return sys.stdin.buffer.read().decode("utf-8")
     if body and body.startswith("@"):
-        return Path(body[1:]).expanduser().read_text(encoding="utf-8")
+        path = Path(body[1:]).expanduser()
+        # Defence in depth: never let auth state be read into a request body.
+        if path.name.lower() in _AUTH_STATE_NAMES or path.name.lower().startswith("tokens.json"):
+            raise PermissionError(f"Refusing to read auth state file as a request body: {path.name}")
+        return path.read_text(encoding="utf-8")
     return body
 
 
@@ -591,7 +623,7 @@ Examples:
   JSON
   python3 scripts/graph_call.py GET '<@odata.nextLink value>'
   python3 scripts/graph_call.py GET "/me/messages/{id}/attachments/{aid}/\\$value" \\
-      --out-dir ~/Downloads --out-name "report.pdf"
+      --out-dir ~/Downloads        # file name looked up from the attachment
         """
         )
 
@@ -622,7 +654,8 @@ Examples:
         parser.add_argument(
             "--out-dir",
             default=None,
-            help="Directory to save the response into (used with --out-name; default: .)"
+            help="Save the response into this directory. For .../attachments/{id}/$value "
+                 "the attachment's own (sanitised) name is used unless --out-name is given"
         )
 
         parser.add_argument(
@@ -656,7 +689,7 @@ Examples:
             body = read_body_arg(args.body)
         except OSError as e:
             print(json.dumps({"status": 400, "error": "invalid_body",
-                              "message": f"Could not read body: {e.strerror}"}))
+                              "message": f"Could not read body: {e.strerror or e}"}))
             sys.exit(1)
 
         # ── Parse headers ──────────────────────────────────────────────────────────
@@ -666,9 +699,13 @@ Examples:
         if args.out_name:
             out = (args.out_dir or ".", args.out_name)
         elif args.out_dir:
-            print(json.dumps({"status": 400, "error": "invalid_arguments",
-                              "message": "--out-dir requires --out-name"}))
-            sys.exit(1)
+            # Attachment names are sender-controlled: look the name up here so
+            # it never has to pass through a shell command line.
+            name, _err = attachment_name(args.endpoint)
+            if _err:
+                print(json.dumps(_err))
+                sys.exit(1)
+            out = (args.out_dir, name)
 
         # ── Make request ───────────────────────────────────────────────────────────
         result = make_request(

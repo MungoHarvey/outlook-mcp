@@ -12,7 +12,9 @@ Shared patterns: see [outlook-base](../outlook-base/SKILL.md)
 **SAFETY: Always show draft summary and confirm before sending.**
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/sendMail" '{"message":{"subject":"SUBJECT","body":{"contentType":"text","content":"BODY"},"toRecipients":[{"emailAddress":{"address":"to@example.com"}}]},"saveToSentItems":true}'
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/sendMail" - <<'JSON'
+{"message":{"subject":"SUBJECT","body":{"contentType":"text","content":"BODY"},"toRecipients":[{"emailAddress":{"address":"to@example.com"}}]},"saveToSentItems":true}
+JSON
 ```
 
 Returns HTTP 202 on success: `{"status": 202, "data": null}` (no body).

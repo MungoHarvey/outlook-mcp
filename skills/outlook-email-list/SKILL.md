@@ -27,6 +27,6 @@ Field-specific: `$search="from:user@example.com"` or `$search="subject:report"`
 
 ## Pagination
 
-If the response contains `@odata.nextLink`, use that URL directly for the next page. Never manually construct `$skip`. See [graph-api-patterns](../outlook-base/references/graph-api-patterns.yaml).
+If the response contains `@odata.nextLink`, pass that URL back to `graph_call.py` unchanged, in **single quotes**, for the next page. Never manually construct `$skip`. See [graph-api-patterns](../outlook-base/references/graph-api-patterns.yaml).
 
 For folder-specific listing, OData filters, and response parsing templates, see [reference.md](reference.md).

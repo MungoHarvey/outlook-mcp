@@ -2,8 +2,11 @@
 
 ## Send with CC, BCC, and Importance
 
+**SAFETY: Show the summary (all recipients including BCC) and confirm before sending.**
+
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/sendMail" '{
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/sendMail" - <<'JSON'
+{
     "message": {
       "subject": "SUBJECT",
       "body": {
@@ -22,40 +25,42 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/sendMail" '{
       "importance": "high"
     },
     "saveToSentItems": true
-  }'
+}
+JSON
 ```
 
 ## Small Attachments (under 3MB)
 
-Inline base64 in the message JSON:
+**SAFETY: Show the summary, including attachment names, and confirm before sending.**
+
+Never paste base64 into the command — build the request body in a file and pass it with `@FILE`. This keeps the file contents out of the conversation and has no command-line size limit:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/sendMail" '{
-    "message": {
-      "subject": "SUBJECT",
-      "body": {"contentType": "text", "content": "See attached."},
-      "toRecipients": [{"emailAddress": {"address": "to@example.com"}}],
-      "attachments": [
-        {
-          "@odata.type": "#microsoft.graph.fileAttachment",
-          "name": "filename.pdf",
-          "contentType": "application/pdf",
-          "contentBytes": "BASE64_ENCODED_CONTENT"
-        }
-      ]
-    },
-    "saveToSentItems": true
-  }'
+python3 - "path/to/filename.pdf" > /tmp/outlook-body.json <<'PY'
+import base64, json, mimetypes, os, sys
+path = sys.argv[1]
+print(json.dumps({
+  "message": {
+    "subject": "SUBJECT",
+    "body": {"contentType": "text", "content": "See attached."},
+    "toRecipients": [{"emailAddress": {"address": "to@example.com"}}],
+    "attachments": [{
+      "@odata.type": "#microsoft.graph.fileAttachment",
+      "name": os.path.basename(path),
+      "contentType": mimetypes.guess_type(path)[0] or "application/octet-stream",
+      "contentBytes": base64.b64encode(open(path, "rb").read()).decode()
+    }]
+  },
+  "saveToSentItems": True
+}))
+PY
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py POST "/me/sendMail" @/tmp/outlook-body.json
+rm -f /tmp/outlook-body.json
 ```
 
 ## Large Attachments (3MB–150MB)
 
-Use an upload session. See [graph-api-patterns](../outlook-base/references/graph-api-patterns.yaml) for the upload session pattern.
-
-1. First create a draft message (POST `/me/messages`)
-2. Create upload session on the draft
-3. Upload file in chunks via PUT
-4. Send the draft (POST `/me/messages/{draftId}/send`)
+**Not yet supported.** Graph requires an upload session whose chunks are PUT to a separate pre-authenticated `uploadUrl`; `graph_call.py` deliberately only talks to Microsoft Graph, so it cannot do that step. Tell the user the file is too large to attach here and suggest sharing a link instead.
 
 ## Error Handling
 
@@ -65,4 +70,4 @@ See [errors](../outlook-base/references/errors.yaml) for common HTTP error codes
 |---|---|
 | 202 | Email sent successfully (no response body) |
 | 400 | Invalid recipient address or malformed JSON |
-| 413 | Attachment too large for inline (use upload session) |
+| 413 | Attachment too large to send inline (over ~3MB) — not supported here |
