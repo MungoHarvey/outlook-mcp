@@ -112,8 +112,21 @@ class AuthRequiredError(Exception):
     pass
 
 
+class NotAuthenticatedError(AuthRequiredError):
+    """Raised when no token store exists yet — first-time sign-in is needed
+    (as opposed to a dead session, which needs --reauth)."""
+    pass
+
+
 class TokenRefreshError(Exception):
     """Raised when token refresh fails for a recoverable reason."""
+    pass
+
+
+class AuthConfigError(Exception):
+    """Raised when Azure rejects the app's own credentials (e.g. an expired
+    client secret). Retrying or re-authenticating cannot fix this — the user
+    must update OUTLOOK_CLIENT_SECRET (or the app registration)."""
     pass
 
 
@@ -122,7 +135,7 @@ class TokenRefreshError(Exception):
 def _load_tokens() -> dict:
     """Load tokens from disk."""
     if not TOKEN_FILE.exists():
-        raise AuthRequiredError(
+        raise NotAuthenticatedError(
             f"No token file found at {TOKEN_FILE}. Run: {_AUTH_CMD}"
         )
     try:
@@ -278,6 +291,15 @@ def _refresh_access_token(tokens: dict) -> dict:
             raise AuthRequiredError(
                 f"Refresh token rejected ({error_code}). "
                 f"Run: {_AUTH_CMD} --reauth"
+            )
+        if error_code in ("invalid_client", "unauthorized_client"):
+            # AADSTS7000222 (expired secret), wrong secret, or app disabled.
+            # Surface the AAD code only — the full body is not needed here.
+            raise AuthConfigError(
+                f"Azure rejected the app credentials ({error_code}). The client "
+                "secret has probably expired or is wrong: create a new secret in "
+                "the Azure app registration and update OUTLOOK_CLIENT_SECRET in "
+                "the auth state directory's .env."
             )
         raise TokenRefreshError(f"Token refresh failed: {error_code} — {body}")
     except urllib.error.URLError as e:

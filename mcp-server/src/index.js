@@ -123,14 +123,16 @@ server.tool(
     method: z.enum(["GET", "POST", "PATCH", "DELETE", "PUT"])
       .describe("HTTP method"),
     endpoint: z.string()
-      .describe("Graph API endpoint, e.g. /me/messages or /me/calendarView?startDateTime=..."),
+      .describe("Graph API endpoint, e.g. /me/messages or /me/calendarView?startDateTime=..., or an @odata.nextLink URL"),
     body: z.string().optional()
       .describe("JSON request body (for POST/PATCH/PUT)"),
     headers: z.record(z.string()).optional()
       .describe("Additional HTTP headers as key-value pairs"),
+    raw_body: z.boolean().optional()
+      .describe("Return message bodies unsanitised — only for your OWN drafts, never received mail"),
   },
-  async ({ method, endpoint, body, headers }) => {
-    const result = await makeRequest(method, endpoint, body || null, headers || {});
+  async ({ method, endpoint, body, headers, raw_body }) => {
+    const result = await makeRequest(method, endpoint, body || null, headers || {}, { rawBody: !!raw_body });
 
     // Return as structured content for the LLM
     return {

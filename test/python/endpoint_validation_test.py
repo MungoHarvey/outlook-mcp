@@ -100,5 +100,17 @@ class EndpointValidationTest(unittest.TestCase):
         self._bad("C:/Program Files/Git/messages")
 
 
+class SharedEndpointCasesTest(unittest.TestCase):
+    """Cases shared with mcp-server/src/graph.js (test/node/graph_proxy.test.js)."""
+
+    def test_shared_cases(self):
+        import json
+        cases = json.loads((_REPO / "test" / "fixtures" / "endpoint-cases.json").read_text())["cases"]
+        for endpoint, allowed in cases:
+            with self.subTest(endpoint):
+                _, err = validate_endpoint(endpoint)
+                self.assertEqual(err is None, allowed, f"{endpoint!r}: {err}")
+
+
 if __name__ == "__main__":
     unittest.main()
