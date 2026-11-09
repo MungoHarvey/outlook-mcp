@@ -211,3 +211,17 @@ Tokens are never exposed to the LLM. The security boundary works as follows:
 4. **LLM rule**: Never import `token_helper`, call the token acquisition function, or read token files directly
 
 All skills must use `${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py` for every Graph API call.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live in GitHub Issues on MungoHarvey/outlook-mcp (via `gh`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
