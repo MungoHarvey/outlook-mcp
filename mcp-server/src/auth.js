@@ -5,21 +5,18 @@
  * Reads/writes the SAME tokens.json file, so both the Python
  * (Claude Code) and Node.js (Cowork MCP) paths share auth state.
  *
- * Token file location (checked in order):
- *   1. OUTLOOK_TOKEN_FILE env var    (explicit file override)
- *   2. OUTLOOK_SKILLS_HOME env var   (state dir override → <dir>/tokens.json)
- *   3. ../../outlook-skills/tokens.json when it exists (cloned-repo layout)
- *   4. ~/.outlook-skills/tokens.json (stable default, survives plugin updates)
- *
  * Exports:
- *   getToken()       → valid Bearer access token (string)
- *   getSessionInfo() → human-readable session metadata (no secrets)
+ *   getToken()          → valid Bearer access token (string)
+ *   getSessionInfo()    → human-readable session metadata (no secrets)
+ *   resolveStateDir()   → { state_dir, token_file, checked_dirs }
+ *   AuthRequiredError   → error class for auth failures
+ *   TokenRefreshError   → error class for refresh failures
  */
 
 import { readFile, writeFile, rename, chmod } from "node:fs/promises";
-import { existsSync, readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { homedir } from "node:os";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { join, dirname, resolve } from "node:path";
+import { homedir, platform } from "node:os";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 
@@ -28,19 +25,66 @@ import { execFile } from "node:child_process";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
 
-// Must mirror the resolution in outlook-skills/token_helper.py — the Python
-// (Claude Code) and Node.js (Cowork MCP) paths share the same auth state.
-function resolveTokenFile() {
-  if (process.env.OUTLOOK_TOKEN_FILE) return process.env.OUTLOOK_TOKEN_FILE;
-  if (process.env.OUTLOOK_SKILLS_HOME) {
-    return join(process.env.OUTLOOK_SKILLS_HOME, "tokens.json");
-  }
-  const legacy = join(__dirname, "..", "..", "outlook-skills", "tokens.json");
-  if (existsSync(legacy)) return legacy;
-  return join(homedir(), ".outlook-skills", "tokens.json");
+// "Holds state" means a regular file, matching token_helper.py's is_file().
+function isFile(p) {
+  return statSync(p, { throwIfNoEntry: false })?.isFile() ?? false;
 }
 
-const TOKEN_FILE = resolveTokenFile();
+// The user's home directory, as the state lookup sees it (USERPROFILE on Windows).
+function userHomeDir() {
+  const homeVar = platform() === "win32" ? process.env.USERPROFILE : process.env.HOME;
+  return homeVar || homedir();
+}
+
+// A leading ~ means the home directory (token_helper.py uses expanduser());
+// the path is then made absolute against the process cwd.
+function expandAndAbsolute(p, userHome) {
+  const expanded = (p === "~" || p.startsWith("~/") || p.startsWith("~\\"))
+    ? join(userHome, p.slice(1))
+    : p;
+  return resolve(expanded);
+}
+
+// State directory resolution — mirrors outlook-skills/token_helper.py exactly.
+// Returns { state_dir, checked_dirs } where checked_dirs is the ordered list
+// of directories examined.
+function resolveStateDirWithCheckedDirs() {
+  const checkedDirs = [];
+  const userHome = userHomeDir();
+  const homeDir = join(userHome, ".outlook-skills");
+  const pluginDir = join(__dirname, "..", "..", "outlook-skills");
+
+  // Rule 1: OUTLOOK_SKILLS_HOME if set and non-empty
+  const envHome = process.env.OUTLOOK_SKILLS_HOME;
+  if (envHome) {
+    const overrideDir = expandAndAbsolute(envHome, userHome);
+    checkedDirs.push(overrideDir);
+    return { stateDir: overrideDir, checkedDirs };
+  }
+
+  // Rule 2: ~/.outlook-skills if it contains .env or tokens.json as files
+  checkedDirs.push(homeDir);
+  if (isFile(join(homeDir, ".env")) || isFile(join(homeDir, "tokens.json"))) {
+    return { stateDir: homeDir, checkedDirs };
+  }
+
+  // Rule 3: Plugin folder only if it contains tokens.json (not just .env)
+  checkedDirs.push(pluginDir);
+  if (isFile(join(pluginDir, "tokens.json"))) {
+    return { stateDir: pluginDir, checkedDirs };
+  }
+
+  // Rule 4: Default to ~/.outlook-skills (creation target)
+  return { stateDir: homeDir, checkedDirs };
+}
+
+const { stateDir: STATE_DIR, checkedDirs: CHECKED_DIRS } = resolveStateDirWithCheckedDirs();
+
+// OUTLOOK_TOKEN_FILE overrides only the token file path, made absolute
+const TOKEN_FILE_OVERRIDE = process.env.OUTLOOK_TOKEN_FILE
+  ? expandAndAbsolute(process.env.OUTLOOK_TOKEN_FILE, userHomeDir())
+  : null;
+const TOKEN_FILE = TOKEN_FILE_OVERRIDE || join(STATE_DIR, "tokens.json");
 
 // Dependency-free .env loader. The client secret is no longer stored in
 // tokens.json, so silent refresh must read OUTLOOK_CLIENT_SECRET from
@@ -62,12 +106,36 @@ function loadEnvFile(path) {
     process.env[key] = val;
   }
 }
-// Look next to the token file (co-located in Cowork) and in the source tree.
-loadEnvFile(join(dirname(TOKEN_FILE), ".env"));
-loadEnvFile(join(__dirname, "..", "..", "outlook-skills", ".env"));
+// Load .env exactly once from the chosen state directory (fixes the overwrite bug).
+loadEnvFile(join(STATE_DIR, ".env"));
 
 const MAX_SESSION_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 const TOKEN_ENDPOINT  = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token";
+
+// Build platform-correct auth command (mirrors token_helper.py._make_auth_cmd).
+function makeAuthCmd(action = "") {
+  const authScriptDir = __dirname; // outlook-skills/ is next to src/
+  const isWin = platform() === "win32";
+  if (isWin) {
+    const scriptPath = join(authScriptDir, "..", "..", "outlook-skills", "auth.ps1");
+    const absPath = resolve(scriptPath);
+    let cmd = `powershell -NoProfile -File "${absPath}"`;
+    if (action === "reauth") cmd += " -Reauth";
+    else if (action === "status") cmd += " -Status";
+    return cmd;
+  } else {
+    const scriptPath = join(authScriptDir, "..", "..", "outlook-skills", "auth.sh");
+    const absPath = resolve(scriptPath);
+    let cmd = `bash "${absPath}"`;
+    if (action) cmd += ` --${action}`;
+    return cmd;
+  }
+}
+
+// Format checked directories for error messages.
+function checkedDirsStr(dirs) {
+  return dirs.join("; ");
+}
 
 // ── Custom Errors ────────────────────────────────────────────────────────────
 
@@ -95,7 +163,8 @@ export class TokenRefreshError extends Error {
 async function loadTokens() {
   if (!existsSync(TOKEN_FILE)) {
     throw new AuthRequiredError(
-      `No token file found at ${TOKEN_FILE}. Run: .\\outlook-skills\\auth.ps1`
+      `No token file found. Checked: ${checkedDirsStr(CHECKED_DIRS)}. ` +
+      `Run: ${makeAuthCmd("reauth")}`
     );
   }
   try {
@@ -104,7 +173,8 @@ async function loadTokens() {
   } catch (err) {
     throw new AuthRequiredError(
       `Could not read token store (${err.message}). ` +
-      "Run: .\\outlook-skills\\auth.ps1 --reauth"
+      `Checked: ${checkedDirsStr(CHECKED_DIRS)}. ` +
+      `Run: ${makeAuthCmd("reauth")}`
     );
   }
 }
@@ -153,8 +223,8 @@ async function refreshAccessToken(tokens) {
 
   if (!clientSecret) {
     throw new AuthRequiredError(
-      "client_secret not found in token store or environment. " +
-      "Run: .\\outlook-skills\\auth.ps1 --reauth"
+      `client_secret not found. Checked: ${checkedDirsStr(CHECKED_DIRS)}. ` +
+      `Copy your existing .env to ${STATE_DIR}, then run: ${makeAuthCmd("reauth")}`
     );
   }
 
@@ -189,7 +259,8 @@ async function refreshAccessToken(tokens) {
     if (fatalCodes.includes(errorCode)) {
       throw new AuthRequiredError(
         `Refresh token rejected (${errorCode}). ` +
-        "Run: .\\outlook-skills\\auth.ps1 --reauth"
+        `Checked: ${checkedDirsStr(CHECKED_DIRS)}. ` +
+        `Run: ${makeAuthCmd("reauth")}`
       );
     }
     throw new TokenRefreshError(
@@ -240,8 +311,8 @@ export async function getToken() {
   if (sessionAge > MAX_SESSION_AGE) {
     await saveTokens({});
     throw new AuthRequiredError(
-      "Session has expired (30-day limit). " +
-      "Run: .\\outlook-skills\\auth.ps1 --reauth"
+      `Session has expired (30-day limit). Checked: ${checkedDirsStr(CHECKED_DIRS)}. ` +
+      `Run: ${makeAuthCmd("reauth")}`
     );
   }
 
@@ -254,6 +325,15 @@ export async function getToken() {
   const updated = await refreshAccessToken(tokens);
   await saveTokens(updated);
   return updated.access_token;
+}
+
+// Export resolveStateDir for probing and testing.
+export function resolveStateDir() {
+  return {
+    state_dir: STATE_DIR,
+    token_file: TOKEN_FILE,
+    checked_dirs: CHECKED_DIRS,
+  };
 }
 
 /**
