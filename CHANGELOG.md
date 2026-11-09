@@ -5,6 +5,39 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] — 2026-11-09
+
+Auth state lookup is now identical in every component, and easier to diagnose.
+
+### Changed
+- New state-directory lookup, shared by `token_helper.py`, `graph_call.py`,
+  `auth-server.js` and the MCP server: `OUTLOOK_SKILLS_HOME` (if set and
+  non-empty; `~` expanded, made absolute) → `~/.outlook-skills` if it holds a
+  `.env` or `tokens.json` file → the plugin's own `outlook-skills/` folder →
+  `~/.outlook-skills`, where new state is created. `OUTLOOK_TOKEN_FILE` still
+  overrides only the token file; `.env` is read only from the chosen directory.
+- The plugin's `outlook-skills/` folder now counts only if it holds
+  `tokens.json`. A `.env` alone there no longer wins.
+- `auth.sh` / `auth.ps1` are thin launchers around `auth-server.js`.
+- Auth error messages list the checked directories and give the command for the
+  user's platform (`powershell -NoProfile -File ...auth.ps1` on Windows, `bash`
+  elsewhere).
+- The MCP server loads `.env` once, from the chosen state directory.
+- Docs give PowerShell commands alongside `bash`, and no longer suggest
+  registering a new Azure app when a `.env` is missing.
+- Version bumped to 2.1.0 across the plugin, marketplace and package manifests
+  and the MCP server's reported version (previously `1.0.0`).
+
+### Added
+- `--where` (`-Where` for `auth.ps1`) on `token_helper.py`, `auth-server.js`,
+  `auth.sh` and `auth.ps1`: prints the chosen directory, token file and checked
+  directories (paths only, no secrets).
+- README section "Moving existing credentials to `~/.outlook-skills`" with
+  PowerShell and POSIX commands. Users whose `.env` sits only in the repo's
+  `outlook-skills/` should follow it.
+- `test/static/state-dir-docs.test.js`: asserts the docs state the lookup order
+  and that version fields agree.
+
 ## [2.0.0] — 2026-07-27
 
 First fully downloadable release: installable as a Claude Code plugin straight

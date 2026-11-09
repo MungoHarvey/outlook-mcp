@@ -11,7 +11,7 @@ Extended guidance for the guided setup flow in [SKILL.md](SKILL.md).
 | git | `git --version` | https://git-scm.com/downloads |
 | uv (optional, faster venv) | `uv --version` | https://docs.astral.sh/uv/ — falls back to pip if absent |
 
-The auth flow (`auth.sh` / `auth.ps1`) bootstraps a local Python `.venv` under `outlook-skills/` automatically; the user does not create it manually.
+The auth launchers (`auth.sh` / `auth.ps1`) are thin: they run `auth-server.js` with Node. No Python venv is needed to authenticate; `graph_call.py` uses an existing `.venv` if one is present (searched separately: `$OUTLOOK_SKILLS_HOME/.venv`, the plugin's `outlook-skills/.venv`, then `~/.outlook-skills/.venv`), but nothing creates it.
 
 ## Per-OS command map
 
@@ -19,10 +19,11 @@ The auth flow (`auth.sh` / `auth.ps1`) bootstraps a local Python `.venv` under `
 |---|---|---|
 | Copy env template | `cp "${CLAUDE_PLUGIN_ROOT}/outlook-skills/.env.example" STATE_DIR/.env` | `Copy-Item "${CLAUDE_PLUGIN_ROOT}\outlook-skills\.env.example" STATE_DIR\.env` |
 | Open HTML guide | `open …/setup/azure-setup-guide.html` (macOS) · `xdg-open …` (Linux/WSL) | `Start-Process "…\setup\azure-setup-guide.html"` |
-| Authenticate | `bash "${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh"` | `powershell -File "${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1"` |
-| Check status | `bash …/auth.sh --status` | `.\outlook-skills\auth.ps1 -Status` |
-| Re-authenticate | `bash …/auth.sh --reauth` | `.\outlook-skills\auth.ps1 -Reauth` |
-| Revoke tokens | `bash …/auth.sh --revoke` | `.\outlook-skills\auth.ps1 -Revoke` |
+| Authenticate | `bash "${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh"` | `powershell -NoProfile -File "<path>\outlook-skills\auth.ps1"` |
+| Check status | `bash …/auth.sh --status` | `powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Status` |
+| Re-authenticate | `bash …/auth.sh --reauth` | `powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Reauth` |
+| Revoke tokens | `bash …/auth.sh --revoke` | `powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Revoke` |
+| Show where state is looked up (paths only) | `bash …/auth.sh --where` | `powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Where` |
 
 ## Azure steps (inline summary)
 
@@ -46,10 +47,10 @@ Full visual version: `setup/azure-setup-guide.html` (also `setup/AZURE_SETUP.md`
 | Port 8400 already in use | Another auth process is running, or set `OUTLOOK_AUTH_PORT` in `.env` and update the redirect URI to match. |
 | API returns `403` | Permissions added after last sign-in — re-authenticate (`--reauth` / `-Reauth`) to pick up new scopes. |
 | "No refresh_token found" / token errors | Run a fresh auth: `--reauth`. |
-| `graph_call.py` 500 about venv | The Python venv is missing — re-run `auth.sh` / `auth.ps1`, which creates it. |
+| `graph_call.py` 500 about venv | An optional `.venv` (`$OUTLOOK_SKILLS_HOME/.venv`, the plugin's `outlook-skills/.venv` or `~/.outlook-skills/.venv`) is broken — delete it (`graph_call.py` runs on the standard library without one). |
 
 ## Security boundary
 
-- Credentials are only in `STATE_DIR/.env`; tokens only in `STATE_DIR/tokens.json` (STATE_DIR: `$OUTLOOK_SKILLS_HOME`, the repo's `outlook-skills/` when it already holds state, or `~/.outlook-skills`). Never committed, never shown.
+- Credentials are only in `STATE_DIR/.env`; tokens only in `STATE_DIR/tokens.json` (STATE_DIR: `$OUTLOOK_SKILLS_HOME`, else `~/.outlook-skills` if it holds a `.env` or `tokens.json`, else the repo's `outlook-skills/` only if it holds `tokens.json`, else `~/.outlook-skills`). Never committed, never shown.
 - Never display, log, or echo the client secret or any token back to the user.
 - All Graph calls go through `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py` — never read token files directly.

@@ -25,20 +25,26 @@ delegated permissions listed in `scopes.json`. No admin consent is required —
 all scopes are delegated (user-level).
 
 ### 2. Create credentials
+State lives in `~/.outlook-skills` unless `OUTLOOK_SKILLS_HOME` is set (the repo's `outlook-skills/` counts only if it already holds `tokens.json`). If you already have a working Azure app, copy your existing `.env` there instead.
 ```bash
-cp outlook-skills/.env.example outlook-skills/.env
+mkdir -p ~/.outlook-skills && chmod 700 ~/.outlook-skills
+cp -n outlook-skills/.env.example ~/.outlook-skills/.env
+```
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills" | Out-Null
+Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env"
 ```
 Fill in `OUTLOOK_CLIENT_ID`, `OUTLOOK_CLIENT_SECRET` (the secret **value**, not
 the Secret ID), and `OUTLOOK_TENANT_ID` (`common` for personal accounts).
 
 ### 3. Authenticate
 ```bash
-bash outlook-skills/auth.sh          # macOS / Linux / WSL / Git Bash
+bash outlook-skills/auth.sh          # macOS / Linux / Git Bash
 ```
 ```powershell
-.\outlook-skills\auth.ps1            # Windows
+powershell -NoProfile -File "<path>\outlook-skills\auth.ps1"   # Windows
 ```
-A browser opens; sign in and approve. Tokens are written to `tokens.json`.
+A browser opens; sign in and approve. Tokens are written to `tokens.json` in the state directory.
 
 ## Session management
 
@@ -47,6 +53,7 @@ A browser opens; sign in and approve. Tokens are written to `tokens.json`.
 | Check status | `bash outlook-skills/auth.sh --status` | `.\outlook-skills\auth.ps1 -Status` |
 | Force re-login | `bash outlook-skills/auth.sh --reauth` | `.\outlook-skills\auth.ps1 -Reauth` |
 | Revoke (delete local tokens) | `bash outlook-skills/auth.sh --revoke` | `.\outlook-skills\auth.ps1 -Revoke` |
+| Show where state is looked up (paths only) | `bash outlook-skills/auth.sh --where` | `.\outlook-skills\auth.ps1 -Where` |
 
 Sessions expire after **30 days** (a self-imposed cap) and require `--reauth`.
 If you add scopes, existing sessions must `--reauth` to consent to them; a
@@ -60,7 +67,7 @@ If you add scopes, existing sessions must `--reauth` to consent to them; a
 - `tokens.json` is plain JSON (gitignored) created with restrictive permissions
   (mode 0600 on POSIX; a user-only ACL via `icacls` on Windows) at write time.
 - The **client secret is NOT stored in `tokens.json`** — silent refresh reads it
-  from `outlook-skills/.env`, so a leaked token file can't also leak the app secret.
+  from the state directory's `.env`, so a leaked token file can't also leak the app secret.
 - The OAuth callback validates a single-use `state`, pins the `Host` header to
   loopback, HTML-escapes its output, and times out if a login is abandoned.
 

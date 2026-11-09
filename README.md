@@ -34,7 +34,7 @@ git clone https://github.com/MungoHarvey/outlook-mcp.git
 claude --plugin-dir ./outlook-mcp
 ```
 
-With a clone, auth state can live inside the repo at `outlook-skills/` (`.env`, `tokens.json` — both gitignored) and is picked up automatically.
+With a clone, new auth state is created in `~/.outlook-skills/` too. An older clone that already keeps `tokens.json` in the repo's `outlook-skills/` is still picked up there (legacy layout); see [Moving existing credentials to `~/.outlook-skills`](#moving-existing-credentials-to-outlook-skills).
 
 ### Claude Desktop / Cowork (zip import)
 
@@ -72,9 +72,9 @@ secret or any authentication token.
 3. Install Node dependencies:
        npm install
 
-4. Create my credentials file from the template (do NOT overwrite an existing .env):
-   - macOS/Linux/WSL:  cp outlook-skills/.env.example outlook-skills/.env
-   - Windows:          Copy-Item outlook-skills\.env.example outlook-skills\.env
+4. Create my credentials file from the template in ~/.outlook-skills (do NOT overwrite an existing .env):
+   - macOS/Linux/WSL:  mkdir -p ~/.outlook-skills && cp -n outlook-skills/.env.example ~/.outlook-skills/.env
+   - Windows:          New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills"; if (-not (Test-Path "$env:USERPROFILE\.outlook-skills\.env")) { Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env" }
 
 5. I now need to register an Azure app to get my credentials. Open the visual setup guide
    in my default browser so I can follow the screenshots:
@@ -88,12 +88,12 @@ secret or any authentication token.
    - the client secret VALUE  (the longer string — NOT the Secret ID, which causes
      error AADSTS7000215)
 
-6. When I give you those three values, write them into outlook-skills/.env. Do not print
+6. When I give you those three values, write them into ~/.outlook-skills/.env. Do not print
    my client secret back to me — just confirm it was saved. (.env is gitignored.)
 
 7. Authenticate — a browser window opens for Microsoft sign-in:
    - macOS/Linux/WSL:  bash outlook-skills/auth.sh
-   - Windows:          .\outlook-skills\auth.ps1
+   - Windows:          powershell -NoProfile -File ".\outlook-skills\auth.ps1"
 
 8. Verify access:
        python3 scripts/graph_call.py GET "/me"
@@ -102,8 +102,8 @@ secret or any authentication token.
    and try "/outlook-email-list" or just ask you to "check my inbox".
 
 All Microsoft Graph calls must go through scripts/graph_call.py — never read token files
-directly. My credentials stay in outlook-skills/.env and tokens in
-outlook-skills/tokens.json, both of which are gitignored and never leave my machine.
+directly. My credentials stay in ~/.outlook-skills/.env and tokens in
+~/.outlook-skills/tokens.json, outside the repo, and never leave my machine.
 ```
 
 > Already have the plugin loaded? Just run **`/outlook-setup`** (or say "set up Outlook") for the same flow. A standalone copy of this prompt also lives in [`setup/SETUP-PROMPT.md`](setup/SETUP-PROMPT.md).
@@ -121,19 +121,79 @@ Prefer a manual setup? [`setup/AZURE_SETUP.md`](setup/AZURE_SETUP.md) has the fu
 
 `.env` (credentials) and `tokens.json` (tokens) are resolved in this order by every component:
 
-1. `$OUTLOOK_SKILLS_HOME` — explicit override
-2. The repo's `outlook-skills/` directory, when it already holds state (cloned-repo layout)
-3. `~/.outlook-skills` — default for plugin installs; survives plugin cache updates
+1. `$OUTLOOK_SKILLS_HOME`, if set and non-empty — explicit override (a leading `~` is expanded and the path made absolute)
+2. `~/.outlook-skills` (Windows: `%USERPROFILE%\.outlook-skills`), if it holds a `.env` or `tokens.json` file
+3. The plugin's own `outlook-skills/` folder, **only if it holds `tokens.json`** — the legacy cloned-repo layout; a `.env` alone there no longer counts
+4. Otherwise `~/.outlook-skills`, where new state is created
 
-`$OUTLOOK_TOKEN_FILE` additionally overrides just the token file path.
+`$OUTLOOK_TOKEN_FILE` overrides only the token file. `.env` is read only from the chosen directory.
 
-Auth management (from a clone; for a plugin install, prefix with the plugin path shown by `/outlook-setup`):
+Auth management (from a clone; for a plugin install, use the plugin path shown by `/outlook-setup`). `--where` / `-Where` prints the chosen directory, the token file and the checked directories (paths only):
 
 ```bash
 bash outlook-skills/auth.sh --status   # check token validity
 bash outlook-skills/auth.sh --reauth   # force re-authentication
 bash outlook-skills/auth.sh --revoke   # revoke and delete all tokens
+bash outlook-skills/auth.sh --where    # show where auth state is looked up
 ```
+
+On Windows, use PowerShell (never `bash` from PowerShell, which runs WSL; WSL cannot read Windows paths):
+
+```powershell
+powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Status
+powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Reauth
+powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Revoke
+powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Where
+```
+
+The same lookup is available from `python outlook-skills/token_helper.py --where` and `node outlook-skills/auth-server.js --where`.
+
+## Moving existing credentials to `~/.outlook-skills`
+
+If your `.env` and `tokens.json` sit in the repo's `outlook-skills/` folder, move them to `~/.outlook-skills`. Run these from the repo root. The copy never overwrites: it stops if a `.env` or `tokens.json` already exists at the destination.
+
+1. Create the directory with user-only access.
+
+   PowerShell:
+   ```powershell
+   $dest = "$env:USERPROFILE\.outlook-skills"
+   New-Item -ItemType Directory -Force $dest | Out-Null
+   icacls "$env:USERPROFILE\.outlook-skills" /inheritance:r /grant:r "${env:USERNAME}:(OI)(CI)F"
+   ```
+   macOS / Linux / Git Bash:
+   ```bash
+   mkdir -p ~/.outlook-skills && chmod 700 ~/.outlook-skills
+   ```
+2. Copy, never overwrite.
+
+   PowerShell:
+   ```powershell
+   foreach ($f in '.env', 'tokens.json') {
+     if (-not (Test-Path "outlook-skills\$f")) { continue }
+     if (Test-Path "$dest\$f") { throw "$dest\$f already exists; not overwriting" }
+     Copy-Item "outlook-skills\$f" "$dest\$f"
+   }
+   ```
+   macOS / Linux / Git Bash:
+   ```bash
+   for f in .env tokens.json; do
+     [ -f "outlook-skills/$f" ] || continue
+     [ -e ~/.outlook-skills/$f ] && { echo "~/.outlook-skills/$f already exists; not overwriting" >&2; break; }
+     cp -n "outlook-skills/$f" ~/.outlook-skills/$f && chmod 600 ~/.outlook-skills/$f
+   done
+   ```
+3. Verify. `-Where` / `--where` should report `~/.outlook-skills` as the state directory; then check the token.
+
+   ```powershell
+   powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Where
+   powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Status
+   ```
+   ```bash
+   bash outlook-skills/auth.sh --where
+   bash outlook-skills/auth.sh --status
+   ```
+4. Only then delete the old copies in the repo's `outlook-skills/` (`.env`, `tokens.json`).
+
 
 ## Usage
 

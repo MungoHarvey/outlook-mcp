@@ -161,14 +161,11 @@ A single `"outlook"` entry inside the existing `"mcpServers"` object:
 ```json
 "outlook": {
   "command": "node",
-  "args": ["<path-to>/mcp-server/src/index.js"],
-  "env": {
-    "OUTLOOK_TOKEN_FILE": "<path-to>/outlook-skills/tokens.json"
-  }
+  "args": ["<path-to>/mcp-server/src/index.js"]
 }
 ```
 
-This tells Claude Desktop to launch `node mcp-server/src/index.js` as a stdio MCP server, passing the token file location as an environment variable. The server exposes two tools:
+This tells Claude Desktop to launch `node mcp-server/src/index.js` as a stdio MCP server. No token path is needed: the server finds the auth state directory itself (`~/.outlook-skills` by default). Set `OUTLOOK_SKILLS_HOME` in `env` to point it elsewhere. The server exposes two tools:
 
 - **`outlook_auth`** — Check auth status, initiate login, or force re-authentication
 - **`outlook_api`** — Proxy authenticated requests to the Microsoft Graph API
@@ -202,10 +199,7 @@ Find the last entry inside `"mcpServers": { ... }`, add a trailing comma after i
     },
     "outlook": {
       "command": "node",
-      "args": ["<absolute-path-to>/mcp-server/src/index.js"],
-      "env": {
-        "OUTLOOK_TOKEN_FILE": "<absolute-path-to>/outlook-skills/tokens.json"
-      }
+      "args": ["<absolute-path-to>/mcp-server/src/index.js"]
     }
 ```
 
@@ -223,19 +217,15 @@ CONFIG="$HOME/Library/Application Support/Claude/claude_desktop_config.json"
 # Linux: CONFIG="$HOME/.config/Claude/claude_desktop_config.json"
 
 MCP_INDEX="$HOME/Documents/Agents/MCPs/outlook-agent/outlook-mcp/mcp-server/src/index.js"
-TOKEN_FILE="$HOME/Documents/Agents/MCPs/outlook-agent/outlook-mcp/outlook-skills/tokens.json"
 
 # Backup first
 cp "$CONFIG" "$CONFIG.backup.$(date +%Y%m%d-%H%M%S)"
 
 # Add the outlook entry, preserving everything else
-jq --arg idx "$MCP_INDEX" --arg tok "$TOKEN_FILE" \
+jq --arg idx "$MCP_INDEX" \
   '.mcpServers.outlook = {
     "command": "node",
-    "args": [$idx],
-    "env": {
-      "OUTLOOK_TOKEN_FILE": $tok
-    }
+    "args": [$idx]
   }' "$CONFIG" > "$CONFIG.tmp" && mv "$CONFIG.tmp" "$CONFIG"
 
 echo "Outlook MCP server added. Restart Claude Desktop to activate."
@@ -299,21 +289,21 @@ The MCP server uses Azure AD OAuth 2.0 with the device code flow.
 1. Ask Claude to check Outlook auth status — it will report "not authenticated"
 2. Ask Claude to log in — the `outlook_auth` tool with action `"login"` will return a device code and URL
 3. Open the URL in your browser, enter the code, and sign in with your Microsoft 365 account
-4. Once authenticated, tokens are saved to `tokens.json`
+4. Once authenticated, tokens are saved to `tokens.json` in the auth state directory (`~/.outlook-skills` by default)
 
 ### Token Lifecycle
 
 - **Access tokens** expire after ~1 hour and are refreshed automatically
 - **Refresh tokens** are long-lived but the server enforces a **30-day session limit**
 - After 30 days, you will need to re-authenticate (action `"reauth"`)
-- The `tokens.json` file is shared between the Python CLI tools and the Node.js MCP server
+- The `tokens.json` file is shared between the Python CLI tools and the Node.js MCP server: both use the same lookup (`$OUTLOOK_SKILLS_HOME` → `~/.outlook-skills` if it holds a `.env` or `tokens.json` file → the plugin's `outlook-skills/` only if it holds `tokens.json` → `~/.outlook-skills`). `OUTLOOK_TOKEN_FILE` overrides only the token file.
 
 ### Azure AD Configuration
 
 | Parameter | Value |
 |-----------|-------|
-| Client ID | (from your Azure App Registration — see `outlook-skills/.env`) |
-| Tenant ID | (from your Azure App Registration — see `outlook-skills/.env`) |
+| Client ID | (from your Azure App Registration — see the state directory's `.env`) |
+| Tenant ID | (from your Azure App Registration — see the state directory's `.env`) |
 | Token endpoint | `https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token` |
 
 ---
@@ -369,7 +359,7 @@ outlook-mcp/
 │   ├── package-lock.json
 │   └── node_modules/            # Installed dependencies (not in plugin)
 ├── outlook-skills/
-│   ├── tokens.json              # OAuth tokens (NEVER commit this)
+│   ├── tokens.json              # legacy location only; new state lives in ~/.outlook-skills (NEVER commit this)
 │   ├── token_helper.py          # Python token helper (CLI use)
 │   └── ...
 ├── README.md
@@ -399,8 +389,8 @@ The MCP server is **not** part of the Claude Code plugin — Claude Code uses th
 
 ### Authentication failures
 
-- Check that `tokens.json` exists and is readable
-- Verify the `OUTLOOK_TOKEN_FILE` environment variable path is correct
+- Check that `tokens.json` exists and is readable in the state directory (run `node outlook-skills/auth-server.js --where` to see which directories are checked)
+- If you set `OUTLOOK_SKILLS_HOME` or `OUTLOOK_TOKEN_FILE`, verify that path is correct
 - Try `outlook_auth` with action `"reauth"` to force a fresh login
 - Ensure the Azure AD app registration is still valid
 

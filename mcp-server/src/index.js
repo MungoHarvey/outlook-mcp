@@ -28,7 +28,7 @@ import { makeRequest } from "./graph.js";
 
 const server = new McpServer({
   name:    "outlook",
-  version: "1.0.0",
+  version: "2.1.0",
 });
 
 const textReply = (text) => ({ content: [{ type: "text", text }] });

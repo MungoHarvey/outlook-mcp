@@ -1,6 +1,6 @@
 {
   "name": "outlook-mcp-server",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Minimal MCP server for Outlook Graph API authentication and proxying",
   "main": "src/index.js",
   "type": "module",

@@ -34,7 +34,7 @@ The installer is idempotent — re-running it refreshes the installed copies.
 | Location | Contents |
 |----------|----------|
 | `~/.claude/skills/outlook-*/` | 20 skill folders (SKILL.md, reference.md, params.yaml) |
-| (in the cloned repo) `outlook-skills/` | Auth system (auth-server.js, token_helper.py, .env, tokens.json) |
+| (in the cloned repo) `outlook-skills/` | Auth system (auth-server.js, token_helper.py); `.env` / `tokens.json` live in `~/.outlook-skills` |
 | (in the cloned repo) `scripts/graph_call.py` | Secure Graph API proxy |
 
 Shared reference YAML lives once in `~/.claude/skills/outlook-base/references/`;
@@ -56,15 +56,23 @@ INSTALL_DIR=/opt/outlook-mcp SKILLS_DIR=/custom/skills bash setup/install.sh
 1. Create credentials (see `setup/AZURE_SETUP.md` for the Azure walkthrough).
    The **Web** redirect URI must be `http://localhost:8400/auth/callback`.
    ```bash
-   cp outlook-skills/.env.example outlook-skills/.env   # then fill in OUTLOOK_CLIENT_ID / SECRET / TENANT_ID
+   mkdir -p ~/.outlook-skills && cp -n outlook-skills/.env.example ~/.outlook-skills/.env   # then fill in OUTLOOK_CLIENT_ID / SECRET / TENANT_ID
+   ```
+   ```powershell
+   New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills" | Out-Null
+   Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env"
    ```
 2. Authenticate:
    ```bash
-   bash outlook-skills/auth.sh          # or: .\outlook-skills\auth.ps1 on Windows
+   bash outlook-skills/auth.sh          # macOS / Linux / Git Bash
+   ```
+   ```powershell
+   powershell -NoProfile -File "<path>\outlook-skills\auth.ps1"   # Windows
    ```
 
-Tokens are written to `outlook-skills/tokens.json` (gitignored, permission-
-restricted). The client secret stays in `.env`; it is not written to the token
+Tokens are written to `tokens.json` in the auth state directory (`~/.outlook-skills` by
+default; permission-restricted). Run `bash outlook-skills/auth.sh --where` (Windows: `powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Where`)
+to see which directory is in use. The client secret stays in `.env`; it is not written to the token
 file. See `outlook-skills/README.md` for the full auth/security model.
 
 ## Verify
@@ -82,14 +90,16 @@ python3 scripts/graph_call.py GET "/me"
 
 ```bash
 rm -rf ~/.claude/skills/outlook-*/     # installed skill folders
-rm -f  outlook-skills/tokens.json      # stored tokens (also: auth.sh --revoke)
+rm -f  ~/.outlook-skills/tokens.json   # stored tokens (also: auth.sh --revoke / auth.ps1 -Revoke)
 ```
 
 ## Troubleshooting
 
 - **`import_error` (503) from graph_call.py** — the Python deps couldn't load;
   run `pip install -r outlook-skills/requirements.txt`.
-- **`auth_required`** — run `bash outlook-skills/auth.sh` (or `--reauth`).
+- **`auth_required`** — run `bash outlook-skills/auth.sh` (or `--reauth`); on Windows,
+  `powershell -NoProfile -File "<path>\outlook-skills\auth.ps1"` (or `-Reauth`). If it keeps
+  failing, run `--where` / `-Where` and check the listed directories.
 - **AADSTS50011 (redirect mismatch)** — the Azure app's Web redirect URI must be
   exactly `http://localhost:8400/auth/callback`.
 - **Skill not found** — confirm `~/.claude/skills/outlook-email-list/SKILL.md`

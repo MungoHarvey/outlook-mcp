@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This project is a **Claude Code plugin** providing skills for interacting with Microsoft Outlook (email, calendar, contacts, folders, rules, categories) via the Microsoft Graph API.
 
-All Microsoft Graph API calls go through `scripts/graph_call.py` — a secure Python proxy that injects Bearer tokens internally. Tokens are stored in the auth state directory (see Setup; `outlook-skills/tokens.json` in the cloned-repo layout, `~/.outlook-skills/tokens.json` for plugin installs) and never exposed to the LLM. Authentication is handled by `outlook-skills/auth-server.js` — a Node.js OAuth 2.0 server on port 8400.
+All Microsoft Graph API calls go through `scripts/graph_call.py` — a secure Python proxy that injects Bearer tokens internally. Tokens are stored in the auth state directory (see Setup; `~/.outlook-skills/tokens.json` by default, `outlook-skills/tokens.json` only in the legacy cloned-repo layout) and never exposed to the LLM. Authentication is handled by `outlook-skills/auth-server.js` — a Node.js OAuth 2.0 server on port 8400.
 
 **Progressive loading**: Each `SKILL.md` is lean (~40-60 lines) with only the core operation. Adjacent `reference.md` files contain parsing templates, advanced patterns, and error handling. `params.yaml` files provide YAML-formatted parameter options (showAs, importance, recurrence, etc.). Shared reference YAML (timezones, colors, errors, graph-api-patterns) lives **once** in `skills/outlook-base/references/`; other skills link to it via `../outlook-base/references/`.
 
@@ -88,16 +88,39 @@ Produces `outlook-skills.zip` — import via Settings → Skills. Auth must be c
 
 ## Setup
 
-Auth state (.env, tokens, optional venv) is resolved by every component in this order: `$OUTLOOK_SKILLS_HOME` (explicit override) → the repo's `outlook-skills/` directory when it already holds `.env`/`tokens.json` (cloned-repo layout) → `~/.outlook-skills` (default for plugin installs; survives plugin cache updates). `$OUTLOOK_TOKEN_FILE` additionally overrides just the token file path. The commands below show the cloned-repo layout.
+Auth state (`.env` and tokens) is resolved by every component (`token_helper.py`, `graph_call.py`, `auth-server.js`, the MCP server) in this order:
+
+1. `$OUTLOOK_SKILLS_HOME`, if set and non-empty: a leading `~` is expanded and the path is made absolute.
+2. Otherwise `~/.outlook-skills` (Windows: `%USERPROFILE%\.outlook-skills`), if it holds a `.env` or `tokens.json` **file**.
+3. Otherwise the plugin's own `outlook-skills/` folder, **only if it holds `tokens.json`**. This is the legacy cloned-repo layout; a `.env` alone there no longer counts.
+4. Otherwise `~/.outlook-skills`, where new state is created.
+
+`$OUTLOOK_TOKEN_FILE` overrides only the token file. `.env` is read only from the chosen directory.
+
+To see the result, run `--where` (paths only, no secrets): it prints the chosen directory, the token file and the checked directories.
+```bash
+python outlook-skills/token_helper.py --where
+node outlook-skills/auth-server.js --where
+bash outlook-skills/auth.sh --where
+```
+```powershell
+powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Where
+```
+
+On Windows, run the `.ps1` launcher from PowerShell; never `bash` from PowerShell, which runs WSL, and WSL cannot read Windows paths.
+
+Already have credentials in the repo's `outlook-skills/`? See [Moving existing credentials to `~/.outlook-skills`](README.md#moving-existing-credentials-to-outlook-skills).
 
 Authentication runs through Node (`auth-server.js`) — no Python venv is required to authenticate. `token_helper.py` and `graph_call.py` use only the Python standard library.
 
 ### macOS / Linux / WSL / Git Bash
 ```bash
-# 1. Create credentials file (gitignored) and fill in your Azure app details
-cp outlook-skills/.env.example outlook-skills/.env
+# 1. Create the state directory and credentials file, then fill in your Azure app details
+# (already have a working Azure app? copy your existing .env here instead)
+mkdir -p ~/.outlook-skills && chmod 700 ~/.outlook-skills
+cp -n outlook-skills/.env.example ~/.outlook-skills/.env
 
-# 2. Authenticate — runs the OAuth flow, stores tokens in outlook-skills/
+# 2. Authenticate — runs the OAuth flow, stores tokens in ~/.outlook-skills/
 bash outlook-skills/auth.sh
 
 # 3. Install test dependencies
@@ -106,10 +129,12 @@ npm install
 
 ### Windows (PowerShell)
 ```powershell
-# 1. Create credentials file (gitignored) and fill in your Azure app details
-Copy-Item outlook-skills\.env.example outlook-skills\.env
+# 1. Create the state directory and credentials file, then fill in your Azure app details
+# (already have a working Azure app? copy your existing .env here instead)
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills" | Out-Null
+Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env"
 
-# 2. Authenticate — runs the OAuth flow, stores tokens in outlook-skills\
+# 2. Authenticate — runs the OAuth flow, stores tokens in %USERPROFILE%\.outlook-skills\
 .\outlook-skills\auth.ps1
 
 # 3. Install test dependencies
@@ -120,11 +145,14 @@ Auth management:
 ```bash
 bash outlook-skills/auth.sh --status   # check token validity
 bash outlook-skills/auth.sh --reauth   # force re-authentication
+bash outlook-skills/auth.sh --revoke   # revoke and delete all tokens
+bash outlook-skills/auth.sh --where    # print the state directory lookup (paths only)
 ```
 ```powershell
 .\outlook-skills\auth.ps1 -Status   # check token validity
 .\outlook-skills\auth.ps1 -Reauth   # force re-authentication
 .\outlook-skills\auth.ps1 -Revoke   # revoke and delete all tokens
+.\outlook-skills\auth.ps1 -Where    # print the state directory lookup (paths only)
 ```
 
 ## Skill File Conventions
@@ -151,7 +179,7 @@ Skills reference the API proxy via `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_
 
 - All API calls use `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py METHOD "/endpoint" [body] [--header "K:V"]`
 - Endpoints must start with `/me` or `/users/` — `graph_call.py` rejects anything else with a 400
-- `graph_call.py` runs on the Python standard library; it will use an existing `.venv` in the auth state directory if present, and on an import failure returns a 503 `import_error` naming the auth command to run
+- `graph_call.py` runs on the Python standard library; it will use an existing `.venv` if present (searched in its own order: `$OUTLOOK_SKILLS_HOME/.venv`, the plugin's `outlook-skills/.venv`, then `~/.outlook-skills/.venv`), and on an import failure returns a 503 `import_error` naming the auth command to run
 - Tokens are stored in the auth state directory (`tokens.json`, owner-only permissions, gitignored) — never exposed to the LLM
 - Response format: `{"status": N, "data": {...}}` — parse the `.data` field for the API response body
 - **Destructive operations** (send email, delete, cancel event, create rules) always require explicit user confirmation before executing
@@ -198,14 +226,14 @@ Process-level overrides (not set in `.env`):
 
 | Variable | Description |
 |---|---|
-| `OUTLOOK_SKILLS_HOME` | Override the auth state directory (`.env`, `tokens.json`, `.venv`) |
+| `OUTLOOK_SKILLS_HOME` | Override the auth state directory (`.env`, `tokens.json`; also the first `.venv` location `graph_call.py` checks) |
 | `OUTLOOK_TOKEN_FILE` | Override just the token file path |
 
 ## Security Architecture
 
 Tokens are never exposed to the LLM. The security boundary works as follows:
 
-1. **Auth**: `bash outlook-skills/auth.sh` runs the OAuth 2.0 flow via `auth-server.js` and stores tokens in the state directory's `tokens.json` (gitignored)
+1. **Auth**: `bash outlook-skills/auth.sh` (Windows: `powershell -NoProfile -File "<path>\outlook-skills\auth.ps1"`) runs the OAuth 2.0 flow via `auth-server.js` and stores tokens in the state directory's `tokens.json` (gitignored)
 2. **Credentials**: the state directory's `.env` holds client credentials (gitignored); the client secret is NOT persisted in `tokens.json` — silent refresh reads it from `.env`
 3. **API calls**: `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/graph_call.py METHOD "/endpoint"` — injects Bearer token internally, returns only JSON response
 4. **LLM rule**: Never import `token_helper`, call the token acquisition function, or read token files directly

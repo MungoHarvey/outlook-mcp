@@ -14,11 +14,13 @@ The auth system must be set up before these skills will work. From the cloned [o
 1. Copy the credentials template and fill in your Azure app details:
    ```bash
    # macOS / Linux / WSL
-   cp outlook-skills/.env.example outlook-skills/.env
+   mkdir -p ~/.outlook-skills && cp -n outlook-skills/.env.example ~/.outlook-skills/.env
 
    # Windows (PowerShell)
-   Copy-Item outlook-skills\.env.example outlook-skills\.env
+   New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills" | Out-Null
+   Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env"
    ```
+   (`.env` and `tokens.json` live in `~/.outlook-skills`; `bash outlook-skills/auth.sh --where`, or on Windows `powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Where`, shows the lookup.)
 
 2. Authenticate:
    ```bash
@@ -26,7 +28,7 @@ The auth system must be set up before these skills will work. From the cloned [o
    bash outlook-skills/auth.sh
 
    # Windows (PowerShell)
-   .\outlook-skills\auth.ps1
+   powershell -NoProfile -File "<path>\outlook-skills\auth.ps1"
    ```
    This opens a browser tab for Microsoft login and saves tokens locally.
 

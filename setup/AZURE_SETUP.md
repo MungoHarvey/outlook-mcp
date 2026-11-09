@@ -116,13 +116,14 @@ Back in your cloned repository, create the credentials file:
 
 ```bash
 # macOS / Linux / WSL
-cp outlook-skills/.env.example outlook-skills/.env
+mkdir -p ~/.outlook-skills && cp -n outlook-skills/.env.example ~/.outlook-skills/.env
 
 # Windows (PowerShell)
-Copy-Item outlook-skills\.env.example outlook-skills\.env
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills" | Out-Null
+Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env"
 ```
 
-Edit `outlook-skills/.env` and fill in the values you copied:
+Edit `~/.outlook-skills/.env` (Windows: `%USERPROFILE%\.outlook-skills\.env`) and fill in the values you copied:
 
 ```bash
 OUTLOOK_TENANT_ID=common
@@ -143,7 +144,7 @@ You're ready to authenticate. Return to the [Setup section](../README.md#setup) 
 bash outlook-skills/auth.sh
 
 # Windows (PowerShell)
-.\outlook-skills\auth.ps1
+powershell -NoProfile -File "<path>\outlook-skills\auth.ps1"
 ```
 
 ---
@@ -157,11 +158,11 @@ You used the Secret ID instead of the secret Value in Step 5. Go back to **Certi
 Check that the redirect URI in your `.env` matches `http://localhost:8400/auth/callback` exactly, and that it's registered under **Authentication > Redirect URIs** in the Azure portal.
 
 **"Token file not found"**
-Run the auth script first (see Next Steps above).
+Run the auth script first (see Next Steps above). If it still fails, run `bash outlook-skills/auth.sh --where` (Windows: `powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Where`) to see which directories were checked.
 
 **API returns 403**
 You may have added permissions after your last authentication. Re-authenticate to pick up the new scopes:
 ```bash
 bash outlook-skills/auth.sh --reauth    # macOS/Linux
-.\outlook-skills\auth.ps1 -Reauth      # Windows
+powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Reauth   # Windows
 ```

@@ -25,10 +25,11 @@ claude --plugin-dir ./outlook-mcp
 ```
 
 ## Step 2 — Choose where auth state lives
-Credentials (`.env`) and tokens (`tokens.json`) are looked up in this order: `$OUTLOOK_SKILLS_HOME` → `${CLAUDE_PLUGIN_ROOT}/outlook-skills/` if it already holds state (cloned repo) → `~/.outlook-skills`.
+Credentials (`.env`) and tokens (`tokens.json`) are looked up in this order: `$OUTLOOK_SKILLS_HOME` (if set and non-empty) → `~/.outlook-skills` if it holds a `.env` or `tokens.json` → `${CLAUDE_PLUGIN_ROOT}/outlook-skills/` only if it holds `tokens.json` (legacy cloned-repo layout; a `.env` alone there no longer counts) → otherwise `~/.outlook-skills`, where new state is created. `--where` (PowerShell: `-Where`) on the auth launcher shows the choice and the checked directories.
 
-- **Cloned repo:** use `outlook-skills/` inside the repo (the historic layout) — nothing to create.
-- **Marketplace/plugin install:** use `~/.outlook-skills` so state survives plugin updates. Create it now: `mkdir -p ~/.outlook-skills` (PowerShell: `New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills"`).
+- **New setup (clone or plugin install):** use `~/.outlook-skills` so state survives plugin updates. Create it now: `mkdir -p ~/.outlook-skills` (PowerShell: `New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills"`).
+- **Existing credentials in the repo's `outlook-skills/`:** see [README, "Moving existing credentials to `~/.outlook-skills`"](../../README.md).
+- **Already have a working Azure app?** Copy your existing `.env` into the state directory; registering a new app is only for first-time setup.
 
 Call the chosen directory **STATE_DIR** in the steps below.
 
@@ -52,8 +53,8 @@ Ask the user for the three values and write them into `STATE_DIR/.env`. **Do not
 
 ## Step 5 — Authenticate
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh"                       # macOS/Linux/WSL
-powershell -File "${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.ps1"          # Windows PowerShell
+bash "${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh"                       # macOS/Linux
+powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}\outlook-skills\auth.ps1"   # Windows PowerShell (never bash from PowerShell: that runs WSL)
 ```
 A browser opens for Microsoft sign-in. On success, tokens are stored in `STATE_DIR/tokens.json` (owner-only permissions, never shown).
 

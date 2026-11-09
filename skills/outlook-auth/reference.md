@@ -29,10 +29,14 @@ Optional (require admin consent on many managed tenants — omit unless you have
 ### 3. Create Client Secret
 Go to Certificates & secrets → New client secret → Copy the value immediately.
 
-### 4. Configure outlook-skills/.env
-Copy the template and fill in your Azure app details:
+### 4. Configure `.env` in the state directory
+Copy the template into the state directory (`~/.outlook-skills` by default; `--where` / `-Where` shows it) and fill in your Azure app details. If you already have a working Azure app, copy your existing `.env` there instead.
 ```bash
-cp outlook-skills/.env.example outlook-skills/.env
+mkdir -p ~/.outlook-skills && cp -n outlook-skills/.env.example ~/.outlook-skills/.env
+```
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills" | Out-Null
+Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env"
 ```
 ```ini
 OUTLOOK_CLIENT_ID=application-client-id-from-overview-page
@@ -48,7 +52,7 @@ not the Secret ID.
 
 For Microsoft 365 / organizational accounts:
 1. Find Tenant ID: Azure Portal → Azure Active Directory → Overview → Tenant ID
-2. Set in `outlook-skills/.env`: `OUTLOOK_TENANT_ID=your-tenant-id`
+2. Set in the state directory's `.env`: `OUTLOOK_TENANT_ID=your-tenant-id`
 
 ## Error Handling
 
@@ -59,6 +63,6 @@ For Microsoft 365 / organizational accounts:
 | AADSTS50011 | Redirect URI mismatch | Ensure Azure app has `http://localhost:8400/auth/callback` as a Web redirect URI |
 | AADSTS65001 | Missing consent / permissions | Re-run auth with `--reauth`; ensure all required API permissions are added |
 | AADSTS70011 | Invalid scope requested | Check that all requested scopes are added as delegated permissions in Azure |
-| 401 from Graph API after auth | Token expired and refresh failed | Run `auth.sh --reauth` to get fresh tokens |
+| 401 from Graph API after auth | Token expired and refresh failed | Run `auth.sh --reauth` (Windows: `powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Reauth`) to get fresh tokens |
 | Port 8400 in use | Another auth process is running | Kill the other process or wait for it to finish |
-| `client_secret not found` | Missing from `outlook-skills/.env` | Ensure `OUTLOOK_CLIENT_SECRET` is set in `outlook-skills/.env` (refresh reads it from there — it is not stored in tokens.json) |
+| `client_secret not found` | Missing from the state directory's `.env` | Run `--where` / `-Where` to find it, then ensure `OUTLOOK_CLIENT_SECRET` is set in that `.env` (refresh reads it from there — it is not stored in tokens.json) |

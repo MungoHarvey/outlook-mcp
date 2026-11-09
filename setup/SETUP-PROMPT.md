@@ -29,9 +29,9 @@ secret or any authentication token.
 3. Install Node dependencies:
        npm install
 
-4. Create my credentials file from the template (do NOT overwrite an existing .env):
-   - macOS/Linux/WSL:  cp outlook-skills/.env.example outlook-skills/.env
-   - Windows:          Copy-Item outlook-skills\.env.example outlook-skills\.env
+4. Create my credentials file from the template in ~/.outlook-skills (do NOT overwrite an existing .env):
+   - macOS/Linux/WSL:  mkdir -p ~/.outlook-skills && cp -n outlook-skills/.env.example ~/.outlook-skills/.env
+   - Windows:          New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills"; if (-not (Test-Path "$env:USERPROFILE\.outlook-skills\.env")) { Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env" }
 
 5. I now need to register an Azure app to get my credentials. Open the visual setup guide
    in my default browser so I can follow the screenshots:
@@ -45,12 +45,12 @@ secret or any authentication token.
    - the client secret VALUE  (the longer string — NOT the Secret ID, which causes
      error AADSTS7000215)
 
-6. When I give you those three values, write them into outlook-skills/.env. Do not print
+6. When I give you those three values, write them into ~/.outlook-skills/.env. Do not print
    my client secret back to me — just confirm it was saved. (.env is gitignored.)
 
 7. Authenticate — a browser window opens for Microsoft sign-in:
    - macOS/Linux/WSL:  bash outlook-skills/auth.sh
-   - Windows:          .\outlook-skills\auth.ps1
+   - Windows:          powershell -NoProfile -File ".\outlook-skills\auth.ps1"
 
 8. Verify access:
        python3 scripts/graph_call.py GET "/me"
@@ -59,8 +59,8 @@ secret or any authentication token.
    and try "/outlook-email-list" or just ask you to "check my inbox".
 
 All Microsoft Graph calls must go through scripts/graph_call.py — never read token files
-directly. My credentials stay in outlook-skills/.env and tokens in
-outlook-skills/tokens.json, both of which are gitignored and never leave my machine.
+directly. My credentials stay in ~/.outlook-skills/.env and tokens in
+~/.outlook-skills/tokens.json, outside the repo, and never leave my machine.
 ```
 
 ---
@@ -69,4 +69,4 @@ outlook-skills/tokens.json, both of which are gitignored and never leave my mach
 
 - **Already have the plugin loaded?** Skip the paste prompt — just run `/outlook-setup` (or say "set up Outlook") and the bundled skill runs the same flow.
 - The Azure step is the only part that needs you: registering the app and copying three values takes ~5 minutes. The [visual guide](azure-setup-guide.html) has annotated screenshots for every click.
-- Re-running is safe: the prompt won't overwrite an existing `.env`, and auth can be refreshed any time with `auth.sh --reauth` / `auth.ps1 -Reauth`.
+- Re-running is safe: the prompt won't overwrite an existing `.env`, and auth can be refreshed any time with `bash outlook-skills/auth.sh --reauth` / `powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Reauth`.
