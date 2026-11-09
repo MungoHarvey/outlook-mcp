@@ -6,6 +6,9 @@ import threading
 import unittest
 from pathlib import Path
 
+# Isolate from real auth state BEFORE importing token_helper
+import isolated_env  # noqa: F401
+
 _REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_REPO / "outlook-skills"))
 
