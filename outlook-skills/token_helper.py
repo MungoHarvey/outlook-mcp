@@ -123,9 +123,9 @@ def _load_env_file(path):
 _load_env_file(STATE_DIR / ".env")
 
 
-def _make_auth_cmd(action: str = "") -> str:
+def auth_command(action: str = "") -> str:
     """
-    Build platform-correct auth command.
+    Build platform-correct auth command (public API for callers).
 
     Args:
         action: 'reauth', 'status', or '' for default.
@@ -174,7 +174,7 @@ def _load_tokens() -> dict:
     if not TOKEN_FILE.exists():
         raise AuthRequiredError(
             f"No token file found. Checked: {_checked_dirs_str(CHECKED_DIRS)}. "
-            f"Run: {_make_auth_cmd('reauth')}"
+            f"Run: {auth_command('reauth')}"
         )
     try:
         return json.loads(TOKEN_FILE.read_text())
@@ -182,7 +182,7 @@ def _load_tokens() -> dict:
         raise AuthRequiredError(
             f"Could not read token store ({e}). "
             f"Checked: {_checked_dirs_str(CHECKED_DIRS)}. "
-            f"Run: {_make_auth_cmd('reauth')}"
+            f"Run: {auth_command('reauth')}"
         )
 
 
@@ -292,14 +292,14 @@ def _refresh_access_token(tokens: dict) -> dict:
     if not client_secret:
         raise AuthRequiredError(
             f"client_secret not found. Checked: {_checked_dirs_str(CHECKED_DIRS)}. "
-            f"Copy your existing .env to {STATE_DIR}, then run: {_make_auth_cmd('reauth')}"
+            f"Copy your existing .env to {STATE_DIR}, then run: {auth_command('reauth')}"
         )
 
     refresh_token = tokens.get("refresh_token")
     if not refresh_token:
         raise AuthRequiredError(
             f"No refresh_token found. Checked: {_checked_dirs_str(CHECKED_DIRS)}. "
-            f"Run: {_make_auth_cmd('reauth')}"
+            f"Run: {auth_command('reauth')}"
         )
 
     url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
@@ -330,7 +330,7 @@ def _refresh_access_token(tokens: dict) -> dict:
             raise AuthRequiredError(
                 f"Refresh token rejected ({error_code}). "
                 f"Checked: {_checked_dirs_str(CHECKED_DIRS)}. "
-                f"Run: {_make_auth_cmd('reauth')}"
+                f"Run: {auth_command('reauth')}"
             )
         raise TokenRefreshError(f"Token refresh failed: {error_code} — {body}")
     except urllib.error.URLError as e:
@@ -407,7 +407,7 @@ def get_token(force_refresh: bool = False) -> str:
         _save_tokens({})
         raise AuthRequiredError(
             f"Session has expired (30-day limit). Checked: {_checked_dirs_str(CHECKED_DIRS)}. "
-            f"Run: {_make_auth_cmd('reauth')}"
+            f"Run: {auth_command('reauth')}"
         )
 
     # ── Access token still valid ──────────────────────────────────────────────

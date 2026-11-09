@@ -21,7 +21,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import { getToken, getSessionInfo, AuthRequiredError } from "./auth.js";
+import { getToken, getSessionInfo, authCommand, authStatusText } from "./auth.js";
 import { makeRequest } from "./graph.js";
 
 // ── Server setup ─────────────────────────────────────────────────────────────
@@ -30,6 +30,8 @@ const server = new McpServer({
   name:    "outlook",
   version: "1.0.0",
 });
+
+const textReply = (text) => ({ content: [{ type: "text", text }] });
 
 // ── Tool: outlook_auth ───────────────────────────────────────────────────────
 //
@@ -49,59 +51,39 @@ server.tool(
   async ({ action }) => {
     switch (action) {
       case "status": {
-        const info = await getSessionInfo();
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(info, null, 2),
-            },
-          ],
-        };
+        // Errors are passed through to authStatusText, which words them.
+        let result;
+        try {
+          result = await getSessionInfo();
+        } catch (err) {
+          result = err;
+        }
+        return textReply(authStatusText(result));
       }
 
       case "login": {
-        // Attempt to get a token — if it works, we're already authenticated
+        // If a token works, we're already authenticated; otherwise explain why not.
+        let info;
         try {
           await getToken();
-          const info = await getSessionInfo();
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Already authenticated as ${info.user_email} (${info.days_remaining} days remaining).\n` +
-                      "No action needed.",
-              },
-            ],
-          };
-        } catch {
-          return {
-            content: [
-              {
-                type: "text",
-                text: "Not authenticated. To set up Microsoft 365 access:\n\n" +
-                      "1. Open PowerShell on your Windows machine\n" +
-                      "2. Navigate to the outlook-skills plugin directory\n" +
-                      "3. Run: .\\outlook-skills\\auth.ps1\n" +
-                      "4. Follow the browser-based sign-in flow\n" +
-                      "5. Once complete, try outlook_auth with action 'status' to verify",
-              },
-            ],
-          };
+          info = await getSessionInfo();
+        } catch (err) {
+          return textReply(authStatusText(err));
         }
+        if (!info.authenticated) return textReply(authStatusText(info));
+        return textReply(
+          `Already authenticated as ${info.user_email} (${info.days_remaining} days remaining).\n` +
+          "No action needed."
+        );
       }
 
       case "reauth": {
+        const cmd = authCommand("reauth");
         return {
           content: [
             {
               type: "text",
-              text: "To re-authenticate your Microsoft 365 session:\n\n" +
-                    "1. Open PowerShell on your Windows machine\n" +
-                    "2. Navigate to the outlook-skills plugin directory\n" +
-                    "3. Run: .\\outlook-skills\\auth.ps1 --reauth\n" +
-                    "4. Follow the browser-based sign-in flow\n" +
-                    "5. Once complete, try outlook_auth with action 'status' to verify",
+              text: `To re-authenticate, run: ${cmd}`,
             },
           ],
         };

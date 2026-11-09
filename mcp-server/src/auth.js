@@ -8,6 +8,8 @@
  * Exports:
  *   getToken()          → valid Bearer access token (string)
  *   getSessionInfo()    → human-readable session metadata (no secrets)
+ *   authStatusText()    → reply text for the MCP status/login actions
+ *   authCommand()       → platform-correct auth command for an action
  *   resolveStateDir()   → { state_dir, token_file, checked_dirs }
  *   AuthRequiredError   → error class for auth failures
  *   TokenRefreshError   → error class for refresh failures
@@ -113,7 +115,7 @@ const MAX_SESSION_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 const TOKEN_ENDPOINT  = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token";
 
 // Build platform-correct auth command (mirrors token_helper.py._make_auth_cmd).
-function makeAuthCmd(action = "") {
+export function authCommand(action = "") {
   const authScriptDir = __dirname; // outlook-skills/ is next to src/
   const isWin = platform() === "win32";
   if (isWin) {
@@ -164,7 +166,7 @@ async function loadTokens() {
   if (!existsSync(TOKEN_FILE)) {
     throw new AuthRequiredError(
       `No token file found. Checked: ${checkedDirsStr(CHECKED_DIRS)}. ` +
-      `Run: ${makeAuthCmd("reauth")}`
+      `Run: ${authCommand("reauth")}`
     );
   }
   try {
@@ -174,7 +176,7 @@ async function loadTokens() {
     throw new AuthRequiredError(
       `Could not read token store (${err.message}). ` +
       `Checked: ${checkedDirsStr(CHECKED_DIRS)}. ` +
-      `Run: ${makeAuthCmd("reauth")}`
+      `Run: ${authCommand("reauth")}`
     );
   }
 }
@@ -224,7 +226,7 @@ async function refreshAccessToken(tokens) {
   if (!clientSecret) {
     throw new AuthRequiredError(
       `client_secret not found. Checked: ${checkedDirsStr(CHECKED_DIRS)}. ` +
-      `Copy your existing .env to ${STATE_DIR}, then run: ${makeAuthCmd("reauth")}`
+      `Copy your existing .env to ${STATE_DIR}, then run: ${authCommand("reauth")}`
     );
   }
 
@@ -260,7 +262,7 @@ async function refreshAccessToken(tokens) {
       throw new AuthRequiredError(
         `Refresh token rejected (${errorCode}). ` +
         `Checked: ${checkedDirsStr(CHECKED_DIRS)}. ` +
-        `Run: ${makeAuthCmd("reauth")}`
+        `Run: ${authCommand("reauth")}`
       );
     }
     throw new TokenRefreshError(
@@ -312,7 +314,7 @@ export async function getToken() {
     await saveTokens({});
     throw new AuthRequiredError(
       `Session has expired (30-day limit). Checked: ${checkedDirsStr(CHECKED_DIRS)}. ` +
-      `Run: ${makeAuthCmd("reauth")}`
+      `Run: ${authCommand("reauth")}`
     );
   }
 
@@ -338,22 +340,45 @@ export function resolveStateDir() {
 
 /**
  * Return human-readable session metadata (no secrets exposed).
+ * Only "not signed in" is folded into the result; any other error propagates,
+ * so it is not reported as a missing sign-in.
  * @returns {object} Session info suitable for tool output
  */
 export async function getSessionInfo() {
+  let tokens;
   try {
-    const tokens = await loadTokens();
-    const age      = nowSecs() - (tokens.session_started_at || 0);
-    const daysLeft = Math.max(0, Math.floor((MAX_SESSION_AGE - age) / 86400));
-
-    return {
-      authenticated:  true,
-      user_email:     tokens.user_email || "unknown",
-      days_remaining: daysLeft,
-      scopes:         tokens.scopes || [],
-      token_valid:    nowSecs() < (tokens.access_token_expires_at || 0),
-    };
-  } catch {
-    return { authenticated: false };
+    tokens = await loadTokens();
+  } catch (err) {
+    if (err instanceof AuthRequiredError) {
+      return { authenticated: false, message: err.message };
+    }
+    throw err;
   }
+
+  const age      = nowSecs() - (tokens.session_started_at || 0);
+  const daysLeft = Math.max(0, Math.floor((MAX_SESSION_AGE - age) / 86400));
+
+  return {
+    authenticated:  true,
+    user_email:     tokens.user_email || "unknown",
+    days_remaining: daysLeft,
+    scopes:         tokens.scopes || [],
+    token_valid:    nowSecs() < (tokens.access_token_expires_at || 0),
+  };
+}
+
+/**
+ * Build the reply text for the MCP status and login actions.
+ * @param {object|Error} result A getSessionInfo() result, or an error from getToken()/getSessionInfo()
+ * @returns {string} Text to show the user
+ */
+export function authStatusText(result) {
+  if (result instanceof TokenRefreshError) {
+    return "Sign-in could not be refreshed (network or service error): " +
+           `${result.message}. Retry, or run: ${authCommand("reauth")}`;
+  }
+  if (result instanceof AuthRequiredError) return result.message;
+  if (result instanceof Error) return `Could not check sign-in status: ${result.message}`;
+  if (!result.authenticated) return result.message;
+  return JSON.stringify(result, null, 2);
 }

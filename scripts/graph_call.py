@@ -29,14 +29,6 @@ _skills_dir = Path(__file__).parent.parent / "outlook-skills"
 if str(_skills_dir) not in sys.path:
     sys.path.insert(0, str(_skills_dir))
 
-# Absolute auth-command hint — repo-relative paths are meaningless when this
-# runs from a plugin cache directory
-_AUTH_CMD = (
-    f'powershell -File "{_skills_dir / "auth.ps1"}"'
-    if sys.platform == "win32"
-    else f'bash "{_skills_dir / "auth.sh"}"'
-)
-
 # ── Bootstrap: optionally add venv site-packages (for dotenv if installed) ────
 # The venv is auth state, so it may live outside the plugin tree. Check the
 # same candidate locations token_helper uses for its state dir:
@@ -63,13 +55,18 @@ for _venv_base in _venv_candidates:
 def _ensure_token_helper():
     """Lazily import token_helper on first actual request."""
     try:
-        from token_helper import get_token, AuthRequiredError, TokenRefreshError
-        return get_token, AuthRequiredError, TokenRefreshError
+        from token_helper import get_token, AuthRequiredError, TokenRefreshError, auth_command
+        return get_token, AuthRequiredError, TokenRefreshError, auth_command
     except ImportError:
+        # Build platform-correct command without token_helper
+        if sys.platform == "win32":
+            _cmd = f'powershell -NoProfile -File "{_skills_dir / "auth.ps1"}" -Reauth'
+        else:
+            _cmd = f'bash "{_skills_dir / "auth.sh"}" --reauth'
         _error = {
             "status": 503,
             "error": "import_error",
-            "message": f"Could not import token_helper. Run: {_AUTH_CMD}"
+            "message": f"Could not import token_helper. Run: {_cmd}"
         }
         print(json.dumps(_error))
         sys.exit(1)
@@ -155,7 +152,7 @@ def make_request(method, endpoint, body, headers, _retried=False):
         Dict with keys: status, data (or error, message on failure)
     """
     # ── Get token functions ────────────────────────────────────────────────────
-    get_token, AuthRequiredError, TokenRefreshError = _ensure_token_helper()
+    get_token, AuthRequiredError, TokenRefreshError, auth_command = _ensure_token_helper()
 
     # ── Validate + self-heal endpoint (pure seam — see validate_endpoint) ───────
     endpoint, _err = validate_endpoint(endpoint)
@@ -170,11 +167,11 @@ def make_request(method, endpoint, body, headers, _retried=False):
     # still looked unexpired locally, so re-fetching the cached one would loop.
     try:
         _tok = get_token(force_refresh=_retried)
-    except AuthRequiredError:
+    except AuthRequiredError as e:
         return {
             "status": 401,
             "error": "auth_required",
-            "message": f"Run: {_AUTH_CMD}"
+            "message": str(e)
         }
     except TokenRefreshError:
         return {
@@ -237,10 +234,12 @@ def make_request(method, endpoint, body, headers, _retried=False):
             # Retry once — make_request will call get_token() again, triggering silent refresh
             return make_request(method, endpoint, body, headers, _retried=True)
         elif e.code == 401:
+            # Second 401 - token was rejected even after refresh
+            _cmd = auth_command("reauth")
             return {
                 "status": 401,
                 "error": "auth_required",
-                "message": f"Run: {_AUTH_CMD}"
+                "message": f"Token rejected after refresh. Run: {_cmd}"
             }
 
         # ── Parse other error responses ────────────────────────────────────────
@@ -259,8 +258,7 @@ def make_request(method, endpoint, body, headers, _retried=False):
         if e.code == 403:
             _missing = _get_missing_scopes()
             if _missing:
-                _reauth = f"{_AUTH_CMD} -Reauth" if sys.platform == "win32" \
-                    else f"{_AUTH_CMD} --reauth"
+                _reauth = auth_command("reauth")
                 _message = (f"{e.reason} — your sign-in is missing permissions "
                             f"({', '.join(_missing)}). Run: {_reauth}")
             else:

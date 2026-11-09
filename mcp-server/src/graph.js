@@ -9,7 +9,7 @@
  *   makeRequest(method, endpoint, body, headers) → { status, data|error }
  */
 
-import { getToken, AuthRequiredError } from "./auth.js";
+import { getToken, AuthRequiredError, authCommand, resolveStateDir } from "./auth.js";
 import { posix as posixPath } from "node:path";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -128,10 +128,12 @@ export async function makeRequest(method, endpoint, body = null, headers = {}, _
     return makeRequest(method, endpoint, body, headers, true);
   }
   if (response.status === 401) {
+    const state = resolveStateDir();
+    const cmd = authCommand("reauth");
     return {
       status:  401,
       error:   "auth_required",
-      message: "Run: .\\outlook-skills\\auth.ps1 --reauth",
+      message: `Token rejected after refresh. Checked: ${state.checked_dirs.join("; ")}. Run: ${cmd}`,
     };
   }
 
