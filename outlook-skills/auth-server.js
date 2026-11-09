@@ -11,8 +11,10 @@
  *   node outlook-skills/auth-server.js --status   # check token status
  *   node outlook-skills/auth-server.js --reauth   # force new login
  *   node outlook-skills/auth-server.js --revoke   # delete stored tokens
+ *   node outlook-skills/auth-server.js --where    # print state directory info as JSON
  *
- * Credentials: outlook-skills/.env (OUTLOOK_CLIENT_ID, OUTLOOK_CLIENT_SECRET)
+ * Credentials: <state-dir>/.env (OUTLOOK_CLIENT_ID, OUTLOOK_CLIENT_SECRET)
+ * Tokens:      <state-dir>/tokens.json or $OUTLOOK_TOKEN_FILE
  */
 
 const http = require('http');
@@ -24,31 +26,107 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 
-// ── State directory (.env + tokens.json) ────────────────────────────────────
-// Resolution order:
-//   1. OUTLOOK_SKILLS_HOME env var (explicit override)
-//   2. This script's own directory, when it already holds state
-//      (cloned-repo layout — preserves existing installs)
-//   3. ~/.outlook-skills — stable default that survives plugin cache updates
+// ── State directory resolution (matches token_helper.py exactly) ────────────
+// Resolution order (first rule that applies wins):
+//   1. OUTLOOK_SKILLS_HOME if set and non-empty (made absolute)
+//   2. ~/.outlook-skills if it contains a FILE .env or tokens.json
+//   3. This script's own directory ONLY if it contains a FILE tokens.json
+//   4. Otherwise ~/.outlook-skills (the creation target)
+//
+// OUTLOOK_TOKEN_FILE, if set, overrides only the token file path (made absolute).
+
 const SCRIPT_DIR = __dirname;
 
-function resolveStateDir() {
-  if (process.env.OUTLOOK_SKILLS_HOME) return process.env.OUTLOOK_SKILLS_HOME;
-  if (fs.existsSync(path.join(SCRIPT_DIR, '.env')) ||
-      fs.existsSync(path.join(SCRIPT_DIR, 'tokens.json'))) {
-    return SCRIPT_DIR;
-  }
-  return path.join(os.homedir(), '.outlook-skills');
+/**
+ * Make a configured path absolute, expanding a leading ~ first (as token_helper.py's
+ * Path.expanduser().absolute() does), so both resolvers report the same directory.
+ * @param {string} p - Path from OUTLOOK_SKILLS_HOME or OUTLOOK_TOKEN_FILE
+ * @returns {string} - Absolute path
+ */
+function absolutePath(p) {
+  if (p === '~') return os.homedir();
+  if (p.startsWith('~/') || p.startsWith('~\\')) return path.join(os.homedir(), p.slice(2));
+  return path.resolve(p);
 }
 
-const STATE_DIR = resolveStateDir();
-const ENV_FILE = path.join(STATE_DIR, '.env');
-const TOKEN_FILE = process.env.OUTLOOK_TOKEN_FILE || path.join(STATE_DIR, 'tokens.json');
+/**
+ * Check if a path exists and is a file (not a directory).
+ * @param {string} p - Path to check
+ * @returns {boolean} - True if path exists and is a file
+ */
+function isFile(p) {
+  try {
+    return fs.statSync(p, { throwIfNoEntry: false })?.isFile() || false;
+  } catch {
+    return false;
+  }
+}
 
-// ── Load .env manually (no dependencies needed) ────────────────────────────
+function resolveStateDirWithCheckedDirs() {
+  const checkedDirs = [];
+
+  // Rule 1: OUTLOOK_SKILLS_HOME if set and non-empty
+  const envHome = process.env.OUTLOOK_SKILLS_HOME;
+  if (envHome) {
+    const overrideDir = absolutePath(envHome);
+    checkedDirs.push(overrideDir);
+    return { stateDir: overrideDir, checkedDirs };
+  }
+
+  // Rule 2: ~/.outlook-skills if it contains .env or tokens.json as files
+  const homeDir = path.join(os.homedir(), '.outlook-skills');
+  checkedDirs.push(homeDir);
+  const homeEnv = path.join(homeDir, '.env');
+  const homeTokens = path.join(homeDir, 'tokens.json');
+  if (isFile(homeEnv) || isFile(homeTokens)) {
+    return { stateDir: homeDir, checkedDirs };
+  }
+
+  // Rule 3: Plugin folder only if it contains tokens.json (not just .env)
+  const pluginDir = SCRIPT_DIR;
+  checkedDirs.push(pluginDir);
+  const pluginTokens = path.join(pluginDir, 'tokens.json');
+  if (isFile(pluginTokens)) {
+    return { stateDir: pluginDir, checkedDirs };
+  }
+
+  // Rule 4: Default to ~/.outlook-skills (creation target)
+  return { stateDir: homeDir, checkedDirs };
+}
+
+const { stateDir: STATE_DIR, checkedDirs: CHECKED_DIRS } = resolveStateDirWithCheckedDirs();
+const ENV_FILE = path.join(STATE_DIR, '.env');
+
+// OUTLOOK_TOKEN_FILE overrides only the token file path
+let TOKEN_FILE = path.join(STATE_DIR, 'tokens.json');
+if (process.env.OUTLOOK_TOKEN_FILE) {
+  TOKEN_FILE = absolutePath(process.env.OUTLOOK_TOKEN_FILE);
+}
+
+// ── CLI flags ───────────────────────────────────────────────────────────────
+const args = process.argv.slice(2);
+const isStatus = args.includes('--status');
+const isReauth = args.includes('--reauth');
+const isRevoke = args.includes('--revoke');
+const isWhere = args.includes('--where');
+
+// ── --where: print state directory info and exit ────────────────────────────
+// Handle BEFORE anything that reads .env or scopes.json, opens a browser, or
+// touches the network. It prints paths only.
+if (isWhere) {
+  const output = {
+    state_dir: STATE_DIR,
+    token_file: TOKEN_FILE,
+    checked_dirs: CHECKED_DIRS,
+  };
+  console.log(JSON.stringify(output, null, 2));
+  process.exit(0);
+}
+
+// ── Load .env manually (no dependencies needed) ─────────────────────────────
+// Missing .env is not fatal here — process.env is used as a fallback below,
+// and the credential check further down gives a clear error if both are empty.
 function loadEnv() {
-  // Missing .env is not fatal here — process.env is used as a fallback below,
-  // and the credential check further down gives a clear error if both are empty.
   const env = {};
   if (!fs.existsSync(ENV_FILE)) return env;
   const lines = fs.readFileSync(ENV_FILE, 'utf8').split('\n');
@@ -85,7 +163,7 @@ const MAX_SESSION_SECONDS = MAX_SESSION_DAYS * 24 * 60 * 60;
 // Keep the permission tables in setup/ and skills/outlook-auth in sync with it.
 // Includes OpenID Connect scopes (openid/profile/email) so the token response
 // carries an id_token (used to record user_email in tokens.json).
-// Load resiliently: --revoke/--status need no scopes, so a missing/malformed
+// Load resiliently: --revoke/--status/--where need no scopes, so a missing/malformed
 // scopes.json must not crash those recovery paths. The auth flow guards on an
 // empty SCOPES below (after credential validation).
 let SCOPES = [];
@@ -113,18 +191,12 @@ function hardenPerms(file) {
   } catch (e) { /* non-fatal — file still usable */ }
 }
 
-// ── CLI flags ───────────────────────────────────────────────────────────────
-const args = process.argv.slice(2);
-const isStatus = args.includes('--status');
-const isReauth = args.includes('--reauth');
-const isRevoke = args.includes('--revoke');
-
 // ── Revoke — delete stored tokens ───────────────────────────────────────────
 if (isRevoke) {
   if (fs.existsSync(TOKEN_FILE)) {
     fs.unlinkSync(TOKEN_FILE);
     console.log(`\n  Tokens revoked and deleted: ${TOKEN_FILE}`);
-    console.log('  Run auth again to re-authenticate.\n');
+    console.log(`  To sign in again, run: ${makeAuthCmd('reauth')}\n`);
   } else {
     console.log('\n  No tokens to revoke (already signed out).\n');
   }
@@ -134,14 +206,14 @@ if (isRevoke) {
 // ── Status check ────────────────────────────────────────────────────────────
 if (isStatus) {
   if (!fs.existsSync(TOKEN_FILE)) {
-    console.log('\n  Not authenticated. Run: node outlook-skills/auth-server.js\n');
+    console.log(`\n  Not authenticated. Run: ${makeAuthCmd('reauth')}\n`);
     process.exit(0);
   }
   let tokens;
   try {
     tokens = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
   } catch (e) {
-    console.log('\n  Token store is unreadable/corrupt. Run --reauth to re-authenticate.\n');
+    console.log(`\n  Token store is unreadable/corrupt. To re-authenticate, run: ${makeAuthCmd('reauth')}\n`);
     process.exit(0);
   }
   const now = Date.now() / 1000;
@@ -164,22 +236,47 @@ if (isStatus) {
     .filter(r => !granted.some(g => g === r.toLowerCase() || g.endsWith('/' + r.toLowerCase())));
   if (missing.length) {
     console.log(`  [!] Missing:   ${missing.join(', ')}`);
-    console.log('               Run --reauth to grant the new permissions.');
+    console.log(`               To grant the new permissions, run: ${makeAuthCmd('reauth')}`);
   }
 
   console.log(`  Token file:    ${TOKEN_FILE}\n`);
   process.exit(0);
 }
 
+// ── Helper: Build platform-correct auth command ─────────────────────────────
+function makeAuthCmd(action) {
+  // action: 'reauth' or 'status' (the flag name without its dashes)
+  if (process.platform === 'win32') {
+    const ps1Path = path.join(SCRIPT_DIR, 'auth.ps1');
+    const actionCap = action.charAt(0).toUpperCase() + action.slice(1);
+    return `powershell -NoProfile -File "${ps1Path}" -${actionCap}`;
+  }
+  const shPath = path.join(SCRIPT_DIR, 'auth.sh');
+  return `bash "${shPath}" --${action}`;
+}
+
 // ── Validate credentials ────────────────────────────────────────────────────
 if (!CLIENT_ID || !CLIENT_SECRET) {
-  console.error(`[error] OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET must be set in ${ENV_FILE}`);
-  console.error(`        Create the directory if needed, then copy the template and add your Azure credentials:`);
-  console.error(`          cp "${path.join(SCRIPT_DIR, '.env.example')}" "${ENV_FILE}"`);
+  console.error(`[error] OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET must be set in a .env file.`);
+  console.error(`        Checked directories (in order):`);
+  for (const dir of CHECKED_DIRS) {
+    console.error(`          ${dir}`);
+  }
+  console.error(`        Copy your existing .env to ${STATE_DIR}, then run:`);
+  console.error(`          ${makeAuthCmd('reauth')}`);
+  console.error(`        Or create a new .env from the template:`);
+  const exampleSrc = path.join(SCRIPT_DIR, '.env.example');
+  if (process.platform === 'win32') {
+    console.error(`          Copy-Item "${exampleSrc}" "${ENV_FILE}"`);
+  } else {
+    console.error(`          cp "${exampleSrc}" "${ENV_FILE}"`);
+  }
+  console.error(`        Then fill in your Azure app credentials (see setup/AZURE_SETUP.md).`);
+  console.error(`        After that, run: ${makeAuthCmd('reauth')}`);
   process.exit(1);
 }
 
-// The auth flow needs the scope list; --status/--revoke above do not.
+// The auth flow needs the scope list; --status/--revoke/--where above do not.
 if (!SCOPES.length) {
   console.error('[error] Could not load scopes from outlook-skills/scopes.json (missing or malformed).');
   process.exit(1);
@@ -342,8 +439,8 @@ const server = http.createServer((req, res) => {
           const now = Date.now() / 1000;
 
           // Save in the format token_helper.py expects. The client secret is
-          // NOT persisted — refresh reads it from outlook-skills/.env, so a
-          // leaked tokens.json can't also leak the long-lived app secret.
+          // NOT persisted — refresh reads it from .env, so a leaked tokens.json
+          // can't also leak the long-lived app secret.
           const tokens = {
             access_token:            tokenResponse.access_token,
             refresh_token:           tokenResponse.refresh_token,
