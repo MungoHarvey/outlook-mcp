@@ -35,30 +35,55 @@ from pathlib import Path
 _SCRIPT_DIR = Path(__file__).parent
 
 
-def _resolve_state_dir() -> Path:
+def _resolve_state_dir_with_checked_dirs() -> tuple:
     """
     Where auth state (.env, tokens.json, .venv) lives.
 
-    Resolution order:
-      1. OUTLOOK_SKILLS_HOME env var (explicit override)
-      2. This script's own directory, when it already holds state
-         (cloned-repo layout — preserves existing installs)
-      3. ~/.outlook-skills — stable default that survives plugin cache updates
+    Resolution order (first rule that applies wins):
+      1. OUTLOOK_SKILLS_HOME if set and non-empty
+      2. Path.home() / ".outlook-skills" if it contains a FILE named .env or tokens.json
+      3. This script's own directory (outlook-skills/) ONLY if it contains
+         a FILE named tokens.json (.env alone no longer counts)
+      4. Otherwise Path.home() / ".outlook-skills" (the creation target)
+
+    Returns:
+        Tuple of (state_dir: Path, checked_dirs: list[Path])
+        checked_dirs is the ordered list of directories examined.
     """
+    checked_dirs = []
+
+    # Rule 1: OUTLOOK_SKILLS_HOME if set and non-empty
     env_home = os.environ.get("OUTLOOK_SKILLS_HOME")
     if env_home:
-        return Path(env_home).expanduser()
-    if (_SCRIPT_DIR / "tokens.json").exists() or (_SCRIPT_DIR / ".env").exists():
-        return _SCRIPT_DIR
-    return Path.home() / ".outlook-skills"
+        override_dir = Path(env_home).expanduser().absolute()
+        checked_dirs.append(override_dir)
+        return override_dir, checked_dirs
+
+    # Rule 2: ~/.outlook-skills if it contains .env or tokens.json as files
+    home_dir = Path.home() / ".outlook-skills"
+    checked_dirs.append(home_dir)
+    if (home_dir / ".env").is_file() or (home_dir / "tokens.json").is_file():
+        return home_dir, checked_dirs
+
+    # Rule 3: Plugin folder only if it contains tokens.json (not just .env)
+    plugin_dir = _SCRIPT_DIR
+    checked_dirs.append(plugin_dir)
+    if (plugin_dir / "tokens.json").is_file():
+        return plugin_dir, checked_dirs
+
+    # Rule 4: Default to ~/.outlook-skills (creation target)
+    return home_dir, checked_dirs
 
 
-STATE_DIR = _resolve_state_dir()
-TOKEN_FILE = (
-    Path(os.environ["OUTLOOK_TOKEN_FILE"]).expanduser()
+_state_dir, _checked_dirs = _resolve_state_dir_with_checked_dirs()
+STATE_DIR = _state_dir
+CHECKED_DIRS = _checked_dirs
+_TOKEN_FILE_OVERRIDE = (
+    Path(os.environ["OUTLOOK_TOKEN_FILE"]).expanduser().absolute()
     if os.environ.get("OUTLOOK_TOKEN_FILE")
-    else STATE_DIR / "tokens.json"
+    else None
 )
+TOKEN_FILE = _TOKEN_FILE_OVERRIDE if _TOKEN_FILE_OVERRIDE else STATE_DIR / "tokens.json"
 # scopes.json is part of the shipped code (single source of the scope
 # contract), not user state — always resolved next to this script.
 SCOPES_FILE     = _SCRIPT_DIR / "scopes.json"
@@ -67,10 +92,6 @@ MAX_SESSION_AGE = 30 * 24 * 60 * 60   # 30 days
 # OIDC + offline_access are not echoed as Graph resource scopes in the token
 # response, so they are excluded from scope-drift comparison.
 _OIDC_SCOPES = {"openid", "profile", "email", "offline_access"}
-
-# Absolute auth-command hint for error messages — repo-relative paths are
-# meaningless when this runs from a plugin cache directory
-_AUTH_CMD = f'bash "{_SCRIPT_DIR / "auth.sh"}"'
 
 # Load .env so client_secret is available for silent token refresh.
 # Dependency-free parser (mirrors auth-server.js loadEnv) — refresh must not
@@ -102,6 +123,35 @@ def _load_env_file(path):
 _load_env_file(STATE_DIR / ".env")
 
 
+def _make_auth_cmd(action: str = "") -> str:
+    """
+    Build platform-correct auth command.
+
+    Args:
+        action: 'reauth', 'status', or '' for default.
+                On Windows renders as -Reauth/-Status; on Unix as --reauth/--status.
+
+    Returns:
+        Absolute, runnable command string for the platform.
+    """
+    if sys.platform == "win32":
+        cmd = f'powershell -NoProfile -File "{_SCRIPT_DIR / "auth.ps1"}"'
+        if action == "reauth":
+            cmd = f"{cmd} -Reauth"
+        elif action == "status":
+            cmd = f"{cmd} -Status"
+    else:
+        cmd = f'bash "{_SCRIPT_DIR / "auth.sh"}"'
+        if action:
+            cmd = f"{cmd} --{action}"
+    return cmd
+
+
+def _checked_dirs_str(checked_dirs: list) -> str:
+    """Format checked directories for error messages."""
+    return "; ".join(str(d) for d in checked_dirs)
+
+
 # ── Exceptions ────────────────────────────────────────────────────────────────
 
 class AuthRequiredError(Exception):
@@ -123,14 +173,16 @@ def _load_tokens() -> dict:
     """Load tokens from disk."""
     if not TOKEN_FILE.exists():
         raise AuthRequiredError(
-            f"No token file found at {TOKEN_FILE}. Run: {_AUTH_CMD}"
+            f"No token file found. Checked: {_checked_dirs_str(CHECKED_DIRS)}. "
+            f"Run: {_make_auth_cmd('reauth')}"
         )
     try:
         return json.loads(TOKEN_FILE.read_text())
     except Exception as e:
         raise AuthRequiredError(
             f"Could not read token store ({e}). "
-            f"Run: {_AUTH_CMD} --reauth"
+            f"Checked: {_checked_dirs_str(CHECKED_DIRS)}. "
+            f"Run: {_make_auth_cmd('reauth')}"
         )
 
 
@@ -239,15 +291,15 @@ def _refresh_access_token(tokens: dict) -> dict:
 
     if not client_secret:
         raise AuthRequiredError(
-            "client_secret not found in token store or environment. "
-            f"Run: {_AUTH_CMD} --reauth"
+            f"client_secret not found. Checked: {_checked_dirs_str(CHECKED_DIRS)}. "
+            f"Copy your existing .env to {STATE_DIR}, then run: {_make_auth_cmd('reauth')}"
         )
 
     refresh_token = tokens.get("refresh_token")
     if not refresh_token:
         raise AuthRequiredError(
-            "No refresh_token found in token store. "
-            f"Run: {_AUTH_CMD} --reauth"
+            f"No refresh_token found. Checked: {_checked_dirs_str(CHECKED_DIRS)}. "
+            f"Run: {_make_auth_cmd('reauth')}"
         )
 
     url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
@@ -277,7 +329,8 @@ def _refresh_access_token(tokens: dict) -> dict:
         if error_code in ("invalid_grant", "interaction_required", "consent_required"):
             raise AuthRequiredError(
                 f"Refresh token rejected ({error_code}). "
-                f"Run: {_AUTH_CMD} --reauth"
+                f"Checked: {_checked_dirs_str(CHECKED_DIRS)}. "
+                f"Run: {_make_auth_cmd('reauth')}"
             )
         raise TokenRefreshError(f"Token refresh failed: {error_code} — {body}")
     except urllib.error.URLError as e:
@@ -353,8 +406,8 @@ def get_token(force_refresh: bool = False) -> str:
     if session_age > MAX_SESSION_AGE:
         _save_tokens({})
         raise AuthRequiredError(
-            "Session has expired (30-day limit). "
-            f"Run: {_AUTH_CMD} --reauth"
+            f"Session has expired (30-day limit). Checked: {_checked_dirs_str(CHECKED_DIRS)}. "
+            f"Run: {_make_auth_cmd('reauth')}"
         )
 
     # ── Access token still valid ──────────────────────────────────────────────
@@ -392,3 +445,29 @@ def get_session_info() -> dict:
         "missing_scopes": missing_scopes(tokens),
         "token_valid":    time.time() < tokens.get("access_token_expires_at", 0),
     }
+
+
+# ── CLI: --where probe ────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Token helper utilities for outlook-mcp"
+    )
+    parser.add_argument(
+        "--where",
+        action="store_true",
+        help="Print state directory resolution as JSON and exit"
+    )
+    args = parser.parse_args()
+
+    if args.where:
+        # Print paths only, never file contents, no network request
+        output = {
+            "state_dir": str(STATE_DIR),
+            "token_file": str(TOKEN_FILE),
+            "checked_dirs": [str(d) for d in CHECKED_DIRS],
+        }
+        print(json.dumps(output, indent=2))
+        sys.exit(0)

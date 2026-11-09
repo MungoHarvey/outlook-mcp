@@ -1,0 +1,118 @@
+[
+  {
+    "id": 1,
+    "description": "OUTLOOK_SKILLS_HOME set; home and plugin both hold .env + tokens.json",
+    "env": {
+      "OUTLOOK_SKILLS_HOME": "<override>"
+    },
+    "home": [".env", "tokens.json"],
+    "plugin": [".env", "tokens.json"],
+    "windows_only": false,
+    "expected_state_dir": "override",
+    "expected_token_file": "state_dir",
+    "expected_checked_dirs": ["override"]
+  },
+  {
+    "id": 2,
+    "description": "OUTLOOK_SKILLS_HOME empty; home holds .env",
+    "env": {
+      "OUTLOOK_SKILLS_HOME": ""
+    },
+    "home": [".env"],
+    "plugin": [],
+    "windows_only": false,
+    "expected_state_dir": "home",
+    "expected_token_file": "state_dir",
+    "expected_checked_dirs": ["home"]
+  },
+  {
+    "id": 3,
+    "description": "home holds .env only",
+    "env": {},
+    "home": [".env"],
+    "plugin": [],
+    "windows_only": false,
+    "expected_state_dir": "home",
+    "expected_token_file": "state_dir",
+    "expected_checked_dirs": ["home"]
+  },
+  {
+    "id": 4,
+    "description": "home holds tokens.json only",
+    "env": {},
+    "home": ["tokens.json"],
+    "plugin": [],
+    "windows_only": false,
+    "expected_state_dir": "home",
+    "expected_token_file": "state_dir",
+    "expected_checked_dirs": ["home"]
+  },
+  {
+    "id": 5,
+    "description": "plugin holds tokens.json and .env; home empty",
+    "env": {},
+    "home": [],
+    "plugin": [".env", "tokens.json"],
+    "windows_only": false,
+    "expected_state_dir": "plugin",
+    "expected_token_file": "state_dir",
+    "expected_checked_dirs": ["home", "plugin"]
+  },
+  {
+    "id": 6,
+    "description": "plugin holds .env only; home empty",
+    "env": {},
+    "home": [],
+    "plugin": [".env"],
+    "windows_only": false,
+    "expected_state_dir": "home",
+    "expected_token_file": "state_dir",
+    "expected_checked_dirs": ["home", "plugin"]
+  },
+  {
+    "id": 7,
+    "description": "home and plugin both hold state",
+    "env": {},
+    "home": [".env", "tokens.json"],
+    "plugin": [".env", "tokens.json"],
+    "windows_only": false,
+    "expected_state_dir": "home",
+    "expected_token_file": "state_dir",
+    "expected_checked_dirs": ["home"]
+  },
+  {
+    "id": 8,
+    "description": "nothing anywhere",
+    "env": {},
+    "home": [],
+    "plugin": [],
+    "windows_only": false,
+    "expected_state_dir": "home",
+    "expected_token_file": "state_dir",
+    "expected_checked_dirs": ["home", "plugin"]
+  },
+  {
+    "id": 9,
+    "description": "OUTLOOK_TOKEN_FILE set; home holds .env",
+    "env": {
+      "OUTLOOK_TOKEN_FILE": "<tokenfile>"
+    },
+    "home": [".env"],
+    "plugin": [],
+    "windows_only": false,
+    "expected_state_dir": "home",
+    "expected_token_file": "override",
+    "expected_checked_dirs": ["home"]
+  },
+  {
+    "id": 10,
+    "description": "Windows only: HOME != USERPROFILE; state under USERPROFILE",
+    "env": {},
+    "home": [".env", "tokens.json"],
+    "plugin": [],
+    "windows_only": true,
+    "expected_state_dir": "home",
+    "expected_token_file": "state_dir",
+    "expected_checked_dirs": ["home"]
+  }
+]
