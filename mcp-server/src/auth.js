@@ -174,7 +174,7 @@ async function loadTokens() {
     return JSON.parse(raw);
   } catch (err) {
     throw new AuthRequiredError(
-      `Could not read token store (${err.message}). ` +
+      `Could not read token store (the token file is not valid JSON). ` +
       `Checked: ${checkedDirsStr(CHECKED_DIRS)}. ` +
       `Run: ${authCommand("reauth")}`
     );

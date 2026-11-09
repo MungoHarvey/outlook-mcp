@@ -206,14 +206,14 @@ if (isRevoke) {
 // ── Status check ────────────────────────────────────────────────────────────
 if (isStatus) {
   if (!fs.existsSync(TOKEN_FILE)) {
-    console.log(`\n  Not authenticated. Run: ${makeAuthCmd('reauth')}\n`);
+    console.log(`\n  Not authenticated. Checked: ${CHECKED_DIRS.join('; ')}. Run: ${makeAuthCmd('reauth')}\n`);
     process.exit(0);
   }
   let tokens;
   try {
     tokens = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
   } catch (e) {
-    console.log(`\n  Token store is unreadable/corrupt. To re-authenticate, run: ${makeAuthCmd('reauth')}\n`);
+    console.log(`\n  Token store is unreadable/corrupt. Checked: ${CHECKED_DIRS.join('; ')}. Run: ${makeAuthCmd('reauth')}\n`);
     process.exit(0);
   }
   const now = Date.now() / 1000;
@@ -262,14 +262,22 @@ if (!CLIENT_ID || !CLIENT_SECRET) {
   for (const dir of CHECKED_DIRS) {
     console.error(`          ${dir}`);
   }
+  if (fs.existsSync(ENV_FILE)) {
+    // Advising a template copy here would overwrite the values already in .env.
+    console.error(`        Fill in the missing values in ${ENV_FILE} (see setup/AZURE_SETUP.md), then run:`);
+    console.error(`          ${makeAuthCmd('reauth')}`);
+    process.exit(1);
+  }
   console.error(`        Copy your existing .env to ${STATE_DIR}, then run:`);
   console.error(`          ${makeAuthCmd('reauth')}`);
   console.error(`        Or create a new .env from the template:`);
   const exampleSrc = path.join(SCRIPT_DIR, '.env.example');
   if (process.platform === 'win32') {
+    console.error(`          New-Item -ItemType Directory -Force "${STATE_DIR}" | Out-Null`);
     console.error(`          Copy-Item "${exampleSrc}" "${ENV_FILE}"`);
   } else {
-    console.error(`          cp "${exampleSrc}" "${ENV_FILE}"`);
+    console.error(`          mkdir -p "${STATE_DIR}"`);
+    console.error(`          cp -n "${exampleSrc}" "${ENV_FILE}"`);
   }
   console.error(`        Then fill in your Azure app credentials (see setup/AZURE_SETUP.md).`);
   console.error(`        After that, run: ${makeAuthCmd('reauth')}`);

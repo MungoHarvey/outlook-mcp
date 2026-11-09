@@ -186,6 +186,46 @@ class TestGraphCallAuthMessages(unittest.TestCase):
         self.assertNotIn("fake-secret", output["message"].lower(),
                          f"Message should not contain secrets. Got: {output}")
 
+    def test_malformed_tokens_json_fake_token_not_in_message(self):
+        """When tokens.json is malformed JSON, fake token text appears in no message."""
+        home_state_dir = self.fixture["home_dir"] / ".outlook-skills"
+        home_state_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write malformed JSON containing a fake token-like string (JWT format)
+        fake_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.fake.token"
+        (home_state_dir / "tokens.json").write_text(fake_token)
+
+        graph_call_path = self.fixture["plugin_dir"] / "scripts" / "graph_call.py"
+
+        result = subprocess.run(
+            [sys.executable, str(graph_call_path), "GET", "/me"],
+            env=self.fixture["env"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        self.assertEqual(result.returncode, 0,
+                         f"graph_call.py should exit 0 on auth error. stderr: {result.stderr}")
+
+        output = json.loads(result.stdout)
+
+        # Should have auth_required error
+        self.assertEqual(output.get("status"), 401,
+                         f"Expected status 401, got: {output}")
+        self.assertEqual(output.get("error"), "auth_required",
+                         f"Expected error 'auth_required', got: {output}")
+
+        # Message must NOT contain any part of the fake token (JWT prefix is distinctive)
+        message = output.get("message", "")
+        self.assertNotIn("eyJhbGciOi", message,
+                         f"Message should not contain any part of the fake token. Got: {message}")
+        # Should use fixed description instead of raw parser error
+        self.assertIn("not valid JSON", message,
+                      f"Message should use fixed 'not valid JSON' description. Got: {message}")
+        self.assertNotIn("Unexpected token", message,
+                         f"Message should not include raw parser error. Got: {message}")
+
 
 class TestGraphCallImportError(unittest.TestCase):
     """Test that graph_call.py handles token_helper import errors correctly."""
@@ -236,6 +276,104 @@ class TestGraphCallImportError(unittest.TestCase):
             expected = f'bash "{skills_dir / "auth.sh"}" --reauth'
         self.assertTrue(message.endswith(f"Run: {expected}"),
                         f"Expected message to end with 'Run: {expected}'. Got: {message}")
+
+
+class TestGraphCallSecond401Message(unittest.TestCase):
+    """Test that graph_call.py second-401 message includes checked directories."""
+
+    def setUp(self):
+        """Build fixture with valid (unexpired) token."""
+        self.fixture = build_graph_call_fixture()
+        # Create a valid unexpired token so we reach the second-401 path
+        home_state_dir = self.fixture["home_dir"] / ".outlook-skills"
+        home_state_dir.mkdir(parents=True, exist_ok=True)
+        import time
+        valid_tokens = {
+            "access_token": "fake-valid-token",
+            "refresh_token": "fake-refresh-token",
+            "client_id": "fake-client",
+            "tenant_id": "common",
+            "session_started_at": time.time() - 1000,  # Valid session
+            "access_token_expires_at": time.time() + 3600,  # Unexpired token
+        }
+        (home_state_dir / "tokens.json").write_text(json.dumps(valid_tokens))
+        # Also need .env for refresh to attempt (but fetch will fail)
+        (home_state_dir / ".env").write_text("OUTLOOK_CLIENT_SECRET=fake-secret\n")
+
+    def tearDown(self):
+        self.fixture["cleanup"]()
+
+    def test_second_401_message_includes_checked_dirs(self):
+        """When Graph returns 401 twice, message includes checked directories."""
+        # Create a wrapper script that stubs urlopen to raise HTTPError 401 twice
+        # for Graph API calls only (allow token refresh to succeed with fake response)
+        wrapper_script = self.fixture["plugin_dir"] / "test_401_wrapper.py"
+        graph_call_path = self.fixture["plugin_dir"] / "scripts" / "graph_call.py"
+        # Use forward slashes for the path to avoid escape sequence issues in Python
+        graph_call_path_str = str(graph_call_path).replace('\\', '/')
+        wrapper_code = f'''import sys
+import json
+import urllib.request
+import urllib.error
+from io import BytesIO
+
+_call_count = [0]
+
+def mock_urlopen(req, timeout=None):
+    # Only mock Graph API calls (graph.microsoft.com), allow token refresh to succeed
+    if "graph.microsoft.com" in req.full_url:
+        _call_count[0] += 1
+        fp = BytesIO(b'{{"error": {{"code": "InvalidAuthenticationToken"}}}}')
+        hdrs = {{}}
+        raise urllib.error.HTTPError(req.full_url, 401, "Unauthorized", hdrs, fp)
+    # For token refresh endpoint, return a fake success response
+    elif "login.microsoftonline.com" in req.full_url:
+        fp = BytesIO(b'{{"access_token": "fake-new-token", "expires_in": 3600, "refresh_token": "fake-refresh"}}')
+        hdrs = {{"Content-Type": "application/json"}}
+        return urllib.request.addinfourl(fp, hdrs, req.full_url)
+    else:
+        raise urllib.error.URLError(f"Unexpected URL: {{req.full_url}}")
+urllib.request.urlopen = mock_urlopen
+
+# Now run graph_call via runpy
+import runpy
+sys.argv = ["graph_call.py", "GET", "/me"]
+runpy.run_path(r"{graph_call_path_str}", run_name="__main__")
+'''
+        (wrapper_script).write_text(wrapper_code)
+
+        result = subprocess.run(
+            [sys.executable, str(wrapper_script)],
+            env=self.fixture["env"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        self.assertEqual(result.returncode, 0,
+                         f"graph_call.py should exit 0 on auth error. stderr: {result.stderr}")
+
+        output = json.loads(result.stdout)
+
+        # Should have auth_required error from second 401
+        self.assertEqual(output.get("status"), 401,
+                         f"Expected status 401, got: {output}")
+        self.assertEqual(output.get("error"), "auth_required",
+                         f"Expected error 'auth_required', got: {output}")
+
+        # The whole message, exactly: the second-401 lead-in, the checked directories
+        # the lookup examined (it stops at the home state dir, which holds the token
+        # file), then the platform command. A refresh failure shares the "Checked:"
+        # and "Run:" parts, so only the lead-in tells the two paths apart.
+        home_state_dir = self.fixture["home_dir"] / ".outlook-skills"
+        skills_dir = self.fixture["plugin_dir"] / "outlook-skills"
+        if sys.platform == "win32":
+            expected_cmd = f'powershell -NoProfile -File "{skills_dir / "auth.ps1"}" -Reauth'
+        else:
+            expected_cmd = f'bash "{skills_dir / "auth.sh"}" --reauth'
+        expected = (f"Token rejected after refresh. Checked: {home_state_dir}. "
+                    f"Run: {expected_cmd}")
+        self.assertEqual(output.get("message"), expected)
 
 
 class TestGraphCall403Message(unittest.TestCase):

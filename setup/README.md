@@ -60,7 +60,7 @@ INSTALL_DIR=/opt/outlook-mcp SKILLS_DIR=/custom/skills bash setup/install.sh
    ```
    ```powershell
    New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills" | Out-Null
-   Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env"
+   if (-not (Test-Path "$env:USERPROFILE\.outlook-skills\.env")) { Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env" }
    ```
 2. Authenticate:
    ```bash

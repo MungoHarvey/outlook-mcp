@@ -55,8 +55,8 @@ for _venv_base in _venv_candidates:
 def _ensure_token_helper():
     """Lazily import token_helper on first actual request."""
     try:
-        from token_helper import get_token, AuthRequiredError, TokenRefreshError, auth_command
-        return get_token, AuthRequiredError, TokenRefreshError, auth_command
+        from token_helper import get_token, AuthRequiredError, TokenRefreshError, auth_command, CHECKED_DIRS
+        return get_token, AuthRequiredError, TokenRefreshError, auth_command, CHECKED_DIRS
     except ImportError:
         # Build platform-correct command without token_helper
         if sys.platform == "win32":
@@ -152,7 +152,7 @@ def make_request(method, endpoint, body, headers, _retried=False):
         Dict with keys: status, data (or error, message on failure)
     """
     # ── Get token functions ────────────────────────────────────────────────────
-    get_token, AuthRequiredError, TokenRefreshError, auth_command = _ensure_token_helper()
+    get_token, AuthRequiredError, TokenRefreshError, auth_command, CHECKED_DIRS = _ensure_token_helper()
 
     # ── Validate + self-heal endpoint (pure seam — see validate_endpoint) ───────
     endpoint, _err = validate_endpoint(endpoint)
@@ -236,10 +236,11 @@ def make_request(method, endpoint, body, headers, _retried=False):
         elif e.code == 401:
             # Second 401 - token was rejected even after refresh
             _cmd = auth_command("reauth")
+            _checked = "; ".join(str(d) for d in CHECKED_DIRS)
             return {
                 "status": 401,
                 "error": "auth_required",
-                "message": f"Token rejected after refresh. Run: {_cmd}"
+                "message": f"Token rejected after refresh. Checked: {_checked}. Run: {_cmd}"
             }
 
         # ── Parse other error responses ────────────────────────────────────────

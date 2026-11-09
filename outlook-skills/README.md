@@ -32,7 +32,7 @@ cp -n outlook-skills/.env.example ~/.outlook-skills/.env
 ```
 ```powershell
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills" | Out-Null
-Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env"
+if (-not (Test-Path "$env:USERPROFILE\.outlook-skills\.env")) { Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env" }
 ```
 Fill in `OUTLOOK_CLIENT_ID`, `OUTLOOK_CLIENT_SECRET` (the secret **value**, not
 the Secret ID), and `OUTLOOK_TENANT_ID` (`common` for personal accounts).

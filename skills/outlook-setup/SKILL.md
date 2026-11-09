@@ -46,8 +46,8 @@ Then summarise the 8 Azure steps inline (see reference.md → "Azure steps") so 
 ## Step 4 — Write credentials to `.env`
 Create the credentials file in STATE_DIR from the bundled template, then fill in the three values:
 ```bash
-cp "${CLAUDE_PLUGIN_ROOT}/outlook-skills/.env.example" STATE_DIR/.env                  # bash
-Copy-Item "${CLAUDE_PLUGIN_ROOT}\outlook-skills\.env.example" STATE_DIR\.env           # PowerShell
+cp -n "${CLAUDE_PLUGIN_ROOT}/outlook-skills/.env.example" STATE_DIR/.env               # bash (no overwrite)
+if (-not (Test-Path "STATE_DIR\.env")) { Copy-Item "${CLAUDE_PLUGIN_ROOT}\outlook-skills\.env.example" STATE_DIR\.env }  # PowerShell (no overwrite)
 ```
 Ask the user for the three values and write them into `STATE_DIR/.env`. **Do not echo the client secret back into the chat** — confirm only that it was written. `.env` is never committed (gitignored in the repo layout).
 

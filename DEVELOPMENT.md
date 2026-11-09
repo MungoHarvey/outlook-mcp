@@ -34,9 +34,9 @@ This document captures the lessons learned, architectural decisions, and platfor
 
 ### Shared Token File
 
-**Decision**: Both the Python CLI tools (`graph_call.py`, `token_helper.py`) and the Node.js MCP server read/write the same `outlook-skills/tokens.json`.
+**Decision**: Both the Python CLI tools (`graph_call.py`, `token_helper.py`) and the Node.js MCP server read/write the same `tokens.json` in the resolved state directory (by default `~/.outlook-skills/tokens.json`, or `outlook-skills/tokens.json` in the legacy cloned-repo layout).
 
-**Rationale**: A user who authenticates via Claude Code (`auth.sh`) shouldn't need to re-authenticate when switching to Cowork, and vice versa. The token format is simple JSON with known fields — both runtimes can handle it.
+**Rationale**: A user who authenticates via Claude Code (`auth.sh`) shouldn't need to re-authenticate when switching to Cowork, and vice versa. The token format is simple JSON with known fields — both runtimes can handle it. The state directory is resolved in order: `$OUTLOOK_SKILLS_HOME` → `~/.outlook-skills` (if it has `.env` or `tokens.json`) → plugin's `outlook-skills/` (only if it has `tokens.json`) → `~/.outlook-skills` (creation target).
 
 ---
 
@@ -138,8 +138,8 @@ Goal: Make the same skills work in Claude Desktop and Cowork, where the network 
 | `outlook-skills/auth-server.js` | OAuth callback server (Claude Code) |
 | `outlook-skills/auth.sh` / `auth.ps1` | Auth entry points (Claude Code) |
 | `outlook-skills/token_helper.py` | Python token helper (Claude Code) |
-| `outlook-skills/.env` | Azure credentials (NEVER commit) |
-| `outlook-skills/tokens.json` | OAuth tokens (NEVER commit) |
+| State directory's `.env` | Azure credentials (NEVER commit; by default `~/.outlook-skills/.env`) |
+| State directory's `tokens.json` | OAuth tokens (NEVER commit; by default `~/.outlook-skills/tokens.json`) |
 
 ### Documentation
 
@@ -198,7 +198,7 @@ Goal: Make the same skills work in Claude Desktop and Cowork, where the network 
 
 ```
 outlook_api called
-  → auth.js: loadTokens() from tokens.json
+  → auth.js: loadTokens() from state directory's tokens.json
   → Check session age (< 30 days?)
   → Check access_token expiry
   → If expired: POST to Azure token endpoint with refresh_token
@@ -212,11 +212,12 @@ outlook_api called
 
 ### Environment Variable
 
-The MCP server uses one environment variable set in `claude_desktop_config.json`:
+The MCP server uses environment variables for auth state location:
 
-- `OUTLOOK_TOKEN_FILE` — absolute path to `tokens.json`
+- `OUTLOOK_SKILLS_HOME` — override the state directory (where `.env` and `tokens.json` live)
+- `OUTLOOK_TOKEN_FILE` — override just the token file path
 
-If unset, it falls back to a relative path from the server's own directory.
+If unset, the state directory is resolved in order: `~/.outlook-skills` (if it has `.env` or `tokens.json`) → plugin's `outlook-skills/` (only if it has `tokens.json`) → `~/.outlook-skills` (creation target).
 
 ### Azure AD Configuration
 

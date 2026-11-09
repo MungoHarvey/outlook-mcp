@@ -168,19 +168,19 @@ If your `.env` and `tokens.json` sit in the repo's `outlook-skills/` folder, mov
 
    PowerShell:
    ```powershell
-   foreach ($f in '.env', 'tokens.json') {
-     if (-not (Test-Path "outlook-skills\$f")) { continue }
-     if (Test-Path "$dest\$f") { throw "$dest\$f already exists; not overwriting" }
-     Copy-Item "outlook-skills\$f" "$dest\$f"
-   }
+   # Preflight: if EITHER destination file exists (possibly from a different app), copy nothing
+   if ((Test-Path "$dest\.env") -or (Test-Path "$dest\tokens.json")) { Write-Warning "$dest already has a .env or tokens.json (possibly from a different app). Not copying." } else { foreach ($f in '.env', 'tokens.json') { if (Test-Path "outlook-skills\$f") { Copy-Item "outlook-skills\$f" "$dest\$f" } } }
    ```
    macOS / Linux / Git Bash:
    ```bash
-   for f in .env tokens.json; do
-     [ -f "outlook-skills/$f" ] || continue
-     [ -e ~/.outlook-skills/$f ] && { echo "~/.outlook-skills/$f already exists; not overwriting" >&2; break; }
-     cp -n "outlook-skills/$f" ~/.outlook-skills/$f && chmod 600 ~/.outlook-skills/$f
-   done
+   # Preflight: if EITHER destination file exists (possibly from a different app), copy nothing
+   if [ -e ~/.outlook-skills/.env ] || [ -e ~/.outlook-skills/tokens.json ]; then
+     echo "~/.outlook-skills already has a .env or tokens.json (possibly from a different app). Not copying." >&2
+   else
+     for f in .env tokens.json; do
+       [ -f "outlook-skills/$f" ] && cp -n "outlook-skills/$f" ~/.outlook-skills/$f && chmod 600 ~/.outlook-skills/$f
+     done
+   fi
    ```
 3. Verify. `-Where` / `--where` should report `~/.outlook-skills` as the state directory; then check the token.
 

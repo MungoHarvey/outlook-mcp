@@ -17,7 +17,7 @@ The auth launchers (`auth.sh` / `auth.ps1`) are thin: they run `auth-server.js` 
 
 | Action | macOS / Linux / WSL / Git Bash | Windows PowerShell |
 |---|---|---|
-| Copy env template | `cp "${CLAUDE_PLUGIN_ROOT}/outlook-skills/.env.example" STATE_DIR/.env` | `Copy-Item "${CLAUDE_PLUGIN_ROOT}\outlook-skills\.env.example" STATE_DIR\.env` |
+| Copy env template | `cp -n "${CLAUDE_PLUGIN_ROOT}/outlook-skills/.env.example" STATE_DIR/.env` (no overwrite) | `if (-not (Test-Path "STATE_DIR\.env")) { Copy-Item "${CLAUDE_PLUGIN_ROOT}\outlook-skills\.env.example" STATE_DIR\.env }` |
 | Open HTML guide | `open …/setup/azure-setup-guide.html` (macOS) · `xdg-open …` (Linux/WSL) | `Start-Process "…\setup\azure-setup-guide.html"` |
 | Authenticate | `bash "${CLAUDE_PLUGIN_ROOT}/outlook-skills/auth.sh"` | `powershell -NoProfile -File "<path>\outlook-skills\auth.ps1"` |
 | Check status | `bash …/auth.sh --status` | `powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Status` |

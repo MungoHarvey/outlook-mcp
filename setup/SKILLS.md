@@ -18,7 +18,7 @@ The auth system must be set up before these skills will work. From the cloned [o
 
    # Windows (PowerShell)
    New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills" | Out-Null
-   Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env"
+   if (-not (Test-Path "$env:USERPROFILE\.outlook-skills\.env")) { Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env" }
    ```
    (`.env` and `tokens.json` live in `~/.outlook-skills`; `bash outlook-skills/auth.sh --where`, or on Windows `powershell -NoProfile -File "<path>\outlook-skills\auth.ps1" -Where`, shows the lookup.)
 

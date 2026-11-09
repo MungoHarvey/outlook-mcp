@@ -178,9 +178,9 @@ def _load_tokens() -> dict:
         )
     try:
         return json.loads(TOKEN_FILE.read_text())
-    except Exception as e:
+    except Exception:
         raise AuthRequiredError(
-            f"Could not read token store ({e}). "
+            "Could not read token store (the token file is not valid JSON). "
             f"Checked: {_checked_dirs_str(CHECKED_DIRS)}. "
             f"Run: {auth_command('reauth')}"
         )

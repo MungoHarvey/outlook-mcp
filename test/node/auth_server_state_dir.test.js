@@ -297,9 +297,19 @@ test('missing .env error message: ordered checked dirs, exact platform command, 
     // Check the template copy command comes after the copy advice
     const templateCopy = process.platform === 'win32'
       ? `Copy-Item "${path.join(pluginState, '.env.example')}"`
-      : `cp "${path.join(pluginState, '.env.example')}"`;
+      : `cp -n "${path.join(pluginState, '.env.example')}"`;
     const templateIdx = output.indexOf(templateCopy);
     assert.ok(templateIdx > copyIdx, 'Template copy command should come after copy advice');
+
+    // Check directory creation command is included (fresh machine advice)
+    // The command creates the STATE_DIR (where .env should live)
+    const createDirCmd = process.platform === 'win32'
+      ? `New-Item -ItemType Directory -Force "${pluginState}"`
+      : `mkdir -p "${pluginState}"`;
+    assert.ok(
+      output.includes(createDirCmd),
+      `Output should include directory creation command: ${createDirCmd}. Got: ${output}`
+    );
 
     // The second reauth command follows the template copy line
     assert.ok(
@@ -369,6 +379,56 @@ test('--where exits 0 when OUTLOOK_SKILLS_HOME holds a directory named .env', ()
 });
 
 // ── Test: --status "not authenticated" message uses the platform command ────
+// A .env that exists but lacks credentials must not be replaced: the message
+// says to fill it in, and advises no template copy that would overwrite it.
+test('missing-credentials message with an existing but incomplete .env advises no template copy', () => {
+  const scenario = {
+    id: 996,
+    env: {},
+    home: [],
+    plugin: ['tokens.json'],
+    windows_only: false,
+    expected_state_dir: 'plugin',
+    expected_token_file: 'state_dir',
+  };
+
+  let fixture = null;
+  try {
+    fixture = buildFixture(scenario);
+    const pluginState = path.join(fixture.pluginDir, 'outlook-skills');
+    const envFile = path.join(pluginState, '.env');
+    // Tenant only: no client id or secret, so the credentials check fails.
+    fs.writeFileSync(envFile, 'OUTLOOK_TENANT_ID=common\n');
+
+    const result = runAuthNoFlags(fixture.pluginDir, fixture.env);
+    const output = result.stdout + result.stderr;
+
+    // Reach the credentials check, not some earlier exit.
+    assert.strictEqual(result.status, 1, `Expected exit 1: ${output}`);
+    assert.ok(output.includes('must be set in a .env file'), `Expected the credentials error: ${output}`);
+
+    assert.ok(
+      output.includes(`Fill in the missing values in ${envFile}`),
+      `Expected fill-in advice naming the existing .env: ${output}`
+    );
+    const templateSrc = path.join(pluginState, '.env.example');
+    assert.ok(
+      !output.includes(`Copy-Item "${templateSrc}"`) && !output.includes(`cp "${templateSrc}"`),
+      `Must not advise copying the template over an existing .env: ${output}`
+    );
+    assert.ok(
+      !output.includes('Copy your existing .env'),
+      `Must not advise copying an existing .env when one is already there: ${output}`
+    );
+    // The existing file is untouched.
+    assert.strictEqual(fs.readFileSync(envFile, 'utf8'), 'OUTLOOK_TENANT_ID=common\n');
+  } finally {
+    if (fixture) {
+      fixture.cleanup();
+    }
+  }
+});
+
 test('--status not-authenticated message gives the exact platform reauth command', () => {
   const scenario = {
     id: 995,
@@ -393,8 +453,10 @@ test('--status not-authenticated message gives the exact platform reauth command
 
     assert.strictEqual(result.status, 0, `--status should exit 0: ${result.stderr}`);
     const expectedCmd = getExpectedAuthCmd(path.join(fixture.pluginDir, 'outlook-skills'), 'reauth');
+    const homeStateDir = path.join(fixture.homeDir, '.outlook-skills');
+    const pluginSkillsDir = path.join(fixture.pluginDir, 'outlook-skills');
     assert.ok(
-      result.stdout.includes(`Not authenticated. Run: ${expectedCmd}`),
+      result.stdout.includes(`Not authenticated. Checked: ${homeStateDir}; ${pluginSkillsDir}. Run: ${expectedCmd}`),
       `Expected the exact reauth command in: ${result.stdout}`
     );
   } finally {
@@ -430,6 +492,15 @@ test('--revoke, corrupt-store and missing-scope messages give the exact platform
       assert.strictEqual(result.status, 0, `${c.name}: exit ${result.status}: ${result.stderr}`);
       const expectedCmd = getExpectedAuthCmd(path.join(fixture.pluginDir, 'outlook-skills'), 'reauth');
       assert.ok(result.stdout.includes(expectedCmd), `${c.name}: expected "${expectedCmd}" in: ${result.stdout}`);
+      if (c.name === 'corrupt token store') {
+        // The corrupt-store message is a no-credentials message, so it must list
+        // the checked directories, like the no-token case does.
+        const homeStateDir = path.join(fixture.homeDir, '.outlook-skills');
+        assert.ok(
+          result.stdout.includes(`Token store is unreadable/corrupt. Checked: ${homeStateDir}. Run: ${expectedCmd}`),
+          `${c.name}: expected the exact corrupt-store message in: ${result.stdout}`
+        );
+      }
       for (const secret of FIXTURE_SECRETS) {
         assert.ok(!result.stdout.includes(secret), `${c.name}: secret "${secret}" printed`);
       }

@@ -120,7 +120,7 @@ mkdir -p ~/.outlook-skills && cp -n outlook-skills/.env.example ~/.outlook-skill
 
 # Windows (PowerShell)
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills" | Out-Null
-Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env"
+if (-not (Test-Path "$env:USERPROFILE\.outlook-skills\.env")) { Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env" }
 ```
 
 Edit `~/.outlook-skills/.env` (Windows: `%USERPROFILE%\.outlook-skills\.env`) and fill in the values you copied:

@@ -132,7 +132,7 @@ npm install
 # 1. Create the state directory and credentials file, then fill in your Azure app details
 # (already have a working Azure app? copy your existing .env here instead)
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills" | Out-Null
-Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env"
+if (-not (Test-Path "$env:USERPROFILE\.outlook-skills\.env")) { Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env" }
 
 # 2. Authenticate — runs the OAuth flow, stores tokens in %USERPROFILE%\.outlook-skills\
 .\outlook-skills\auth.ps1

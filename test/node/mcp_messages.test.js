@@ -349,3 +349,36 @@ test('index.js routes status and login through authStatusText', () => {
     fixture.cleanup();
   }
 });
+
+test('malformed tokens.json: fake token text appears in no error message (auth.js)', () => {
+  const fixture = buildMcpFixture();
+  try {
+    const homeStateDir = join(fixture.homeDir, '.outlook-skills');
+    mkdirSync(homeStateDir, { recursive: true });
+    // Write malformed JSON containing a fake token-like string (JWT format)
+    const fakeToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.fake.token';
+    writeFileSync(join(homeStateDir, 'tokens.json'), fakeToken);
+
+    const out = runProbe(fixture, `
+      import { getSessionInfo, authStatusText } from './mcp-server/src/auth.js';
+      let text;
+      try {
+        const info = await getSessionInfo();
+        text = authStatusText(info);
+      } catch (err) {
+        text = authStatusText(err);
+      }
+      console.log(JSON.stringify({ text }));
+    `);
+
+    // V8's JSON.parse error quotes the input, so even partial token exposure is a leak
+    // Check that no part of the fake token (including the distinctive prefix) appears
+    assert.ok(!out.text.includes('eyJhbGciOi'),
+      `Error message must not contain any part of the fake token. Got: ${out.text}`);
+    // Should use fixed description instead of err.message
+    assert.ok(out.text.includes('not valid JSON') && !out.text.includes('Unexpected token'),
+      `Error should use fixed description. Got: ${out.text}`);
+  } finally {
+    fixture.cleanup();
+  }
+});

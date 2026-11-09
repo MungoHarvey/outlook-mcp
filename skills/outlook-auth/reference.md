@@ -36,7 +36,7 @@ mkdir -p ~/.outlook-skills && cp -n outlook-skills/.env.example ~/.outlook-skill
 ```
 ```powershell
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.outlook-skills" | Out-Null
-Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env"
+if (-not (Test-Path "$env:USERPROFILE\.outlook-skills\.env")) { Copy-Item outlook-skills\.env.example "$env:USERPROFILE\.outlook-skills\.env" }
 ```
 ```ini
 OUTLOOK_CLIENT_ID=application-client-id-from-overview-page
