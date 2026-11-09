@@ -68,3 +68,5 @@ mcp-server/node_modules/
 New folder/
 outlook-skills/outlook-skills-zip/
 loop-complete*.json
+# Draft specs and reviews before they are published to the issue tracker
+.scratch/
